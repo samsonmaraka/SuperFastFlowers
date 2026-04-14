@@ -127,7 +127,6 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
             value={loginCode}
             onChange={(e) => setLoginCode(e.target.value)}
             className="mt-1 w-full rounded border p-2"
-            placeholder="samsonmaraka"
           />
         </label>
         <button className="rounded bg-ink px-3 py-2 text-white">Login</button>
