@@ -30,21 +30,62 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
     () => name.trim().length >= 2 && description.trim().length >= 10 && Number(price) >= 0 && imageUrl.trim().length > 0,
     [description, imageUrl, name, price]
   );
-
   const save = async (product: Product) => {
-    setIsSaving(true);
+  setIsSaving(true);
+  setMessage('');
+
+  try {
+    console.log('Submitting product:', product);
+    console.log('Image URL length:', product.imageUrls?.[0]?.length);
+
     const res = await fetch('/api/admin/products', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
       body: JSON.stringify(product)
     });
-    setMessage(res.ok ? 'Saved product.' : 'Failed to save product.');
-    if (res.ok) {
-      const data = await res.json();
+
+    let data: any = null;
+
+    try {
+      data = await res.json();
+    } catch {
+      data = null;
+    }
+
+    console.log('Save product status:', res.status);
+    console.log('Save product response:', data);
+
+    if (!res.ok) {
+      setMessage(`Failed to save product. Status: ${res.status}. ${data?.error ? JSON.stringify(data.error) : ''}`);
+      return;
+    }
+
+    setMessage('Saved product.');
+    if (data?.products) {
       setProducts(data.products);
     }
+  } catch (error) {
+    console.error('Save product crashed:', error);
+    setMessage(`Failed to save product. ${error instanceof Error ? error.message : String(error)}`);
+  } finally {
     setIsSaving(false);
-  };
+  }
+};
+
+  // const save = async (product: Product) => {
+  //   setIsSaving(true);
+  //   const res = await fetch('/api/admin/products', {
+  //     method: 'POST',
+  //     headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+  //     body: JSON.stringify(product)
+  //   });
+  //   setMessage(res.ok ? 'Saved product.' : 'Failed to save product.');
+  //   if (res.ok) {
+  //     const data = await res.json();
+  //     setProducts(data.products);
+  //   }
+  //   setIsSaving(false);
+  // };
 
   const remove = async (id: string) => {
     const res = await fetch(`/api/admin/products?id=${id}`, {
