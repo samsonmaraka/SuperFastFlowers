@@ -1,3 +1,5 @@
+import { promises as fs } from 'node:fs';
+import path from 'node:path';
 import {
   DeleteCommand,
   GetCommand,
@@ -10,13 +12,28 @@ import { db } from '@/lib/dynamodb';
 import { env, isDynamoConfigured } from '@/lib/env';
 import { seedProducts } from '@/data/seed-products';
 
-let inMemoryProducts = [...seedProducts];
+const localProductsPath = path.join(process.cwd(), 'data', '.local-products.json');
+
+async function loadLocalProducts() {
+  try {
+    const raw = await fs.readFile(localProductsPath, 'utf8');
+    const parsed = JSON.parse(raw) as Product[];
+    return Array.isArray(parsed) ? parsed : [...seedProducts];
+  } catch {
+    return [...seedProducts];
+  }
+}
+
+async function persistLocalProducts(products: Product[]) {
+  await fs.writeFile(localProductsPath, JSON.stringify(products, null, 2), 'utf8');
+}
 
 export async function listProducts(options?: { category?: string; q?: string; featured?: boolean }) {
   const { category, q, featured } = options || {};
 
   if (!isDynamoConfigured) {
-    return filterProducts(inMemoryProducts, category, q, featured);
+    const localProducts = await loadLocalProducts();
+    return filterProducts(localProducts, category, q, featured);
   }
 
   const res = await db.send(
@@ -45,7 +62,8 @@ function filterProducts(products: Product[], category?: string, q?: string, feat
 
 export async function getProductByIdOrSlug(idOrSlug: string) {
   if (!isDynamoConfigured) {
-    return inMemoryProducts.find((p) => p.id === idOrSlug || p.slug === idOrSlug) || null;
+    const localProducts = await loadLocalProducts();
+    return localProducts.find((p) => p.id === idOrSlug || p.slug === idOrSlug) || null;
   }
 
   const byId = await db.send(
@@ -72,7 +90,9 @@ export async function getProductByIdOrSlug(idOrSlug: string) {
 
 export async function upsertProduct(product: Product) {
   if (!isDynamoConfigured) {
-    inMemoryProducts = [...inMemoryProducts.filter((p) => p.id !== product.id), product];
+    const localProducts = await loadLocalProducts();
+    const updatedProducts = [...localProducts.filter((p) => p.id !== product.id), product];
+    await persistLocalProducts(updatedProducts);
     return product;
   }
 
@@ -95,7 +115,9 @@ export async function upsertProduct(product: Product) {
 
 export async function deleteProduct(id: string) {
   if (!isDynamoConfigured) {
-    inMemoryProducts = inMemoryProducts.filter((p) => p.id !== id);
+    const localProducts = await loadLocalProducts();
+    const updatedProducts = localProducts.filter((p) => p.id !== id);
+    await persistLocalProducts(updatedProducts);
     return;
   }
 
