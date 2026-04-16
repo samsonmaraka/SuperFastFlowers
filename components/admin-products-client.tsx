@@ -1,9 +1,16 @@
 'use client';
 
+import Image from 'next/image';
 import { Product } from '@/lib/types';
 import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
 
 const ADMIN_LOGIN_CODE = 'samsonmaraka';
+
+type AdminProductsResponse = {
+  ok?: boolean;
+  products?: Product[];
+  error?: string | { message?: string } | Array<{ message?: string }>;
+};
 
 function slugify(value: string) {
   return value
@@ -11,6 +18,18 @@ function slugify(value: string) {
     .trim()
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)+/g, '');
+}
+
+function formatApiError(error: AdminProductsResponse['error']) {
+  if (!error) return '';
+  if (typeof error === 'string') return error;
+  if (Array.isArray(error)) {
+    return error
+      .map((issue) => issue?.message)
+      .filter(Boolean)
+      .join(', ');
+  }
+  return error.message || JSON.stringify(error);
 }
 
 export function AdminProductsClient({ initial }: { initial: Product[] }) {
@@ -30,62 +49,45 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
     () => name.trim().length >= 2 && description.trim().length >= 10 && Number(price) >= 0 && imageUrl.trim().length > 0,
     [description, imageUrl, name, price]
   );
+
   const save = async (product: Product) => {
-  setIsSaving(true);
-  setMessage('');
-
-  try {
-    console.log('Submitting product:', product);
-    console.log('Image URL length:', product.imageUrls?.[0]?.length);
-
-    const res = await fetch('/api/admin/products', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
-      body: JSON.stringify(product)
-    });
-
-    let data: any = null;
+    setIsSaving(true);
+    setMessage('');
 
     try {
-      data = await res.json();
-    } catch {
-      data = null;
+      const res = await fetch('/api/admin/products', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
+        body: JSON.stringify(product)
+      });
+
+      let data: AdminProductsResponse | null = null;
+
+      try {
+        const json = (await res.json()) as unknown;
+        if (typeof json === 'object' && json !== null) {
+          data = json as AdminProductsResponse;
+        }
+      } catch {
+        data = null;
+      }
+
+      if (!res.ok) {
+        const apiError = formatApiError(data?.error);
+        setMessage(`Failed to save product. Status: ${res.status}.${apiError ? ` ${apiError}` : ''}`);
+        return;
+      }
+
+      setMessage('Saved product.');
+      if (data?.products) {
+        setProducts(data.products);
+      }
+    } catch (error) {
+      setMessage(`Failed to save product. ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsSaving(false);
     }
-
-    console.log('Save product status:', res.status);
-    console.log('Save product response:', data);
-
-    if (!res.ok) {
-      setMessage(`Failed to save product. Status: ${res.status}. ${data?.error ? JSON.stringify(data.error) : ''}`);
-      return;
-    }
-
-    setMessage('Saved product.');
-    if (data?.products) {
-      setProducts(data.products);
-    }
-  } catch (error) {
-    console.error('Save product crashed:', error);
-    setMessage(`Failed to save product. ${error instanceof Error ? error.message : String(error)}`);
-  } finally {
-    setIsSaving(false);
-  }
-};
-
-  // const save = async (product: Product) => {
-  //   setIsSaving(true);
-  //   const res = await fetch('/api/admin/products', {
-  //     method: 'POST',
-  //     headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
-  //     body: JSON.stringify(product)
-  //   });
-  //   setMessage(res.ok ? 'Saved product.' : 'Failed to save product.');
-  //   if (res.ok) {
-  //     const data = await res.json();
-  //     setProducts(data.products);
-  //   }
-  //   setIsSaving(false);
-  // };
+  };
 
   const remove = async (id: string) => {
     const res = await fetch(`/api/admin/products?id=${id}`, {
@@ -209,7 +211,14 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
           <input type="file" accept="image/*" onChange={onImageUpload} className="mt-1 w-full rounded border p-2" />
         </label>
         {imagePreview ? (
-          <img src={imagePreview} alt="Uploaded preview" className="h-40 w-full rounded border object-cover" />
+          <Image
+            src={imagePreview}
+            alt="Uploaded preview"
+            width={640}
+            height={320}
+            className="h-40 w-full rounded border object-cover"
+            unoptimized
+          />
         ) : null}
         <button disabled={!isFormValid || isSaving} className="rounded bg-ink px-3 py-2 text-white disabled:opacity-50">
           {isSaving ? 'Saving...' : 'Save product'}
@@ -222,7 +231,9 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
         <div key={p.id} className="flex items-center justify-between rounded border bg-white p-3">
           <div>
             <p className="font-medium">{p.name}</p>
-            <p className="text-sm text-gray-600">{p.category} · ${p.price}</p>
+            <p className="text-sm text-gray-600">
+              {p.category} · ${p.price}
+            </p>
           </div>
           <button className="text-sm text-red-700" onClick={() => remove(p.id)}>
             Delete
