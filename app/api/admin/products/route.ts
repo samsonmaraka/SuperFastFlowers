@@ -4,33 +4,84 @@ import { deleteProduct, listProducts, upsertProduct } from '@/lib/products-repo'
 import { productSchema } from '@/lib/validators';
 
 function isAuthorized(req: NextRequest) {
-  return req.headers.get('x-admin-token') === env.adminToken;
+  const token = req.headers.get('x-admin-token');
+  return token === env.adminToken;
 }
 
 export async function POST(req: NextRequest) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
+  try {
+    console.log('POST /api/admin/products called');
 
-  const body = await req.json();
-  const parsed = productSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
-  }
+    if (!isAuthorized(req)) {
+      console.log('Unauthorized admin request');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
 
-  await upsertProduct(parsed.data);
-  const products = await listProducts();
-  return NextResponse.json({ ok: true, products });
+    const body = await req.json();
+    console.log('Request body received');
+    console.log('Product name:', body?.name);
+    console.log('Product slug:', body?.slug);
+    console.log('Image count:', body?.imageUrls?.length ?? 0);
+    console.log('First image length:', body?.imageUrls?.[0]?.length ?? 0);
+
+    const parsed = productSchema.safeParse(body);
+
+    if (!parsed.success) {
+      console.log('Validation failed:', parsed.error.issues);
+      return NextResponse.json(
+        { error: parsed.error.issues },
+        { status: 400 }
+      );
+    }
+
+    console.log('Validation passed');
+
+    await upsertProduct(parsed.data);
+    console.log('upsertProduct succeeded');
+
+    const products = await listProducts();
+    console.log('listProducts succeeded');
+
+    return NextResponse.json({ ok: true, products });
+  } catch (error) {
+    console.error('POST /api/admin/products failed:', error);
+
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : String(error)
+      },
+      { status: 500 }
+    );
+  }
 }
 
 export async function DELETE(req: NextRequest) {
-  if (!isAuthorized(req)) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try {
+    console.log('DELETE /api/admin/products called');
+
+    if (!isAuthorized(req)) {
+      console.log('Unauthorized delete request');
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const id = req.nextUrl.searchParams.get('id');
+    if (!id) {
+      return NextResponse.json({ error: 'Missing id' }, { status: 400 });
+    }
+
+    console.log('Deleting product id:', id);
+    await deleteProduct(id);
+    console.log('deleteProduct succeeded');
+
+    return NextResponse.json({ ok: true });
+  } catch (error) {
+    console.error('DELETE /api/admin/products failed:', error);
+
+    return NextResponse.json(
+      {
+        error: error instanceof Error ? error.message : String(error)
+      },
+      { status: 500 }
+    );
   }
-
-  const id = req.nextUrl.searchParams.get('id');
-  if (!id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
-
-  await deleteProduct(id);
-  return NextResponse.json({ ok: true });
 }
