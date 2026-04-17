@@ -1,17 +1,17 @@
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import { db } from '@/lib/dynamodb';
-import { env } from '@/lib/env';
+import { getEnv } from '@/lib/env';
 import { seedProducts } from '@/data/seed-products';
 
 async function main() {
-  if (!env.tableName) {
+  if (!getEnv().tableName) {
     throw new Error('DYNAMODB_TABLE is required to seed DynamoDB');
   }
 
   for (const product of seedProducts) {
     await db.send(
       new PutCommand({
-        TableName: env.tableName,
+        TableName: getEnv().tableName,
         Item: {
           ...product,
           entityType: 'PRODUCT',
@@ -24,7 +24,7 @@ async function main() {
     );
   }
 
-  console.log(`Seeded ${seedProducts.length} products into ${env.tableName}`);
+  console.log(`Seeded ${seedProducts.length} products into ${getEnv().tableName}`);
 }
 
 main().catch((err) => {
