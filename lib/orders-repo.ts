@@ -1,19 +1,19 @@
 import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import { db } from '@/lib/dynamodb';
-import { getEnv } from '@/lib/env';
+import { env } from '@/lib/env';
 import { OrderRequest } from '@/lib/types';
 
 const memoryOrders: OrderRequest[] = [];
 
 export async function createOrder(order: OrderRequest) {
-  if (!getEnv().orderTableName) {
+  if (!env.orderTableName) {
     memoryOrders.push(order);
     return order;
   }
 
   await db.send(
     new PutCommand({
-      TableName: getEnv().orderTableName,
+      TableName: env.orderTableName,
       Item: {
         ...order,
         pk: `ORDER#${order.id}`,

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getEnv } from '@/lib/env';
+import { env } from '@/lib/env';
 import { deleteProduct, listProducts, upsertProduct } from '@/lib/products-repo';
 import { productSchema } from '@/lib/validators';
 
@@ -7,7 +7,7 @@ export const runtime = 'nodejs';
 
 function isAuthorized(req: NextRequest) {
   const token = req.headers.get('x-admin-token');
-  return token === getEnv().adminToken;
+  return token === env.adminToken;
 }
 
 export async function POST(req: NextRequest) {
