@@ -9,7 +9,7 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { Product } from '@/lib/types';
 import { db } from '@/lib/dynamodb';
-import { env, isDynamoConfigured } from '@/lib/env';
+import { getEnv, isDynamoConfigured } from '@/lib/env';
 import { seedProducts } from '@/data/seed-products';
 
 const localProductsPath = path.join(process.cwd(), 'data', '.local-products.json');
@@ -31,14 +31,18 @@ async function persistLocalProducts(products: Product[]) {
 export async function listProducts(options?: { category?: string; q?: string; featured?: boolean }) {
   const { category, q, featured } = options || {};
 
-  if (!isDynamoConfigured) {
+  if (!isDynamoConfigured()) {
+    console.warn('[products-repo] DynamoDB disabled; falling back to local products.', {
+      hasTableName: Boolean(getEnv().tableName),
+      tableName: getEnv().tableName || '(empty)'
+    });
     const localProducts = await loadLocalProducts();
     return filterProducts(localProducts, category, q, featured);
   }
 
   const res = await db.send(
     new ScanCommand({
-      TableName: env.tableName,
+      TableName: getEnv().tableName,
       FilterExpression: '#entity = :entity',
       ExpressionAttributeNames: { '#entity': 'entityType' },
       ExpressionAttributeValues: { ':entity': 'PRODUCT' }
@@ -61,14 +65,18 @@ function filterProducts(products: Product[], category?: string, q?: string, feat
 }
 
 export async function getProductByIdOrSlug(idOrSlug: string) {
-  if (!isDynamoConfigured) {
+  if (!isDynamoConfigured()) {
+    console.warn('[products-repo] DynamoDB disabled in getProductByIdOrSlug.', {
+      hasTableName: Boolean(getEnv().tableName),
+      tableName: getEnv().tableName || '(empty)'
+    });
     const localProducts = await loadLocalProducts();
     return localProducts.find((p) => p.id === idOrSlug || p.slug === idOrSlug) || null;
   }
 
   const byId = await db.send(
     new GetCommand({
-      TableName: env.tableName,
+      TableName: getEnv().tableName,
       Key: { pk: `PRODUCT#${idOrSlug}`, sk: 'META' }
     })
   );
@@ -77,7 +85,7 @@ export async function getProductByIdOrSlug(idOrSlug: string) {
 
   const bySlug = await db.send(
     new QueryCommand({
-      TableName: env.tableName,
+      TableName: getEnv().tableName,
       IndexName: 'gsi1',
       KeyConditionExpression: 'gsi1pk = :gsi1pk',
       ExpressionAttributeValues: { ':gsi1pk': `SLUG#${idOrSlug}` },
@@ -89,7 +97,11 @@ export async function getProductByIdOrSlug(idOrSlug: string) {
 }
 
 export async function upsertProduct(product: Product) {
-  if (!isDynamoConfigured) {
+  if (!isDynamoConfigured()) {
+    console.warn('[products-repo] DynamoDB disabled in upsertProduct.', {
+      hasTableName: Boolean(getEnv().tableName),
+      tableName: getEnv().tableName || '(empty)'
+    });
     const localProducts = await loadLocalProducts();
     const updatedProducts = [...localProducts.filter((p) => p.id !== product.id), product];
     await persistLocalProducts(updatedProducts);
@@ -98,7 +110,7 @@ export async function upsertProduct(product: Product) {
 
   await db.send(
     new PutCommand({
-      TableName: env.tableName,
+      TableName: getEnv().tableName,
       Item: {
         ...product,
         entityType: 'PRODUCT',
@@ -114,7 +126,11 @@ export async function upsertProduct(product: Product) {
 }
 
 export async function deleteProduct(id: string) {
-  if (!isDynamoConfigured) {
+  if (!isDynamoConfigured()) {
+    console.warn('[products-repo] DynamoDB disabled in deleteProduct.', {
+      hasTableName: Boolean(getEnv().tableName),
+      tableName: getEnv().tableName || '(empty)'
+    });
     const localProducts = await loadLocalProducts();
     const updatedProducts = localProducts.filter((p) => p.id !== id);
     await persistLocalProducts(updatedProducts);
@@ -123,7 +139,7 @@ export async function deleteProduct(id: string) {
 
   await db.send(
     new DeleteCommand({
-      TableName: env.tableName,
+      TableName: getEnv().tableName,
       Key: { pk: `PRODUCT#${id}`, sk: 'META' }
     })
   );
