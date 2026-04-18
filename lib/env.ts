@@ -5,6 +5,7 @@ function readServerEnv() {
     awsRegion,
     tableName: process.env.DYNAMODB_TABLE || '',
     orderTableName: process.env.DYNAMODB_ORDER_TABLE || '',
+    productSlugIndexName: process.env.DYNAMODB_PRODUCT_SLUG_INDEX || 'giftora_main_index',
     adminToken: process.env.ADMIN_TOKEN || 'samsonmaraka'
   };
 }
