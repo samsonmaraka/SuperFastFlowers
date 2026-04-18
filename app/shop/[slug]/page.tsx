@@ -19,7 +19,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
         <p className="text-sm uppercase text-pink-700">{product.category || 'Floral gift'}</p>
         <h1 className="text-3xl font-semibold">{product.name}</h1>
         <p className="text-gray-700">{product.description || 'No description available yet.'}</p>
-        <p className="text-2xl font-semibold">${product.price}</p>
+        <p className="text-2xl font-semibold">UGX {product.price}</p>
         <AddToCartButton product={product} />
       </div>
     </div>

@@ -14,7 +14,7 @@ export function ProductCard({ product }: { product: Product }) {
         </h3>
         <p className="line-clamp-2 text-sm text-gray-600">{product.description}</p>
         <div className="flex items-center justify-between">
-          <span className="font-semibold">${product.price}</span>
+          <span className="font-semibold">UGX {product.price}</span>
         </div>
       </div>
     </article>
