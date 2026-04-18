@@ -196,7 +196,7 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
           />
         </label>
         <label className="block text-sm">
-          Price (USD)
+          Price (UGX)
           <input
             type="number"
             min="0"
@@ -232,7 +232,7 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
           <div>
             <p className="font-medium">{p.name}</p>
             <p className="text-sm text-gray-600">
-              {p.category} · ${p.price}
+              {p.category} · UGX {p.price}
             </p>
           </div>
           <button className="text-sm text-red-700" onClick={() => remove(p.id)}>

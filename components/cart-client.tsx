@@ -32,7 +32,7 @@ export function CartClient() {
         <div key={item.productId} className="flex items-center justify-between rounded-lg border border-blush bg-white p-4">
           <div>
             <p className="font-medium">{item.name}</p>
-            <p className="text-sm text-gray-600">${item.price} each</p>
+            <p className="text-sm text-gray-600">UGX {item.price} each</p>
           </div>
           <input
             type="number"
@@ -43,7 +43,7 @@ export function CartClient() {
           />
         </div>
       ))}
-      <p className="text-lg font-semibold">Total: ${total.toFixed(2)}</p>
+      <p className="text-lg font-semibold">Total: UGX {total.toFixed(2)}</p>
       <Link href="/checkout" className="inline-block rounded bg-ink px-4 py-2 text-white">
         Continue to checkout
       </Link>
