@@ -172,7 +172,7 @@ aws dynamodb create-table \
       AttributeName=pk,KeyType=HASH \
       AttributeName=sk,KeyType=RANGE \
   --billing-mode PAY_PER_REQUEST \
-  --global-secondary-indexes '[{"IndexName":"gsi1","KeySchema":[{"AttributeName":"gsi1pk","KeyType":"HASH"},{"AttributeName":"gsi1sk","KeyType":"RANGE"}],"Projection":{"ProjectionType":"ALL"}}]'
+  --global-secondary-indexes '[{"IndexName":"giftora_main_index","KeySchema":[{"AttributeName":"gsi1pk","KeyType":"HASH"},{"AttributeName":"gsi1sk","KeyType":"RANGE"}],"Projection":{"ProjectionType":"ALL"}}]'
 
 aws dynamodb create-table \
   --table-name giftora-orders \

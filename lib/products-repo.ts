@@ -86,7 +86,7 @@ export async function getProductByIdOrSlug(idOrSlug: string) {
   const bySlug = await db.send(
     new QueryCommand({
       TableName: getEnv().tableName,
-      IndexName: 'gsi1',
+      IndexName: getEnv().productSlugIndexName,
       KeyConditionExpression: 'gsi1pk = :gsi1pk',
       ExpressionAttributeValues: { ':gsi1pk': `SLUG#${idOrSlug}` },
       Limit: 1
