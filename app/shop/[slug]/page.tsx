@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation';
 import { AddToCartButton } from '@/components/add-to-cart-button';
 import { getProductByIdOrSlug } from '@/lib/products-repo';
+import { formatUgx } from '@/lib/format';
 
 export default async function ProductPage({ params }: { params: { slug: string } }) {
   const product = await getProductByIdOrSlug(params.slug);
@@ -19,7 +20,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
         <p className="text-sm uppercase text-pink-700">{product.category || 'Floral gift'}</p>
         <h1 className="text-3xl font-semibold">{product.name}</h1>
         <p className="text-gray-700">{product.description || 'No description available yet.'}</p>
-        <p className="text-2xl font-semibold">UGX {product.price}</p>
+        <p className="text-2xl font-semibold">UGX {formatUgx(product.price)}</p>
         <AddToCartButton product={product} />
       </div>
     </div>

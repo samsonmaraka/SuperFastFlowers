@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { formatUgx } from '@/lib/format';
 import { Product } from '@/lib/types';
 
 export function ProductCard({ product }: { product: Product }) {
@@ -14,7 +15,7 @@ export function ProductCard({ product }: { product: Product }) {
         </h3>
         <p className="line-clamp-2 text-sm text-gray-600">{product.description}</p>
         <div className="flex items-center justify-between">
-          <span className="font-semibold">UGX {product.price}</span>
+          <span className="font-semibold">UGX {formatUgx(product.price)}</span>
         </div>
       </div>
     </article>
