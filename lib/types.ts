@@ -17,7 +17,11 @@ export type Product = {
 
 export type OrderRequest = {
   id: string;
-  customerName: string;
+  recipientName: string;
+  recipientPhone: string;
+  deliveryDate: string;
+  region: 'Kampala Region' | 'Entebbe area';
+  cityId: string;
   email: string;
   note?: string;
   items: Array<{ productId: string; quantity: number }>;

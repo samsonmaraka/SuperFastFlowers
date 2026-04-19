@@ -15,8 +15,28 @@ export const productSchema = z.object({
   updatedAt: z.string()
 });
 
+function isValidDeliveryDate(value: string) {
+  const delivery = new Date(`${value}T00:00:00.000Z`);
+  if (Number.isNaN(delivery.getTime())) return false;
+
+  const now = new Date();
+  const min = new Date(now);
+  min.setUTCDate(min.getUTCDate() + 2);
+  min.setUTCHours(0, 0, 0, 0);
+
+  const max = new Date(now);
+  max.setUTCDate(max.getUTCDate() + 14);
+  max.setUTCHours(23, 59, 59, 999);
+
+  return delivery >= min && delivery <= max;
+}
+
 export const orderSchema = z.object({
-  customerName: z.string().min(2),
+  recipientName: z.string().min(2),
+  recipientPhone: z.string().min(7),
+  deliveryDate: z.string().refine(isValidDeliveryDate, 'Delivery date must be between 2 and 14 days from today.'),
+  region: z.enum(['Kampala Region', 'Entebbe area']),
+  cityId: z.string().min(1),
   email: z.string().email(),
   note: z.string().max(500).optional(),
   items: z.array(z.object({ productId: z.string(), quantity: z.number().min(1) })).min(1)

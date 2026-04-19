@@ -11,7 +11,11 @@ export async function POST(req: NextRequest) {
   } else {
     const form = await req.formData();
     body = {
-      customerName: String(form.get('customerName') || ''),
+      recipientName: String(form.get('recipientName') || ''),
+      recipientPhone: String(form.get('recipientPhone') || ''),
+      deliveryDate: String(form.get('deliveryDate') || ''),
+      region: String(form.get('region') || ''),
+      cityId: String(form.get('cityId') || ''),
       email: String(form.get('email') || ''),
       note: String(form.get('note') || ''),
       items: [{ productId: 'manual-order', quantity: 1 }]
