@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { AddToCartButton } from '@/components/add-to-cart-button';
 import { formatUgx } from '@/lib/format';
 import { Product } from '@/lib/types';
 
@@ -14,8 +15,9 @@ export function ProductCard({ product }: { product: Product }) {
           </Link>
         </h3>
         <p className="line-clamp-2 text-sm text-gray-600">{product.description}</p>
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-3">
           <span className="font-semibold">UGX {formatUgx(product.price)}</span>
+          <AddToCartButton product={product} />
         </div>
       </div>
     </article>
