@@ -3,32 +3,22 @@
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { formatUgx } from '@/lib/format';
+import { CartItem, readCart, writeCart } from '@/lib/cart-storage';
 
-type CartItem = { productId: string; name: string; price: number; quantity: number };
-const CART_KEY = 'giftora-cart';
 const TEMPLATE_PRODUCT_NAME = 'Celebration Bloom Vase';
-
-function readCart(): CartItem[] {
-  const raw = localStorage.getItem(CART_KEY);
-  if (!raw) return [];
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed.filter((item) => item?.name !== TEMPLATE_PRODUCT_NAME);
-  } catch {
-    return [];
-  }
-}
 
 export function CartClient() {
   const [items, setItems] = useState<CartItem[]>([]);
 
   useEffect(() => {
     const syncFromStorage = () => {
-      const cleanCart = readCart();
+      const storedCart = readCart();
+      const cleanCart = storedCart.filter((item) => item?.name !== TEMPLATE_PRODUCT_NAME);
       setItems(cleanCart);
-      localStorage.setItem(CART_KEY, JSON.stringify(cleanCart));
+
+      if (cleanCart.length !== storedCart.length) {
+        writeCart(cleanCart);
+      }
     };
 
     syncFromStorage();
@@ -49,13 +39,14 @@ export function CartClient() {
   const updateQty = (productId: string, quantity: number) => {
     const next = items.map((i) => (i.productId === productId ? { ...i, quantity: Math.max(1, quantity) } : i));
     setItems(next);
-    localStorage.setItem(CART_KEY, JSON.stringify(next));
+    writeCart(next);
+    window.dispatchEvent(new Event('giftora-cart-updated'));
   };
 
   const removeItem = (productId: string) => {
     const next = items.filter((i) => i.productId !== productId);
     setItems(next);
-    localStorage.setItem(CART_KEY, JSON.stringify(next));
+    writeCart(next);
     window.dispatchEvent(new Event('giftora-cart-updated'));
   };
 

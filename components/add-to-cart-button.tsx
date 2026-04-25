@@ -1,30 +1,14 @@
 'use client';
 
 import { useState } from 'react';
+import { readCart, writeCart } from '@/lib/cart-storage';
 import { Product } from '@/lib/types';
-
-type CartItem = { productId: string; name: string; price: number; quantity: number };
-
-const CART_KEY = 'giftora-cart';
-
-function getStoredCart(): CartItem[] {
-  const raw = localStorage.getItem(CART_KEY);
-  if (!raw) return [];
-
-  try {
-    const parsed = JSON.parse(raw);
-    if (!Array.isArray(parsed)) return [];
-    return parsed;
-  } catch {
-    return [];
-  }
-}
 
 export function AddToCartButton({ product }: { product: Product }) {
   const [added, setAdded] = useState(false);
 
   const onAdd = () => {
-    const cart = getStoredCart();
+    const cart = readCart();
     const existingItem = cart.find((item) => item.productId === product.id);
 
     const nextCart = existingItem
@@ -35,7 +19,7 @@ export function AddToCartButton({ product }: { product: Product }) {
         )
       : [...cart, { productId: product.id, name: product.name, price: product.price, quantity: 1 }];
 
-    localStorage.setItem(CART_KEY, JSON.stringify(nextCart));
+    writeCart(nextCart);
     setAdded(true);
     window.dispatchEvent(new Event('giftora-cart-updated'));
     window.setTimeout(() => setAdded(false), 1400);
