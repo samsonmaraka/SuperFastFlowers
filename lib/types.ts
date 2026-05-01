@@ -11,6 +11,11 @@ export type Product = {
   imageUrls: string[];
   stockStatus: StockStatus;
   featured: boolean;
+  vendorName?: string;
+  vendorContactName1?: string;
+  vendorContact1?: string;
+  vendorContactName2?: string;
+  vendorContact2?: string;
   createdAt: string;
   updatedAt: string;
 };
