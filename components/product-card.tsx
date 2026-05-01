@@ -15,6 +15,15 @@ export function ProductCard({ product }: { product: Product }) {
           </Link>
         </h3>
         <p className="line-clamp-2 text-sm text-gray-600">{product.description}</p>
+        {(product.tags ?? []).length ? (
+          <div className="flex flex-wrap gap-1">
+            {(product.tags ?? []).map((tag) => (
+              <span key={tag} className="rounded-full bg-pink-50 px-2 py-0.5 text-xs text-pink-700">
+                {tag}
+              </span>
+            ))}
+          </div>
+        ) : null}
         <div className="flex items-center justify-between gap-3">
           <span className="font-semibold">UGX {formatUgx(product.price)}</span>
           <AddToCartButton product={product} />

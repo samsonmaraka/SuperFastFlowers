@@ -50,6 +50,7 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
   const [vendorContact1, setVendorContact1] = useState('');
   const [vendorContactName2, setVendorContactName2] = useState('');
   const [vendorContact2, setVendorContact2] = useState('');
+  const [tagsInput, setTagsInput] = useState('');
 
   const isFormValid = useMemo(
     () => name.trim().length >= 2 && description.trim().length >= 10 && Number(price) >= 0 && imageUrl.trim().length > 0,
@@ -132,6 +133,8 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
     reader.readAsDataURL(file);
   };
 
+  const parseTags = (value: string) => Array.from(new Set(value.split(',').map((tag) => tag.trim().toLowerCase()).filter(Boolean)));
+
   const submitProduct = async (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
 
@@ -143,6 +146,8 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
     const now = new Date().toISOString();
     const productName = name.trim();
 
+    const tags = parseTags(tagsInput);
+
     await save({
       id: editingId || crypto.randomUUID(),
       name: productName,
@@ -150,7 +155,7 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
       description: description.trim(),
       price: Number(price),
       category: 'General',
-      tags: ['admin-added'],
+      tags,
       imageUrls: [imageUrl.trim()],
       stockStatus: 'in_stock',
       featured: editingId ? products.find((p) => p.id === editingId)?.featured || false : false,
@@ -179,6 +184,7 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
     setVendorContact1(product.vendorContact1 || '');
     setVendorContactName2(product.vendorContactName2 || '');
     setVendorContact2(product.vendorContact2 || '');
+    setTagsInput((product.tags ?? []).join(', '));
   };
 
   const resetForm = () => {
@@ -193,6 +199,7 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
     setVendorContact1('');
     setVendorContactName2('');
     setVendorContact2('');
+    setTagsInput('');
   };
 
   if (!isLoggedIn) {
@@ -261,6 +268,15 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
         <label className="block text-sm">
           Vendor contact 2
           <input value={vendorContact2} onChange={(e) => setVendorContact2(e.target.value)} className="mt-1 w-full rounded border p-2" />
+        </label>
+        <label className="block text-sm">
+          Tags (comma-separated)
+          <input
+            value={tagsInput}
+            onChange={(e) => setTagsInput(e.target.value)}
+            placeholder="birthday, chocolate, premium, flowers"
+            className="mt-1 w-full rounded border p-2"
+          />
         </label>
         <label className="block text-sm">
           Upload image

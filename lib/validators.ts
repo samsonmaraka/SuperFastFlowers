@@ -7,7 +7,7 @@ export const productSchema = z.object({
   description: z.string().min(10),
   price: z.number().min(0),
   category: z.string().min(2),
-  tags: z.array(z.string()),
+  tags: z.array(z.string().trim().min(1)).default([]),
   imageUrls: z.array(z.string().url()).min(1),
   stockStatus: z.enum(['in_stock', 'low_stock', 'out_of_stock']),
   featured: z.boolean(),

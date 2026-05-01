@@ -56,7 +56,7 @@ function filterProducts(products: Product[], category?: string, q?: string, feat
   return products.filter((p) => {
     const matchesCategory = category ? p.category.toLowerCase() === category.toLowerCase() : true;
     const matchesQ = q
-      ? [p.name, p.description, p.category, p.tags.join(' ')].join(' ').toLowerCase().includes(q.toLowerCase())
+      ? [p.name, p.description, p.category, (p.tags ?? []).join(' ')].join(' ').toLowerCase().includes(q.toLowerCase())
       : true;
     const matchesFeatured = featured !== undefined ? p.featured === featured : true;
 
