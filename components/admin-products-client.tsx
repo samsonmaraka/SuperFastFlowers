@@ -44,6 +44,12 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
   const [imageUrl, setImageUrl] = useState('');
   const [imagePreview, setImagePreview] = useState('');
   const [isSaving, setIsSaving] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [vendorName, setVendorName] = useState('');
+  const [vendorContactName1, setVendorContactName1] = useState('');
+  const [vendorContact1, setVendorContact1] = useState('');
+  const [vendorContactName2, setVendorContactName2] = useState('');
+  const [vendorContact2, setVendorContact2] = useState('');
 
   const isFormValid = useMemo(
     () => name.trim().length >= 2 && description.trim().length >= 10 && Number(price) >= 0 && imageUrl.trim().length > 0,
@@ -138,25 +144,55 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
     const productName = name.trim();
 
     await save({
-      id: crypto.randomUUID(),
+      id: editingId || crypto.randomUUID(),
       name: productName,
-      slug: `${slugify(productName)}-${Date.now()}`,
+      slug: editingId ? products.find((p) => p.id === editingId)?.slug || `${slugify(productName)}-${Date.now()}` : `${slugify(productName)}-${Date.now()}`,
       description: description.trim(),
       price: Number(price),
       category: 'General',
       tags: ['admin-added'],
       imageUrls: [imageUrl.trim()],
       stockStatus: 'in_stock',
-      featured: false,
-      createdAt: now,
+      featured: editingId ? products.find((p) => p.id === editingId)?.featured || false : false,
+      vendorName: vendorName.trim(),
+      vendorContactName1: vendorContactName1.trim(),
+      vendorContact1: vendorContact1.trim(),
+      vendorContactName2: vendorContactName2.trim(),
+      vendorContact2: vendorContact2.trim(),
+      createdAt: editingId ? products.find((p) => p.id === editingId)?.createdAt || now : now,
       updatedAt: now
     });
 
+    resetForm();
+  };
+
+
+  const startEditing = (product: Product) => {
+    setEditingId(product.id);
+    setName(product.name);
+    setDescription(product.description);
+    setPrice(String(product.price));
+    setImageUrl(product.imageUrls[0] || '');
+    setImagePreview(product.imageUrls[0] || '');
+    setVendorName(product.vendorName || '');
+    setVendorContactName1(product.vendorContactName1 || '');
+    setVendorContact1(product.vendorContact1 || '');
+    setVendorContactName2(product.vendorContactName2 || '');
+    setVendorContact2(product.vendorContact2 || '');
+  };
+
+  const resetForm = () => {
+    setEditingId(null);
     setName('');
     setDescription('');
     setPrice('0');
     setImageUrl('');
     setImagePreview('');
+    setVendorName('');
+    setVendorContactName1('');
+    setVendorContact1('');
+    setVendorContactName2('');
+    setVendorContact2('');
   };
 
   if (!isLoggedIn) {
@@ -181,7 +217,7 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
   return (
     <div className="space-y-6">
       <form onSubmit={submitProduct} className="space-y-4 rounded-lg border bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-semibold">Add a product</h2>
+        <h2 className="text-lg font-semibold">{editingId ? 'Edit listing' : 'Add a product'}</h2>
         <label className="block text-sm">
           Product name
           <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full rounded border p-2" />
@@ -207,6 +243,26 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
           />
         </label>
         <label className="block text-sm">
+          Vendor name (company)
+          <input value={vendorName} onChange={(e) => setVendorName(e.target.value)} className="mt-1 w-full rounded border p-2" />
+        </label>
+        <label className="block text-sm">
+          Vendor contact name 1
+          <input value={vendorContactName1} onChange={(e) => setVendorContactName1(e.target.value)} className="mt-1 w-full rounded border p-2" />
+        </label>
+        <label className="block text-sm">
+          Vendor contact 1
+          <input value={vendorContact1} onChange={(e) => setVendorContact1(e.target.value)} className="mt-1 w-full rounded border p-2" />
+        </label>
+        <label className="block text-sm">
+          Vendor contact name 2
+          <input value={vendorContactName2} onChange={(e) => setVendorContactName2(e.target.value)} className="mt-1 w-full rounded border p-2" />
+        </label>
+        <label className="block text-sm">
+          Vendor contact 2
+          <input value={vendorContact2} onChange={(e) => setVendorContact2(e.target.value)} className="mt-1 w-full rounded border p-2" />
+        </label>
+        <label className="block text-sm">
           Upload image
           <input type="file" accept="image/*" onChange={onImageUpload} className="mt-1 w-full rounded border p-2" />
         </label>
@@ -221,7 +277,7 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
           />
         ) : null}
         <button disabled={!isFormValid || isSaving} className="rounded bg-ink px-3 py-2 text-white disabled:opacity-50">
-          {isSaving ? 'Saving...' : 'Save product'}
+          {isSaving ? 'Saving...' : editingId ? 'Update listing' : 'Save product'}
         </button>
       </form>
 
@@ -234,10 +290,18 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
             <p className="text-sm text-gray-600">
               {p.category} · UGX {p.price}
             </p>
+            <p className="text-xs text-gray-500">
+              Vendor: {p.vendorName || '—'}
+            </p>
           </div>
-          <button className="text-sm text-red-700" onClick={() => remove(p.id)}>
-            Delete
-          </button>
+          <div className="flex gap-3">
+            <button className="text-sm text-blue-700" onClick={() => startEditing(p)}>
+              Edit
+            </button>
+            <button className="text-sm text-red-700" onClick={() => remove(p.id)}>
+              Delete
+            </button>
+          </div>
         </div>
       ))}
     </div>
