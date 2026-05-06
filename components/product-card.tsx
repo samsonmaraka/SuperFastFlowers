@@ -10,7 +10,7 @@ export function ProductCard({ product }: { product: Product }) {
       <div className="space-y-2 p-4">
         <p className="text-xs uppercase tracking-wide text-pink-700">{product.category}</p>
         <h3 className="text-lg font-semibold">
-          <Link href={`/shop/${product.slug}`} className="text-blue-600 hover:underline">
+          <Link href={`/shop/${product.slug}`} className="text-ink transition-colors hover:text-pink-700 hover:underline">
             {product.name}
           </Link>
         </h3>
