@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { CheckoutClient } from '@/components/checkout-client';
 
 const deliveryAreas = [
   { value: '213', label: 'Bakuli' },
@@ -142,6 +143,7 @@ export default function CheckoutPage() {
       <p className="mb-5 text-gray-700">
         Payments are modular and can be enabled later. For MVP, submit your request and our team confirms availability.
       </p>
+      <CheckoutClient>
       <form action="/api/orders" method="post" className="space-y-3 rounded-xl border bg-white p-6">
         <input
           name="recipientName"
@@ -196,6 +198,7 @@ export default function CheckoutPage() {
         <textarea name="note" placeholder="Gift note / preferences" className="w-full rounded border p-2" rows={5} />
         <button className="rounded bg-ink px-4 py-2 text-white">Send request</button>
       </form>
+      </CheckoutClient>
       <p className="mt-6 text-sm text-gray-600">
         Need bulk orders?{' '}
         <Link href="/contact" className="text-pink-700">
