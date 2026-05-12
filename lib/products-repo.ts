@@ -54,9 +54,10 @@ export async function listProducts(options?: { category?: string; q?: string; fe
 
 function filterProducts(products: Product[], category?: string, q?: string, featured?: boolean) {
   return products.filter((p) => {
-    const matchesCategory = category ? p.category.toLowerCase() === category.toLowerCase() : true;
+    const normalizedCategories = p.categories ?? [];
+    const matchesCategory = category ? normalizedCategories.some((slug) => slug.toLowerCase() === category.toLowerCase()) : true;
     const matchesQ = q
-      ? [p.name, p.description, p.category, (p.tags ?? []).join(' ')].join(' ').toLowerCase().includes(q.toLowerCase())
+      ? [p.name, p.description, p.category, normalizedCategories.join(' '), (p.tags ?? []).join(' ')].join(' ').toLowerCase().includes(q.toLowerCase())
       : true;
     const matchesFeatured = featured !== undefined ? p.featured === featured : true;
 
