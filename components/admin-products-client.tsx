@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import { Product } from '@/lib/types';
+import { getSortedGiftCategories } from '@/lib/categories';
 import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
 
 const ADMIN_LOGIN_CODE = 'samsonmaraka';
@@ -51,6 +52,9 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
   const [vendorContactName2, setVendorContactName2] = useState('');
   const [vendorContact2, setVendorContact2] = useState('');
   const [tagsInput, setTagsInput] = useState('');
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+
+  const categories = getSortedGiftCategories();
 
   const isFormValid = useMemo(
     () => name.trim().length >= 2 && description.trim().length >= 10 && Number(price) >= 0 && imageUrl.trim().length > 0,
@@ -155,6 +159,7 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
       description: description.trim(),
       price: Number(price),
       category: 'General',
+      categories: selectedCategories,
       tags,
       imageUrls: [imageUrl.trim()],
       stockStatus: 'in_stock',
@@ -185,6 +190,7 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
     setVendorContactName2(product.vendorContactName2 || '');
     setVendorContact2(product.vendorContact2 || '');
     setTagsInput((product.tags ?? []).join(', '));
+    setSelectedCategories(product.categories ?? []);
   };
 
   const resetForm = () => {
@@ -200,6 +206,7 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
     setVendorContactName2('');
     setVendorContact2('');
     setTagsInput('');
+    setSelectedCategories([]);
   };
 
   if (!isLoggedIn) {
@@ -269,6 +276,26 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
           Vendor contact 2
           <input value={vendorContact2} onChange={(e) => setVendorContact2(e.target.value)} className="mt-1 w-full rounded border p-2" />
         </label>
+        <fieldset className="block text-sm">
+          <legend className="mb-2">Gift categories</legend>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {categories.map((category) => (
+              <label key={category.slug} className="flex items-center gap-2 rounded border p-2">
+                <input
+                  type="checkbox"
+                  checked={selectedCategories.includes(category.slug)}
+                  onChange={(e) => {
+                    setSelectedCategories((prev) =>
+                      e.target.checked ? Array.from(new Set([...prev, category.slug])) : prev.filter((slug) => slug !== category.slug)
+                    );
+                  }}
+                />
+                <span>{category.label}</span>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
         <label className="block text-sm">
           Tags (comma-separated)
           <input
@@ -304,7 +331,7 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
           <div>
             <p className="font-medium">{p.name}</p>
             <p className="text-sm text-gray-600">
-              {p.category} · UGX {p.price}
+              {(p.categories?.length ? p.categories.join(', ') : p.category)} · UGX {p.price}
             </p>
             <p className="text-xs text-gray-500">
               Vendor: {p.vendorName || '—'}
