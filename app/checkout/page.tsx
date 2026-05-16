@@ -194,6 +194,28 @@ export default function CheckoutPage() {
             ))}
           </select>
         </label>
+        <label className="block space-y-2">
+          <span className="text-sm font-medium text-gray-800">Drop a pin on Google Maps (optional)</span>
+          <div className="rounded border border-gray-200 bg-gray-50 p-3 text-sm text-gray-700">
+            <p>
+              Open Google Maps, drop a pin on the exact delivery spot, then copy and paste the link below.
+            </p>
+            <a
+              href="https://www.google.com/maps"
+              target="_blank"
+              rel="noreferrer"
+              className="mt-2 inline-block rounded bg-white px-3 py-1.5 text-sm font-medium text-pink-700 ring-1 ring-pink-200 hover:bg-pink-50"
+            >
+              Open Google Maps
+            </a>
+          </div>
+          <input
+            name="deliveryPinUrl"
+            type="url"
+            placeholder="Paste dropped pin link (https://maps.google.com/...)"
+            className="w-full rounded border p-2"
+          />
+        </label>
         <input name="email" type="email" required placeholder="Email" className="w-full rounded border p-2" />
         <textarea name="note" placeholder="Gift note / preferences" className="w-full rounded border p-2" rows={5} />
         <button className="rounded bg-ink px-4 py-2 text-white">Send request</button>
