@@ -16,6 +16,9 @@ export async function POST(req: NextRequest) {
       deliveryDate: String(form.get('deliveryDate') || ''),
       region: String(form.get('region') || ''),
       cityId: String(form.get('cityId') || ''),
+      deliveryLatitude: form.get('deliveryLatitude'),
+      deliveryLongitude: form.get('deliveryLongitude'),
+      deliveryPinUrl: String(form.get('deliveryPinUrl') || ''),
       email: String(form.get('email') || ''),
       note: String(form.get('note') || ''),
       items: [{ productId: 'manual-order', quantity: 1 }]

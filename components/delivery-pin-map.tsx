@@ -2,9 +2,30 @@
 
 import { useEffect, useRef, useState } from 'react';
 
+type SelectedCoords = { lat: number; lng: number };
+
+type LeafletLatLng = { lat: number; lng: number };
+type LeafletMouseEvent = { latlng: LeafletLatLng };
+
+type LeafletMarker = {
+  addTo: (map: LeafletMap) => LeafletMarker;
+  setLatLng: (coords: [number, number]) => LeafletMarker;
+};
+
+type LeafletMap = {
+  on: (event: 'click', handler: (event: LeafletMouseEvent) => void) => void;
+  remove: () => void;
+};
+
+type LeafletNamespace = {
+  map: (element: HTMLDivElement, options: { center: [number, number]; zoom: number; zoomControl: boolean }) => LeafletMap;
+  tileLayer: (urlTemplate: string, options: { attribution: string }) => { addTo: (map: LeafletMap) => void };
+  marker: (coords: [number, number]) => LeafletMarker;
+};
+
 declare global {
   interface Window {
-    L?: any;
+    L?: LeafletNamespace;
   }
 }
 
@@ -46,11 +67,11 @@ function loadLeafletScript() {
 
 export function DeliveryPinMap() {
   const mapRef = useRef<HTMLDivElement | null>(null);
-  const mapInstanceRef = useRef<any>(null);
-  const markerRef = useRef<any>(null);
+  const mapInstanceRef = useRef<LeafletMap | null>(null);
+  const markerRef = useRef<LeafletMarker | null>(null);
 
   const [deliveryPinUrl, setDeliveryPinUrl] = useState('');
-  const [selectedCoords, setSelectedCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [selectedCoords, setSelectedCoords] = useState<SelectedCoords | null>(null);
 
   useEffect(() => {
     let disposed = false;
@@ -67,22 +88,21 @@ export function DeliveryPinMap() {
 
       if (disposed || !mapRef.current || !window.L) return;
 
-      const L = window.L;
-      const map = L.map(mapRef.current, {
+      const map = window.L.map(mapRef.current, {
         center: DEFAULT_CENTER,
         zoom: 12,
-        zoomControl: true,
+        zoomControl: true
       });
 
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors',
+      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
       }).addTo(map);
 
       const setPin = (lat: number, lng: number) => {
         const roundedLat = Number(lat.toFixed(6));
         const roundedLng = Number(lng.toFixed(6));
         if (!markerRef.current) {
-          markerRef.current = L.marker([roundedLat, roundedLng]).addTo(map);
+          markerRef.current = window.L!.marker([roundedLat, roundedLng]).addTo(map);
         } else {
           markerRef.current.setLatLng([roundedLat, roundedLng]);
         }
@@ -91,14 +111,14 @@ export function DeliveryPinMap() {
         setDeliveryPinUrl(`https://www.google.com/maps?q=${roundedLat},${roundedLng}`);
       };
 
-      map.on('click', (event: any) => {
+      map.on('click', (event) => {
         setPin(event.latlng.lat, event.latlng.lng);
       });
 
       mapInstanceRef.current = map;
     };
 
-    bootMap();
+    void bootMap();
 
     return () => {
       disposed = true;

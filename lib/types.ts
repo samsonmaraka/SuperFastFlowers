@@ -28,6 +28,9 @@ export type OrderRequest = {
   deliveryDate: string;
   region: 'Kampala Region' | 'Entebbe area';
   cityId: string;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
+  deliveryPinUrl?: string;
   email: string;
   note?: string;
   items: Array<{ productId: string; quantity: number }>;
