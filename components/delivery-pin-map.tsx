@@ -1,142 +1,153 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 
 type SelectedCoords = { lat: number; lng: number };
 
-type LeafletLatLng = { lat: number; lng: number };
-type LeafletMouseEvent = { latlng: LeafletLatLng };
+const DEFAULT_CENTER: SelectedCoords = { lat: 0.3136, lng: 32.5811 };
+const MAP_ELEMENT_ID = 'delivery-pin-google-map';
 
-type LeafletMarker = {
-  addTo: (map: LeafletMap) => LeafletMarker;
-  setLatLng: (coords: [number, number]) => LeafletMarker;
+function buildGoogleMapsLink(lat: number, lng: number) {
+  return `https://www.google.com/maps?q=${lat},${lng}`;
+}
+
+type GoogleMaps = {
+  maps: {
+    Map: new (element: Element, options: Record<string, unknown>) => GoogleMapInstance;
+    Marker: new (options: { position: SelectedCoords; map: GoogleMapInstance }) => GoogleMarkerInstance;
+  };
 };
 
-type LeafletMap = {
-  on: (event: 'click', handler: (event: LeafletMouseEvent) => void) => void;
-  remove: () => void;
+type GoogleMapMouseEvent = {
+  latLng?: { lat: () => number; lng: () => number };
 };
 
-type LeafletNamespace = {
-  map: (element: HTMLDivElement, options: { center: [number, number]; zoom: number; zoomControl: boolean }) => LeafletMap;
-  tileLayer: (urlTemplate: string, options: { attribution: string }) => { addTo: (map: LeafletMap) => void };
-  marker: (coords: [number, number]) => LeafletMarker;
+type GoogleMapsListener = { remove: () => void };
+
+type GoogleMapInstance = {
+  addListener: (event: 'click', handler: (event: GoogleMapMouseEvent) => void) => GoogleMapsListener;
+};
+
+type GoogleMarkerInstance = {
+  setPosition: (position: SelectedCoords) => void;
+  setMap: (map: GoogleMapInstance | null) => void;
 };
 
 declare global {
   interface Window {
-    L?: LeafletNamespace;
+    google?: GoogleMaps;
   }
 }
 
-const DEFAULT_CENTER: [number, number] = [0.3136, 32.5811];
-
-function loadLeafletAssets() {
-  if (document.querySelector('link[data-leaflet="1"]')) return;
-
-  const css = document.createElement('link');
-  css.rel = 'stylesheet';
-  css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-  css.setAttribute('data-leaflet', '1');
-  document.head.appendChild(css);
-}
-
-function loadLeafletScript() {
+function loadGoogleMapsScript(apiKey: string) {
   return new Promise<void>((resolve, reject) => {
-    if (window.L) {
+    if (window.google?.maps) {
       resolve();
       return;
     }
 
-    const existing = document.querySelector<HTMLScriptElement>('script[data-leaflet="1"]');
+    const existing = document.querySelector<HTMLScriptElement>('script[data-google-maps="1"]');
     if (existing) {
       existing.addEventListener('load', () => resolve(), { once: true });
-      existing.addEventListener('error', () => reject(new Error('Failed to load Leaflet.')), { once: true });
+      existing.addEventListener('error', () => reject(new Error('Failed to load Google Maps.')), { once: true });
       return;
     }
 
     const script = document.createElement('script');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}`;
     script.async = true;
-    script.setAttribute('data-leaflet', '1');
+    script.defer = true;
+    script.setAttribute('data-google-maps', '1');
     script.addEventListener('load', () => resolve(), { once: true });
-    script.addEventListener('error', () => reject(new Error('Failed to load Leaflet.')), { once: true });
+    script.addEventListener('error', () => reject(new Error('Failed to load Google Maps.')), { once: true });
     document.body.appendChild(script);
   });
 }
 
 export function DeliveryPinMap() {
-  const mapRef = useRef<HTMLDivElement | null>(null);
-  const mapInstanceRef = useRef<LeafletMap | null>(null);
-  const markerRef = useRef<LeafletMarker | null>(null);
+  const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
+  const mapRef = useRef<GoogleMapInstance | null>(null);
+  const markerRef = useRef<GoogleMarkerInstance | null>(null);
 
-  const [deliveryPinUrl, setDeliveryPinUrl] = useState('');
   const [selectedCoords, setSelectedCoords] = useState<SelectedCoords | null>(null);
+  const [deliveryPinUrl, setDeliveryPinUrl] = useState('');
+  const [mapUnavailable, setMapUnavailable] = useState(!apiKey);
+
+  const helperText = useMemo(() => {
+    if (mapUnavailable) {
+      return 'Google Maps API key is not configured. Paste a Google Maps pin link manually.';
+    }
+
+    return 'Pan/drag and zoom on the map, then click the exact delivery spot to drop a pin automatically.';
+  }, [mapUnavailable]);
 
   useEffect(() => {
+    if (!apiKey) return;
+
+    let clickListener: GoogleMapsListener | null = null;
     let disposed = false;
 
-    const bootMap = async () => {
-      if (!mapRef.current) return;
-      loadLeafletAssets();
-
+    const setupMap = async () => {
       try {
-        await loadLeafletScript();
+        await loadGoogleMapsScript(apiKey);
       } catch {
+        if (!disposed) setMapUnavailable(true);
         return;
       }
 
-      if (disposed || !mapRef.current || !window.L) return;
+      if (disposed || !window.google?.maps) return;
 
-      const map = window.L.map(mapRef.current, {
+      const mapElement = document.getElementById(MAP_ELEMENT_ID);
+      if (!mapElement) return;
+
+      const map = new window.google.maps.Map(mapElement, {
         center: DEFAULT_CENTER,
         zoom: 12,
-        zoomControl: true
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: false
       });
-
-      window.L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-      }).addTo(map);
 
       const setPin = (lat: number, lng: number) => {
         const roundedLat = Number(lat.toFixed(6));
         const roundedLng = Number(lng.toFixed(6));
+        const point = { lat: roundedLat, lng: roundedLng };
+
         if (!markerRef.current) {
-          markerRef.current = window.L!.marker([roundedLat, roundedLng]).addTo(map);
+          markerRef.current = new window.google!.maps.Marker({ position: point, map });
         } else {
-          markerRef.current.setLatLng([roundedLat, roundedLng]);
+          markerRef.current.setPosition(point);
         }
 
-        setSelectedCoords({ lat: roundedLat, lng: roundedLng });
-        setDeliveryPinUrl(`https://www.google.com/maps?q=${roundedLat},${roundedLng}`);
+        setSelectedCoords(point);
+        setDeliveryPinUrl(buildGoogleMapsLink(roundedLat, roundedLng));
       };
 
-      map.on('click', (event) => {
-        setPin(event.latlng.lat, event.latlng.lng);
+      clickListener = map.addListener('click', (event: GoogleMapMouseEvent) => {
+        if (!event.latLng) return;
+        setPin(event.latLng.lat(), event.latLng.lng());
       });
 
-      mapInstanceRef.current = map;
+      mapRef.current = map;
+      setMapUnavailable(false);
     };
 
-    void bootMap();
+    void setupMap();
 
     return () => {
       disposed = true;
-      if (mapInstanceRef.current) {
-        mapInstanceRef.current.remove();
-        mapInstanceRef.current = null;
-      }
+      if (clickListener) clickListener.remove();
+      markerRef.current?.setMap(null);
       markerRef.current = null;
+      mapRef.current = null;
     };
-  }, []);
+  }, [apiKey]);
 
   return (
     <label className="block space-y-2">
       <span className="text-sm font-medium text-gray-800">Delivery pin on map (optional)</span>
-      <p className="text-sm text-gray-700">
-        Pan/drag and zoom on the map, then click the exact delivery spot to drop a pin automatically.
-      </p>
-      <div ref={mapRef} className="h-72 w-full overflow-hidden rounded border" />
+      <p className="text-sm text-gray-700">{helperText}</p>
+      {!mapUnavailable ? <div id={MAP_ELEMENT_ID} className="h-72 w-full overflow-hidden rounded border" /> : null}
       <input type="hidden" name="deliveryLatitude" value={selectedCoords?.lat ?? ''} />
       <input type="hidden" name="deliveryLongitude" value={selectedCoords?.lng ?? ''} />
       <input
@@ -144,7 +155,7 @@ export function DeliveryPinMap() {
         type="url"
         value={deliveryPinUrl}
         onChange={(event) => setDeliveryPinUrl(event.target.value)}
-        placeholder="Pin link will be auto-filled (you can still edit)."
+        placeholder="Paste or use auto-filled Google Maps pin link."
         className="w-full rounded border p-2"
       />
       {selectedCoords ? (
