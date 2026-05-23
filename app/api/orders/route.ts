@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createOrder } from '@/lib/orders-repo';
 import { orderSchema } from '@/lib/validators';
+import { sendOrderSuccessEmail } from '@/lib/send-order-email';
 
 export async function POST(req: NextRequest) {
   const contentType = req.headers.get('content-type') || '';
@@ -36,6 +37,19 @@ export async function POST(req: NextRequest) {
     status: 'new',
     createdAt: new Date().toISOString()
   });
+
+
+  if (order.email) {
+    try {
+      await sendOrderSuccessEmail(order);
+    } catch (error) {
+      console.error('[orders] Failed to send order confirmation email.', {
+        orderId: order.id,
+        email: order.email,
+        error
+      });
+    }
+  }
 
   return NextResponse.json({ ok: true, order });
 }
