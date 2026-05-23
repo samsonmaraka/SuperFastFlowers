@@ -82,7 +82,10 @@ export async function POST(req: NextRequest) {
   }
 
   if (!isJsonRequest) {
-    const redirectUrl = new URL(`/checkout/success?orderId=${encodeURIComponent(order.id)}`, req.url);
+    const forwardedProto = req.headers.get('x-forwarded-proto');
+    const forwardedHost = req.headers.get('x-forwarded-host');
+    const origin = forwardedProto && forwardedHost ? `${forwardedProto}://${forwardedHost}` : req.nextUrl.origin;
+    const redirectUrl = new URL(`/checkout/success?orderId=${encodeURIComponent(order.id)}`, origin);
     return NextResponse.redirect(redirectUrl, { status: 303 });
   }
 
