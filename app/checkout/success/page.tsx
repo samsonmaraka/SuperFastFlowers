@@ -3,7 +3,6 @@ import { ClearCartOnSuccess } from '@/components/clear-cart-on-success';
 import { deliveryAreas } from '@/lib/delivery-areas';
 import { formatUgx } from '@/lib/format';
 import { getOrderById } from '@/lib/orders-repo';
-import { listProducts } from '@/lib/products-repo';
 
 type SuccessPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -13,24 +12,28 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
   const params = (await searchParams) || {};
   const rawOrderId = params.orderId;
   const orderId = Array.isArray(rawOrderId) ? rawOrderId[0] : rawOrderId;
+  console.info('[checkout-success] orderId received', { hasOrderId: Boolean(orderId), orderId: orderId || null });
 
   const order = orderId ? await getOrderById(orderId) : null;
-  const products = await listProducts();
-  const productMap = new Map(products.map((product) => [product.id, product]));
+  console.info('[checkout-success] lookup result', {
+    orderFound: Boolean(order),
+    hasItems: Boolean(order?.items?.length),
+    hasTotalAmount: typeof order?.totalAmount === 'number',
+    orderFieldNames: order ? Object.keys(order).sort() : []
+  });
 
   const orderItems =
-    order?.items.map((item) => {
-      const product = productMap.get(item.productId);
-      const unitPrice = product?.price || 0;
+    order?.items?.map((item) => {
+      const unitPrice = item.unitPrice || 0;
       return {
         ...item,
-        name: product?.name || 'Item',
+        name: item.name || item.productId || 'Item',
         unitPrice,
         lineTotal: unitPrice * item.quantity
       };
     }) || [];
 
-  const totalBill = orderItems.reduce((sum, item) => sum + item.lineTotal, 0);
+  const totalBill = typeof order?.totalAmount === 'number' ? order.totalAmount : orderItems.reduce((sum, item) => sum + item.lineTotal, 0);
   const areaLabel = deliveryAreas.find((area) => area.value === order?.cityId)?.label;
 
   return (
@@ -51,6 +54,7 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
               {order.region}
               {areaLabel ? `, ${areaLabel}` : ''}
             </p>
+            <p className="mt-1 text-sm text-gray-700">Recipient: {order.recipientName}</p>
           </div>
 
           <div>
@@ -61,6 +65,7 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
                   <div>
                     <p className="font-medium text-ink">{item.name}</p>
                     <p className="text-gray-600">Qty: {item.quantity}</p>
+                    <p className="text-gray-600">Unit price: UGX {formatUgx(item.unitPrice)}</p>
                   </div>
                   <p className="font-semibold text-ink">UGX {formatUgx(item.lineTotal)}</p>
                 </div>

@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { ReactNode, useEffect, useMemo, useState } from 'react';
+import { ReactElement, ReactNode, cloneElement, isValidElement, useEffect, useMemo, useState } from 'react';
 import { CartItem, readCart } from '@/lib/cart-storage';
 import { formatUgx } from '@/lib/format';
 
@@ -21,6 +21,27 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
   }, []);
 
   const subtotal = useMemo(() => items.reduce((sum, item) => sum + item.price * item.quantity, 0), [items]);
+  const serializedItems = useMemo(
+    () =>
+      items.map((item) => ({
+        productId: item.productId,
+        name: item.name,
+        quantity: item.quantity,
+        unitPrice: item.price,
+        lineTotal: item.price * item.quantity
+      })),
+    [items]
+  );
+
+  const enhancedChildren = isValidElement(children)
+    ? cloneElement(children as ReactElement, {},
+        <>
+          {(children as ReactElement).props.children}
+          <input type="hidden" name="itemsJson" value={JSON.stringify(serializedItems)} />
+          <input type="hidden" name="totalAmount" value={String(subtotal)} />
+        </>
+      )
+    : children;
 
   if (!items.length) {
     return (
@@ -58,7 +79,7 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
           <span>UGX {formatUgx(subtotal)}</span>
         </div>
       </section>
-      {children}
+      {enhancedChildren}
     </>
   );
 }

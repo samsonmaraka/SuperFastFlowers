@@ -33,7 +33,14 @@ export type OrderRequest = {
   deliveryPinUrl?: string;
   email: string;
   note?: string;
-  items: Array<{ productId: string; quantity: number }>;
+  items: Array<{
+    productId: string;
+    quantity: number;
+    name?: string;
+    unitPrice?: number;
+    lineTotal?: number;
+  }>;
+  totalAmount?: number;
   status: 'new' | 'reviewed';
   createdAt: string;
 };
