@@ -4,7 +4,7 @@ import { orderSchema } from '@/lib/validators';
 import { sendOrderSuccessEmail } from '@/lib/send-order-email';
 
 export async function POST(req: NextRequest) {
-  console.info('[orders] POST /api/orders reached', {
+  console.info('[ORDER_API_START] POST /api/orders reached', {
     method: req.method,
     contentType: req.headers.get('content-type') || ''
   });
@@ -71,7 +71,7 @@ export async function POST(req: NextRequest) {
 
   const parsed = orderSchema.safeParse(body);
   if (!parsed.success) {
-    console.warn('[orders] Validation failed', { issues: parsed.error.issues });
+    console.warn('[ORDER_API_VALIDATION_FAILED]', { issues: parsed.error.issues });
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
 
@@ -82,27 +82,31 @@ export async function POST(req: NextRequest) {
     createdAt: new Date().toISOString()
   };
 
-  console.info('[orders] DynamoDB save starting', { orderId: orderPayload.id });
+  console.info('[ORDER_SAVE_START]', { orderId: orderPayload.id });
 
   let order;
   try {
     order = await createOrder(orderPayload);
-    console.info('[orders] DynamoDB save succeeded', { orderId: order.id });
+    console.info('[ORDER_SAVED]', { orderId: order.id });
   } catch (error) {
-    console.error('[orders] DynamoDB save failed', { orderId: orderPayload.id, error });
+    console.error('[ORDER_SAVE_FAILED]', { orderId: orderPayload.id, error });
     return NextResponse.json({ error: 'Order creation failed', stage: 'save-order' }, { status: 500 });
   }
 
 
   if (order.email) {
-    console.info('[orders] Order confirmation email send starting', { orderId: order.id });
+    console.info('[ORDER_EMAIL_START]', {
+      orderId: order.id,
+      recipientEmail: order.email
+    });
     try {
       await sendOrderSuccessEmail(order);
-      console.info('[orders] Order confirmation email send succeeded', { orderId: order.id });
+      console.info('[ORDER_EMAIL_SUCCESS]', { orderId: order.id, recipientEmail: order.email });
     } catch (error) {
       const emailError = error as { name?: string; message?: string; $metadata?: unknown };
-      console.error('[orders] Order confirmation email send failed', {
+      console.error('[ORDER_EMAIL_FAILED]', {
         orderId: order.id,
+        recipientEmail: order.email,
         errorName: emailError?.name || 'UnknownError',
         errorMessage: emailError?.message || 'Unknown error',
         errorMetadata: emailError?.$metadata || null
