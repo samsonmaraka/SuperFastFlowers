@@ -105,7 +105,8 @@ export function DeliveryPinMap() {
         zoom: 12,
         mapTypeControl: false,
         streetViewControl: false,
-        fullscreenControl: false
+        fullscreenControl: false,
+        keyboardShortcuts: false
       });
 
       const setPin = (lat: number, lng: number) => {
