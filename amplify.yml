@@ -4,6 +4,7 @@ frontend:
     preBuild:
       commands:
         - npm install
+        - node -e "console.log('SES package resolved:', require.resolve('@aws-sdk/client-ses'))"
     build:
       commands:
         - |
