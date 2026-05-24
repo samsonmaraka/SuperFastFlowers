@@ -25,12 +25,23 @@ async function loadLocalProducts() {
   }
 }
 
+function shouldAllowLocalFallback() {
+  return process.env.NODE_ENV !== 'production';
+}
+
+function ensureProductsStorageConfigured() {
+  if (!isDynamoConfigured() && !shouldAllowLocalFallback()) {
+    console.error('[products-repo] DYNAMODB_TABLE is missing in production. Falling back to local seed data; this is unsafe for production and can cause stale data behavior.');
+  }
+}
+
 async function persistLocalProducts(products: Product[]) {
   await fs.writeFile(localProductsPath, JSON.stringify(products, null, 2), 'utf8');
 }
 
 export async function listProducts(options?: { category?: string; q?: string; featured?: boolean }) {
   const { category, q, featured } = options || {};
+  ensureProductsStorageConfigured();
 
   if (!isDynamoConfigured()) {
     console.warn('[products-repo] DynamoDB disabled; falling back to local products.', {
@@ -67,6 +78,7 @@ function filterProducts(products: Product[], category?: string, q?: string, feat
 }
 
 export async function getProductByIdOrSlug(idOrSlug: string) {
+  ensureProductsStorageConfigured();
   if (!isDynamoConfigured()) {
     console.warn('[products-repo] DynamoDB disabled in getProductByIdOrSlug.', {
       hasTableName: Boolean(getEnv().tableName),
@@ -99,6 +111,7 @@ export async function getProductByIdOrSlug(idOrSlug: string) {
 }
 
 export async function upsertProduct(product: Product) {
+  ensureProductsStorageConfigured();
   let nextProduct = { ...product };
   if (product.vendorId) {
     const vendor = await getVendor(product.vendorId);
@@ -143,6 +156,7 @@ export async function upsertProduct(product: Product) {
 }
 
 export async function deleteProduct(id: string) {
+  ensureProductsStorageConfigured();
   if (!isDynamoConfigured()) {
     console.warn('[products-repo] DynamoDB disabled in deleteProduct.', {
       hasTableName: Boolean(getEnv().tableName),

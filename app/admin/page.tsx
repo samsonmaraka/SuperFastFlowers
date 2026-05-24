@@ -1,6 +1,9 @@
 import { AdminProductsClient } from '@/components/admin-products-client';
 import { listProducts } from '@/lib/products-repo';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export default async function AdminPage() {
   const products = await listProducts();
 

@@ -10,6 +10,28 @@ function isAuthorized(req: NextRequest) {
   return token === getEnv().adminToken;
 }
 
+export async function GET(req: NextRequest) {
+  try {
+    if (!isAuthorized(req)) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const products = await listProducts();
+
+    return NextResponse.json(
+      { products },
+      {
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate, max-age=0'
+        }
+      }
+    );
+  } catch (error) {
+    console.error('GET /api/admin/products failed:', error);
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
+  }
+}
+
 export async function POST(req: NextRequest) {
   try {
     console.log('POST /api/admin/products called');
