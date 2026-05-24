@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ClearCartOnSuccess } from '@/components/clear-cart-on-success';
 import { deliveryAreas } from '@/lib/delivery-areas';
 import { formatUgx } from '@/lib/format';
 import { getOrderById } from '@/lib/orders-repo';
@@ -34,6 +35,7 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
+      <ClearCartOnSuccess />
       <h1 className="mb-3 text-3xl font-semibold">Order request sent successfully</h1>
       <p className="mb-4 text-gray-700">Thank you! Your order request has been received.</p>
       <div className="mb-6 rounded-xl border bg-white p-5">
