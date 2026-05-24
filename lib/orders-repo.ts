@@ -1,4 +1,4 @@
-import { PutCommand } from '@aws-sdk/lib-dynamodb';
+import { PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
 import { db } from '@/lib/dynamodb';
 import { getEnv } from '@/lib/env';
 import { OrderRequest } from '@/lib/types';
@@ -23,4 +23,24 @@ export async function createOrder(order: OrderRequest) {
   );
 
   return order;
+}
+
+export async function getOrderById(orderId: string) {
+  if (!getEnv().orderTableName) {
+    return memoryOrders.find((order) => order.id === orderId) || null;
+  }
+
+  const response = await db.send(
+    new QueryCommand({
+      TableName: getEnv().orderTableName,
+      KeyConditionExpression: 'pk = :pk',
+      ExpressionAttributeValues: {
+        ':pk': `ORDER#${orderId}`
+      },
+      Limit: 1,
+      ScanIndexForward: false
+    })
+  );
+
+  return ((response.Items || [])[0] as OrderRequest | undefined) || null;
 }
