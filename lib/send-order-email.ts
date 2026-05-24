@@ -27,17 +27,19 @@ export async function sendOrderSuccessEmail(order: OrderRequest) {
   if (!order.email) return;
 
   const fromEmail = process.env.SES_FROM_EMAIL;
-  const awsRegion = process.env.AWS_REGION || getEnv().awsRegion;
+  const awsRegionFromEnv = process.env.AWS_REGION;
+  const awsRegion = awsRegionFromEnv || getEnv().awsRegion;
 
-  console.info('[orders-email] SES email attempt configuration', {
+  console.info('[ORDER_EMAIL_ENV] SES email attempt configuration', {
     orderId: order.id,
     recipientEmail: order.email,
     sesFromEmailExists: Boolean(fromEmail),
-    awsRegion
+    awsRegion,
+    awsRegionFromEnv: awsRegionFromEnv || null
   });
 
   if (!fromEmail) {
-    console.warn('[orders-email] SES_FROM_EMAIL is missing. Skipping order success email.', {
+    console.warn('[ORDER_EMAIL_ENV] SES_FROM_EMAIL is missing. Skipping order success email.', {
       orderId: order.id,
       recipientEmail: order.email,
       sesFromEmailExists: false
@@ -48,6 +50,7 @@ export async function sendOrderSuccessEmail(order: OrderRequest) {
   const sesModuleName = '@aws-sdk/client-ses';
   const sesModule = await import(sesModuleName);
   const sesClient = new sesModule.SESClient({ region: awsRegion });
+  const sesClientResolvedRegion = await sesClient.config.region();
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
   const lines = await buildOrderLines(order);
@@ -62,11 +65,13 @@ export async function sendOrderSuccessEmail(order: OrderRequest) {
   const htmlBody = `<h2>Order received successfully</h2><p>Hello ${order.recipientName},</p><p>Your order request has been received successfully.</p><p><strong>Order reference:</strong> ${order.id}</p><h3>Ordered items</h3><ul>${orderedItemsHtml}</ul><p><strong>Order total:</strong> ${hasPriceData ? `UGX ${formatUgx(computedTotal)}` : 'N/A'}</p><h3>Delivery/contact details</h3><ul><li><strong>Recipient name:</strong> ${order.recipientName}</li><li><strong>Recipient phone:</strong> ${order.recipientPhone}</li><li><strong>Delivery date:</strong> ${order.deliveryDate}</li><li><strong>Region:</strong> ${order.region}</li><li><strong>Area (cityId):</strong> ${order.cityId}</li><li><strong>Pin URL:</strong> ${order.deliveryPinUrl || 'Not provided'}</li><li><strong>Coordinates:</strong> ${order.deliveryLatitude ?? 'N/A'}, ${order.deliveryLongitude ?? 'N/A'}</li><li><strong>Customer email:</strong> ${order.email}</li><li><strong>Note:</strong> ${order.note || 'N/A'}</li></ul><p><a href="${siteUrl}">Return to SuperFastFlowers</a></p>`;
 
   // Amplify runtime role needs: ses:SendEmail and ses:SendRawEmail.
-  console.info('[orders-email] SES send starting', {
+  console.info('[ORDER_EMAIL_START] SES send starting', {
     orderId: order.id,
     recipientEmail: order.email,
     sesFromEmailExists: true,
-    awsRegion
+    awsRegion,
+    sesClientRegion: sesClientResolvedRegion,
+    usesAwsRegionEnv: Boolean(awsRegionFromEnv)
   });
 
   const result = await sesClient.send(new sesModule.SendEmailCommand({
@@ -75,10 +80,11 @@ export async function sendOrderSuccessEmail(order: OrderRequest) {
     Message: { Subject: { Data: 'Order received successfully', Charset: 'UTF-8' }, Body: { Text: { Data: textBody, Charset: 'UTF-8' }, Html: { Data: htmlBody, Charset: 'UTF-8' } } }
   }));
 
-  console.info('[orders-email] SES send succeeded', {
+  console.info('[ORDER_EMAIL_SUCCESS] SES send succeeded', {
     orderId: order.id,
     recipientEmail: order.email,
     messageId: result.MessageId || null,
-    awsRegion
+    awsRegion,
+    sesClientRegion: sesClientResolvedRegion
   });
 }
