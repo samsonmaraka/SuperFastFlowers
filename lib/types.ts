@@ -1,5 +1,20 @@
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
 
+export type VendorStatus = 'active' | 'inactive';
+
+export type Vendor = {
+  id: string;
+  name: string;
+  contactPerson: string;
+  phone: string;
+  email: string;
+  location: string;
+  notes?: string;
+  status: VendorStatus;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Product = {
   id: string;
   name: string;
@@ -12,7 +27,12 @@ export type Product = {
   imageUrls: string[];
   stockStatus: StockStatus;
   featured: boolean;
+  vendorId?: string;
   vendorName?: string;
+  vendorContactPerson?: string;
+  vendorPhone?: string;
+  vendorEmail?: string;
+  vendorLocation?: string;
   vendorContactName1?: string;
   vendorContact1?: string;
   vendorContactName2?: string;
@@ -20,6 +40,8 @@ export type Product = {
   createdAt: string;
   updatedAt: string;
 };
+
+export type OrderStatus = 'new' | 'processing' | 'completed' | 'cancelled' | 'reviewed';
 
 export type OrderRequest = {
   id: string;
@@ -33,7 +55,7 @@ export type OrderRequest = {
   deliveryPinUrl?: string;
   email: string;
   note?: string;
-  items: Array<{
+  items?: Array<{
     productId: string;
     quantity: number;
     name?: string;
@@ -41,6 +63,6 @@ export type OrderRequest = {
     lineTotal?: number;
   }>;
   totalAmount?: number;
-  status: 'new' | 'reviewed';
+  status: OrderStatus;
   createdAt: string;
 };

@@ -50,7 +50,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : String(error)
+        error: 'Internal server error'
       },
       { status: 500 }
     );
@@ -81,7 +81,7 @@ export async function DELETE(req: NextRequest) {
 
     return NextResponse.json(
       {
-        error: error instanceof Error ? error.message : String(error)
+        error: 'Internal server error'
       },
       { status: 500 }
     );

@@ -16,7 +16,7 @@ type OrderEmailLine = {
 async function buildOrderLines(order: OrderRequest): Promise<OrderEmailLine[]> {
   const products = await listProducts();
 
-  return order.items.map((item) => {
+  return (order.items || []).map((item) => {
     const product = products.find((p) => p.id === item.productId);
     const unitPrice = product?.price;
     const lineTotal = unitPrice !== undefined ? unitPrice * item.quantity : undefined;
