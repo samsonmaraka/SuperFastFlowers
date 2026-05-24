@@ -17,6 +17,31 @@ export async function POST(req: NextRequest) {
     body = await req.json();
   } else {
     const form = await req.formData();
+    const itemsJson = String(form.get('itemsJson') || '[]');
+    let parsedItems: Array<{ productId: string; quantity: number; name?: string; price?: number; unitPrice?: number }> = [];
+    try {
+      const maybeItems = JSON.parse(itemsJson) as unknown;
+      if (Array.isArray(maybeItems)) {
+        parsedItems = maybeItems as Array<{ productId: string; quantity: number; name?: string; price?: number; unitPrice?: number }>;
+      }
+    } catch {
+      parsedItems = [];
+    }
+
+    const normalizedItems = parsedItems.map((item) => {
+      const unitPrice = typeof item.unitPrice === 'number' ? item.unitPrice : Number(item.price || 0);
+      const quantity = Number(item.quantity || 0);
+      return {
+        productId: String(item.productId || ''),
+        quantity,
+        name: item.name,
+        unitPrice,
+        lineTotal: unitPrice * quantity
+      };
+    });
+
+    const computedTotal = normalizedItems.reduce((sum, item) => sum + item.lineTotal, 0);
+
     body = {
       recipientName: String(form.get('recipientName') || ''),
       recipientPhone: String(form.get('recipientPhone') || ''),
@@ -28,7 +53,8 @@ export async function POST(req: NextRequest) {
       deliveryPinUrl: String(form.get('deliveryPinUrl') || ''),
       email: String(form.get('email') || ''),
       note: String(form.get('note') || ''),
-      items: [{ productId: 'manual-order', quantity: 1 }]
+      items: normalizedItems,
+      totalAmount: computedTotal
     };
   }
 
