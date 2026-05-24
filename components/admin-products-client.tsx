@@ -1,352 +1,48 @@
 'use client';
 
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import Image from 'next/image';
-import { Product } from '@/lib/types';
-import { getSortedGiftCategories } from '@/lib/categories';
-import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
+import { Product, Vendor, OrderRequest, OrderStatus } from '@/lib/types';
 
 const ADMIN_LOGIN_CODE = 'samsonmaraka';
+const activeStatuses: OrderStatus[] = ['new', 'reviewed', 'processing'];
+const statusOptions: OrderStatus[] = ['new', 'processing', 'completed', 'cancelled'];
 
-type AdminProductsResponse = {
-  ok?: boolean;
-  products?: Product[];
-  error?: string | { message?: string } | Array<{ message?: string }>;
-};
-
-function slugify(value: string) {
-  return value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)+/g, '');
-}
-
-function formatApiError(error: AdminProductsResponse['error']) {
-  if (!error) return '';
-  if (typeof error === 'string') return error;
-  if (Array.isArray(error)) {
-    return error
-      .map((issue) => issue?.message)
-      .filter(Boolean)
-      .join(', ');
-  }
-  return error.message || JSON.stringify(error);
-}
+function slugify(value: string) { return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''); }
 
 export function AdminProductsClient({ initial }: { initial: Product[] }) {
+  const [tab, setTab] = useState<'vendors'|'items'|'orders'>('vendors');
   const [products, setProducts] = useState(initial);
-  const [token, setToken] = useState('');
-  const [loginCode, setLoginCode] = useState('');
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [vendors, setVendors] = useState<Vendor[]>([]);
+  const [orders, setOrders] = useState<OrderRequest[]>([]);
+  const [token, setToken] = useState(''); const [loginCode, setLoginCode] = useState(''); const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [message, setMessage] = useState('');
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [price, setPrice] = useState('0');
-  const [imageUrl, setImageUrl] = useState('');
-  const [imagePreview, setImagePreview] = useState('');
-  const [isSaving, setIsSaving] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [vendorName, setVendorName] = useState('');
-  const [vendorContactName1, setVendorContactName1] = useState('');
-  const [vendorContact1, setVendorContact1] = useState('');
-  const [vendorContactName2, setVendorContactName2] = useState('');
-  const [vendorContact2, setVendorContact2] = useState('');
-  const [tagsInput, setTagsInput] = useState('');
-  const [selectedCategories, setSelectedCategories] = useState<string[]>([]);
+  const [form, setForm] = useState({ name:'', description:'', price:'0', imageUrl:'', vendorId:'', tagsInput:'', categories:'' });
+  const [vendorForm, setVendorForm] = useState<Vendor>({ id:'', name:'', contactPerson:'', phone:'', email:'', location:'', notes:'', status:'active', createdAt:'', updatedAt:'' });
 
-  const categories = getSortedGiftCategories();
+  const activeVendors = useMemo(()=> vendors.filter(v=>v.status==='active'),[vendors]);
+  const selectedVendor = useMemo(()=>activeVendors.find(v=>v.id===form.vendorId),[activeVendors,form.vendorId]);
 
-  const isFormValid = useMemo(
-    () => name.trim().length >= 2 && description.trim().length >= 10 && Number(price) >= 0 && imageUrl.trim().length > 0,
-    [description, imageUrl, name, price]
-  );
+  async function fetchVendors(){ const res=await fetch('/api/admin/vendors',{headers:{'x-admin-token':token}}); if(res.ok){const d=await res.json();setVendors(d.vendors||[]);} }
+  async function fetchOrders(group?:'active'|'closed'){ const q=group?`?statusGroup=${group}`:''; const res=await fetch(`/api/admin/orders${q}`,{headers:{'x-admin-token':token}}); if(res.ok){const d=await res.json(); setOrders(d.orders||[]);} }
+  useEffect(()=>{ if(isLoggedIn){ void fetchVendors(); void fetchOrders();} },[isLoggedIn, token]);
 
-  const save = async (product: Product) => {
-    setIsSaving(true);
-    setMessage('');
+  const login=(e:FormEvent)=>{ e.preventDefault(); if(loginCode!==ADMIN_LOGIN_CODE){setMessage('Invalid admin login code.');return;} setToken(loginCode);setIsLoggedIn(true);setMessage('Admin login successful.'); };
+  if(!isLoggedIn) return <form onSubmit={login} className='space-y-4 rounded-lg border bg-white p-4'><h2 className='text-lg font-semibold'>Admin login</h2><input type='password' value={loginCode} onChange={e=>setLoginCode(e.target.value)} className='w-full rounded border p-2'/><button className='rounded bg-ink px-3 py-2 text-white'>Login</button><p>{message}</p></form>;
 
-    try {
-      const res = await fetch('/api/admin/products', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-admin-token': token },
-        body: JSON.stringify(product)
-      });
-
-      let data: AdminProductsResponse | null = null;
-
-      try {
-        const json = (await res.json()) as unknown;
-        if (typeof json === 'object' && json !== null) {
-          data = json as AdminProductsResponse;
-        }
-      } catch {
-        data = null;
-      }
-
-      if (!res.ok) {
-        const apiError = formatApiError(data?.error);
-        setMessage(`Failed to save product. Status: ${res.status}.${apiError ? ` ${apiError}` : ''}`);
-        return;
-      }
-
-      setMessage('Saved product.');
-      if (data?.products) {
-        setProducts(data.products);
-      }
-    } catch (error) {
-      setMessage(`Failed to save product. ${error instanceof Error ? error.message : String(error)}`);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const remove = async (id: string) => {
-    const res = await fetch(`/api/admin/products?id=${id}`, {
-      method: 'DELETE',
-      headers: { 'x-admin-token': token }
-    });
-    setMessage(res.ok ? 'Deleted product.' : 'Failed to delete product.');
-    if (res.ok) {
-      setProducts((prev) => prev.filter((p) => p.id !== id));
-    }
-  };
-
-  const login = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (loginCode !== ADMIN_LOGIN_CODE) {
-      setMessage('Invalid admin login code.');
-      return;
-    }
-
-    setToken(ADMIN_LOGIN_CODE);
-    setIsLoggedIn(true);
-    setMessage('Admin login successful.');
-  };
-
-  const onImageUpload = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    const reader = new FileReader();
-    reader.onload = () => {
-      const value = typeof reader.result === 'string' ? reader.result : '';
-      setImageUrl(value);
-      setImagePreview(value);
-    };
-    reader.readAsDataURL(file);
-  };
-
-  const parseTags = (value: string) => Array.from(new Set(value.split(',').map((tag) => tag.trim().toLowerCase()).filter(Boolean)));
-
-  const submitProduct = async (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-
-    if (!isFormValid) {
-      setMessage('Please fill all fields correctly before saving.');
-      return;
-    }
-
-    const now = new Date().toISOString();
-    const productName = name.trim();
-
-    const tags = parseTags(tagsInput);
-
-    await save({
-      id: editingId || crypto.randomUUID(),
-      name: productName,
-      slug: editingId ? products.find((p) => p.id === editingId)?.slug || `${slugify(productName)}-${Date.now()}` : `${slugify(productName)}-${Date.now()}`,
-      description: description.trim(),
-      price: Number(price),
-      category: 'General',
-      categories: selectedCategories,
-      tags,
-      imageUrls: [imageUrl.trim()],
-      stockStatus: 'in_stock',
-      featured: editingId ? products.find((p) => p.id === editingId)?.featured || false : false,
-      vendorName: vendorName.trim(),
-      vendorContactName1: vendorContactName1.trim(),
-      vendorContact1: vendorContact1.trim(),
-      vendorContactName2: vendorContactName2.trim(),
-      vendorContact2: vendorContact2.trim(),
-      createdAt: editingId ? products.find((p) => p.id === editingId)?.createdAt || now : now,
-      updatedAt: now
-    });
-
-    resetForm();
-  };
-
-
-  const startEditing = (product: Product) => {
-    setEditingId(product.id);
-    setName(product.name);
-    setDescription(product.description);
-    setPrice(String(product.price));
-    setImageUrl(product.imageUrls[0] || '');
-    setImagePreview(product.imageUrls[0] || '');
-    setVendorName(product.vendorName || '');
-    setVendorContactName1(product.vendorContactName1 || '');
-    setVendorContact1(product.vendorContact1 || '');
-    setVendorContactName2(product.vendorContactName2 || '');
-    setVendorContact2(product.vendorContact2 || '');
-    setTagsInput((product.tags ?? []).join(', '));
-    setSelectedCategories(product.categories ?? []);
-  };
-
-  const resetForm = () => {
-    setEditingId(null);
-    setName('');
-    setDescription('');
-    setPrice('0');
-    setImageUrl('');
-    setImagePreview('');
-    setVendorName('');
-    setVendorContactName1('');
-    setVendorContact1('');
-    setVendorContactName2('');
-    setVendorContact2('');
-    setTagsInput('');
-    setSelectedCategories([]);
-  };
-
-  if (!isLoggedIn) {
-    return (
-      <form onSubmit={login} className="space-y-4 rounded-lg border bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-semibold">Admin login</h2>
-        <label className="block text-sm">
-          Enter admin code
-          <input
-            type="password"
-            value={loginCode}
-            onChange={(e) => setLoginCode(e.target.value)}
-            className="mt-1 w-full rounded border p-2"
-          />
-        </label>
-        <button className="rounded bg-ink px-3 py-2 text-white">Login</button>
-        {message ? <p className="text-sm text-gray-600">{message}</p> : null}
-      </form>
-    );
+  async function saveItem(e:FormEvent){ e.preventDefault(); const now=new Date().toISOString(); const existing=products.find(p=>p.id===editingId);
+    const payload:Product={id:editingId||crypto.randomUUID(),name:form.name,slug:existing?.slug||`${slugify(form.name)}-${Date.now()}`,description:form.description,price:Number(form.price),category:'General',categories:form.categories.split(',').map(s=>s.trim()).filter(Boolean),tags:form.tagsInput.split(',').map(s=>s.trim()).filter(Boolean),imageUrls:[form.imageUrl],stockStatus:'in_stock',featured:existing?.featured||false,vendorId:form.vendorId||undefined,vendorName:selectedVendor?.name||existing?.vendorName,vendorContactPerson:selectedVendor?.contactPerson||existing?.vendorContactPerson,vendorPhone:selectedVendor?.phone||existing?.vendorPhone,vendorEmail:selectedVendor?.email||existing?.vendorEmail,vendorLocation:selectedVendor?.location||existing?.vendorLocation,createdAt:existing?.createdAt||now,updatedAt:now};
+    const res=await fetch('/api/admin/products',{method:'POST',headers:{'content-type':'application/json','x-admin-token':token},body:JSON.stringify(payload)}); const d=await res.json(); if(res.ok){setProducts(d.products||[]); setMessage('Saved item.'); setEditingId(null);} else setMessage('Failed saving item');
   }
+  async function saveVendor(e:FormEvent){ e.preventDefault(); const now=new Date().toISOString(); const payload={...vendorForm,id:vendorForm.id||crypto.randomUUID(),createdAt:vendorForm.createdAt||now,updatedAt:now}; const res=await fetch('/api/admin/vendors',{method:'POST',headers:{'content-type':'application/json','x-admin-token':token},body:JSON.stringify(payload)}); const d=await res.json(); if(res.ok){setVendors(d.vendors||[]); setVendorForm({id:'',name:'',contactPerson:'',phone:'',email:'',location:'',notes:'',status:'active',createdAt:'',updatedAt:''});}}
+  async function updateStatus(id:string,status:OrderStatus){ await fetch('/api/admin/orders',{method:'PATCH',headers:{'content-type':'application/json','x-admin-token':token},body:JSON.stringify({id,status})}); await fetchOrders(); }
 
-  return (
-    <div className="space-y-6">
-      <form onSubmit={submitProduct} className="space-y-4 rounded-lg border bg-white p-4 shadow-sm">
-        <h2 className="text-lg font-semibold">{editingId ? 'Edit listing' : 'Add a product'}</h2>
-        <label className="block text-sm">
-          Product name
-          <input value={name} onChange={(e) => setName(e.target.value)} className="mt-1 w-full rounded border p-2" />
-        </label>
-        <label className="block text-sm">
-          Full description
-          <textarea
-            value={description}
-            onChange={(e) => setDescription(e.target.value)}
-            rows={4}
-            className="mt-1 w-full rounded border p-2"
-          />
-        </label>
-        <label className="block text-sm">
-          Price (UGX)
-          <input
-            type="number"
-            min="0"
-            step="0.01"
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            className="mt-1 w-full rounded border p-2"
-          />
-        </label>
-        <label className="block text-sm">
-          Vendor name (company)
-          <input value={vendorName} onChange={(e) => setVendorName(e.target.value)} className="mt-1 w-full rounded border p-2" />
-        </label>
-        <label className="block text-sm">
-          Vendor contact name 1
-          <input value={vendorContactName1} onChange={(e) => setVendorContactName1(e.target.value)} className="mt-1 w-full rounded border p-2" />
-        </label>
-        <label className="block text-sm">
-          Vendor contact 1
-          <input value={vendorContact1} onChange={(e) => setVendorContact1(e.target.value)} className="mt-1 w-full rounded border p-2" />
-        </label>
-        <label className="block text-sm">
-          Vendor contact name 2
-          <input value={vendorContactName2} onChange={(e) => setVendorContactName2(e.target.value)} className="mt-1 w-full rounded border p-2" />
-        </label>
-        <label className="block text-sm">
-          Vendor contact 2
-          <input value={vendorContact2} onChange={(e) => setVendorContact2(e.target.value)} className="mt-1 w-full rounded border p-2" />
-        </label>
-        <fieldset className="block text-sm">
-          <legend className="mb-2">Gift categories</legend>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {categories.map((category) => (
-              <label key={category.slug} className="flex items-center gap-2 rounded border p-2">
-                <input
-                  type="checkbox"
-                  checked={selectedCategories.includes(category.slug)}
-                  onChange={(e) => {
-                    setSelectedCategories((prev) =>
-                      e.target.checked ? Array.from(new Set([...prev, category.slug])) : prev.filter((slug) => slug !== category.slug)
-                    );
-                  }}
-                />
-                <span>{category.label}</span>
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <label className="block text-sm">
-          Tags (comma-separated)
-          <input
-            value={tagsInput}
-            onChange={(e) => setTagsInput(e.target.value)}
-            placeholder="birthday, chocolate, premium, flowers"
-            className="mt-1 w-full rounded border p-2"
-          />
-        </label>
-        <label className="block text-sm">
-          Upload image
-          <input type="file" accept="image/*" onChange={onImageUpload} className="mt-1 w-full rounded border p-2" />
-        </label>
-        {imagePreview ? (
-          <Image
-            src={imagePreview}
-            alt="Uploaded preview"
-            width={640}
-            height={320}
-            className="h-40 w-full rounded border object-cover"
-            unoptimized
-          />
-        ) : null}
-        <button disabled={!isFormValid || isSaving} className="rounded bg-ink px-3 py-2 text-white disabled:opacity-50">
-          {isSaving ? 'Saving...' : editingId ? 'Update listing' : 'Save product'}
-        </button>
-      </form>
-
-      <p className="text-sm text-gray-600">{message}</p>
-
-      {products.map((p) => (
-        <div key={p.id} className="flex items-center justify-between rounded border bg-white p-3">
-          <div>
-            <p className="font-medium">{p.name}</p>
-            <p className="text-sm text-gray-600">
-              {(p.categories?.length ? p.categories.join(', ') : p.category)} · UGX {p.price}
-            </p>
-            <p className="text-xs text-gray-500">
-              Vendor: {p.vendorName || '—'}
-            </p>
-          </div>
-          <div className="flex gap-3">
-            <button className="text-sm text-blue-700" onClick={() => startEditing(p)}>
-              Edit
-            </button>
-            <button className="text-sm text-red-700" onClick={() => remove(p.id)}>
-              Delete
-            </button>
-          </div>
-        </div>
-      ))}
-    </div>
-  );
+  return <div className='space-y-4'>
+    <div className='flex gap-2'>{(['vendors','items','orders'] as const).map(t=><button key={t} onClick={()=>setTab(t)} className={`rounded px-3 py-2 ${tab===t?'bg-ink text-white':'bg-white border'}`}>{t[0].toUpperCase()+t.slice(1)}</button>)}</div>
+    {tab==='vendors' && <div className='grid gap-4 md:grid-cols-2'><form onSubmit={saveVendor} className='space-y-2 rounded border p-3 bg-white'>{(['name','contactPerson','phone','email','location','notes'] as const).map((k)=><input key={k} placeholder={k} value={vendorForm[k] || ''} onChange={e=>setVendorForm({...vendorForm,[k]:e.target.value})} className='w-full rounded border p-2'/>) }<select value={vendorForm.status} onChange={e=>setVendorForm({...vendorForm,status:e.target.value as 'active' | 'inactive'})} className='w-full rounded border p-2'><option value='active'>active</option><option value='inactive'>inactive</option></select><button className='rounded bg-ink px-3 py-2 text-white'>Save vendor</button></form><div className='space-y-2'>{vendors.map(v=><div key={v.id} className='rounded border bg-white p-2 text-sm'><div className='flex justify-between'><b>{v.name}</b><span className={v.status==='active'?'text-green-600':'text-gray-500'}>{v.status}</span></div><p>{v.contactPerson} · {v.phone}</p><div className='flex gap-3'><button onClick={()=>setVendorForm(v)} className='text-blue-700'>Edit</button><button onClick={async()=>{if(confirm('Delete vendor?')){await fetch(`/api/admin/vendors?id=${v.id}`,{method:'DELETE',headers:{'x-admin-token':token}});await fetchVendors();}}} className='text-red-700'>Delete</button></div></div>)}</div></div>}
+    {tab==='items' && <div className='space-y-4'><form onSubmit={saveItem} className='space-y-2 rounded border bg-white p-3'><input placeholder='Item name' value={form.name} onChange={e=>setForm({...form,name:e.target.value})} className='w-full rounded border p-2'/><textarea placeholder='Description' value={form.description} onChange={e=>setForm({...form,description:e.target.value})} className='w-full rounded border p-2'/><input type='number' value={form.price} onChange={e=>setForm({...form,price:e.target.value})} className='w-full rounded border p-2'/><input placeholder='Image URL or base64' value={form.imageUrl} onChange={e=>setForm({...form,imageUrl:e.target.value})} className='w-full rounded border p-2'/><select value={form.vendorId} onChange={e=>setForm({...form,vendorId:e.target.value})} className='w-full rounded border p-2'><option value=''>Select active vendor</option>{activeVendors.map(v=><option key={v.id} value={v.id}>{v.name}</option>)}</select>{selectedVendor&&<p className='text-sm text-gray-600'>{selectedVendor.contactPerson} · {selectedVendor.phone} · {selectedVendor.email} · {selectedVendor.location}</p>}<button className='rounded bg-ink px-3 py-2 text-white'>Save item</button></form>{form.imageUrl&&<Image src={form.imageUrl} alt='preview' width={200} height={100} unoptimized/>}<div className='space-y-2'>{products.map(p=><div key={p.id} className='rounded border bg-white p-2 flex justify-between'><div><b>{p.name}</b><p className='text-xs'>Vendor: {p.vendorName||p.vendorContactName1||'—'}</p></div><div className='flex gap-2'><button onClick={()=>{setEditingId(p.id);setForm({name:p.name,description:p.description,price:String(p.price),imageUrl:p.imageUrls[0]||'',vendorId:p.vendorId||'',tagsInput:(p.tags||[]).join(','),categories:(p.categories||[]).join(',')});}} className='text-blue-700'>Edit</button><button onClick={async()=>{await fetch(`/api/admin/products?id=${p.id}`,{method:'DELETE',headers:{'x-admin-token':token}}); setProducts(products.filter(x=>x.id!==p.id));}} className='text-red-700'>Delete</button></div></div>)}</div></div>}
+    {tab==='orders' && <div className='space-y-4'><div className='flex gap-2'><button className='rounded border px-2 py-1' onClick={()=>fetchOrders('active')}>Active orders</button><button className='rounded border px-2 py-1' onClick={()=>fetchOrders('closed')}>Closed orders</button><button className='rounded border px-2 py-1' onClick={()=>fetchOrders()}>All</button></div>{orders.map(o=><div key={o.id} className='rounded border bg-white p-3 text-sm'><div className='flex justify-between'><b>{o.id}</b><span>{o.status}</span></div><p>{o.recipientName} · {o.recipientPhone} · {o.email}</p><p>{o.deliveryDate} · {o.region}/{o.cityId} · {o.deliveryPinUrl||'No pin'}</p><p>Items: {(o.items||[]).map(i=>`${i.name||i.productId} x${i.quantity}`).join(', ')||'No items'} · Total: {o.totalAmount ?? 'N/A'}</p><select value={statusOptions.includes(o.status)?o.status:'new'} onChange={e=>updateStatus(o.id,e.target.value as OrderStatus)} className='rounded border p-1'>{statusOptions.map(s=><option key={s} value={s}>{s}</option>)}</select>{activeStatuses.includes(o.status)?<span className='ml-2 text-orange-600'>Active</span>:<span className='ml-2 text-green-700'>Closed</span>}</div>)}</div>}
+    <p className='text-sm text-gray-600'>{message}</p>
+  </div>;
 }

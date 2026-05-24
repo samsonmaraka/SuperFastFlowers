@@ -11,6 +11,7 @@ import { Product } from '@/lib/types';
 import { db } from '@/lib/dynamodb';
 import { getEnv, isDynamoConfigured } from '@/lib/env';
 import { seedProducts } from '@/data/seed-products';
+import { getVendor } from '@/lib/vendors-repo';
 
 const localProductsPath = path.join(process.cwd(), 'data', '.local-products.json');
 
@@ -98,32 +99,47 @@ export async function getProductByIdOrSlug(idOrSlug: string) {
 }
 
 export async function upsertProduct(product: Product) {
+  let nextProduct = { ...product };
+  if (product.vendorId) {
+    const vendor = await getVendor(product.vendorId);
+    if (vendor) {
+      nextProduct = {
+        ...nextProduct,
+        vendorId: vendor.id,
+        vendorName: vendor.name,
+        vendorContactPerson: vendor.contactPerson,
+        vendorPhone: vendor.phone,
+        vendorEmail: vendor.email,
+        vendorLocation: vendor.location
+      };
+    }
+  }
   if (!isDynamoConfigured()) {
     console.warn('[products-repo] DynamoDB disabled in upsertProduct.', {
       hasTableName: Boolean(getEnv().tableName),
       tableName: getEnv().tableName || '(empty)'
     });
     const localProducts = await loadLocalProducts();
-    const updatedProducts = [...localProducts.filter((p) => p.id !== product.id), product];
+    const updatedProducts = [...localProducts.filter((p) => p.id !== nextProduct.id), nextProduct];
     await persistLocalProducts(updatedProducts);
-    return product;
+    return nextProduct;
   }
 
   await db.send(
     new PutCommand({
       TableName: getEnv().tableName,
       Item: {
-        ...product,
+        ...nextProduct,
         entityType: 'PRODUCT',
-        pk: `PRODUCT#${product.id}`,
+        pk: `PRODUCT#${nextProduct.id}`,
         sk: 'META',
-        gsi1pk: `SLUG#${product.slug}`,
-        gsi1sk: `PRODUCT#${product.id}`
+        gsi1pk: `SLUG#${nextProduct.slug}`,
+        gsi1sk: `PRODUCT#${nextProduct.id}`
       }
     })
   );
 
-  return product;
+  return nextProduct;
 }
 
 export async function deleteProduct(id: string) {
