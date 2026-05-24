@@ -100,9 +100,12 @@ export async function POST(req: NextRequest) {
       await sendOrderSuccessEmail(order);
       console.info('[orders] Order confirmation email send succeeded', { orderId: order.id });
     } catch (error) {
+      const emailError = error as { name?: string; message?: string; $metadata?: unknown };
       console.error('[orders] Order confirmation email send failed', {
         orderId: order.id,
-        error
+        errorName: emailError?.name || 'UnknownError',
+        errorMessage: emailError?.message || 'Unknown error',
+        errorMetadata: emailError?.$metadata || null
       });
     }
   }
