@@ -1,7 +1,9 @@
+import 'server-only';
 import { getEnv } from '@/lib/env';
 import { listProducts } from '@/lib/products-repo';
 import { OrderRequest } from '@/lib/types';
 import { formatUgx } from '@/lib/format';
+import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 
 type OrderEmailLine = {
   productId: string;
@@ -47,9 +49,7 @@ export async function sendOrderSuccessEmail(order: OrderRequest) {
     return;
   }
 
-  const sesModuleName = '@aws-sdk/client-ses';
-  const sesModule = await import(sesModuleName);
-  const sesClient = new sesModule.SESClient({ region: awsRegion });
+  const sesClient = new SESClient({ region: awsRegion });
   const sesClientResolvedRegion = await sesClient.config.region();
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
@@ -74,7 +74,7 @@ export async function sendOrderSuccessEmail(order: OrderRequest) {
     usesAwsRegionEnv: Boolean(awsRegionFromEnv)
   });
 
-  const result = await sesClient.send(new sesModule.SendEmailCommand({
+  const result = await sesClient.send(new SendEmailCommand({
     Source: fromEmail,
     Destination: { ToAddresses: [order.email] },
     Message: { Subject: { Data: 'Order received successfully', Charset: 'UTF-8' }, Body: { Text: { Data: textBody, Charset: 'UTF-8' }, Html: { Data: htmlBody, Charset: 'UTF-8' } } }
