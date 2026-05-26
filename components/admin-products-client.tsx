@@ -10,6 +10,23 @@ const statusOptions: OrderStatus[] = ['new', 'processing', 'completed', 'cancell
 
 function slugify(value: string) { return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''); }
 
+function normalizeApiError(error: unknown) {
+  if (typeof error === 'string') return error;
+  if (Array.isArray(error)) {
+    return error
+      .map((issue) => {
+        if (!issue || typeof issue !== 'object') return null;
+        const path = Array.isArray((issue as { path?: unknown }).path) ? (issue as { path?: string[] }).path?.join('.') : '';
+        const message = typeof (issue as { message?: unknown }).message === 'string' ? (issue as { message: string }).message : null;
+        if (!message) return null;
+        return path ? `${path}: ${message}` : message;
+      })
+      .filter(Boolean)
+      .join(' | ');
+  }
+  return 'Validation or server error.';
+}
+
 export function AdminProductsClient({ initial }: { initial: Product[] }) {
   const [tab, setTab] = useState<'vendors'|'items'|'orders'>('vendors');
   const [products, setProducts] = useState(initial);
@@ -72,9 +89,31 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
   const login=(e:FormEvent)=>{ e.preventDefault(); if(loginCode!==ADMIN_LOGIN_CODE){setMessage('Invalid admin login code.');return;} setToken(loginCode);setIsLoggedIn(true);setMessage('Admin login successful.'); };
   if(!isLoggedIn) return <form onSubmit={login} className='space-y-4 rounded-lg border bg-white p-4'><h2 className='text-lg font-semibold'>Admin login</h2><input type='password' value={loginCode} onChange={e=>setLoginCode(e.target.value)} className='w-full rounded border p-2'/><button className='rounded bg-ink px-3 py-2 text-white'>Login</button><p>{message}</p></form>;
 
-  async function saveItem(e:FormEvent){ e.preventDefault(); const now=new Date().toISOString(); const existing=products.find(p=>p.id===editingId);
-    const payload:Product={id:editingId||crypto.randomUUID(),name:form.name,slug:existing?.slug||`${slugify(form.name)}-${Date.now()}`,description:form.description,price:Number(form.price),category:'General',categories:form.categories.split(',').map(s=>s.trim()).filter(Boolean),tags:form.tagsInput.split(',').map(s=>s.trim()).filter(Boolean),imageUrls:[form.imageUrl],stockStatus:'in_stock',featured:existing?.featured||false,vendorId:form.vendorId||undefined,vendorName:selectedVendor?.name||existing?.vendorName,vendorContactPerson:selectedVendor?.contactPerson||existing?.vendorContactPerson,vendorPhone:selectedVendor?.phone||existing?.vendorPhone,vendorEmail:selectedVendor?.email||existing?.vendorEmail,vendorLocation:selectedVendor?.location||existing?.vendorLocation,createdAt:existing?.createdAt||now,updatedAt:now};
-    const res=await fetch('/api/admin/products',{method:'POST',headers:{'content-type':'application/json','x-admin-token':token},body:JSON.stringify(payload)}); const d=await res.json(); if(res.ok){setProducts(d.products||[]); setMessage('Saved item.'); setEditingId(null);} else setMessage(d?.error ? `Failed saving item: ${typeof d.error === 'string' ? d.error : 'Validation or server error.'}` : 'Failed saving item');
+  async function saveItem(e:FormEvent){
+    e.preventDefault();
+
+    if (!form.name.trim()) { setMessage('Item name is required.'); return; }
+    if (form.description.trim().length < 10) { setMessage('Description must be at least 10 characters.'); return; }
+    if (!form.imageUrl.trim()) { setMessage('Image URL or uploaded image is required.'); return; }
+
+    const priceValue = Number(form.price);
+    if (!Number.isFinite(priceValue) || priceValue < 0) { setMessage('Price must be a valid number greater than or equal to 0.'); return; }
+
+    const now=new Date().toISOString();
+    const existing=products.find(p=>p.id===editingId);
+    const payload:Product={id:editingId||crypto.randomUUID(),name:form.name,slug:existing?.slug||`${slugify(form.name)}-${Date.now()}`,description:form.description,price:priceValue,category:'General',categories:form.categories.split(',').map(s=>s.trim()).filter(Boolean),tags:form.tagsInput.split(',').map(s=>s.trim()).filter(Boolean),imageUrls:[form.imageUrl],stockStatus:'in_stock',featured:existing?.featured||false,vendorId:form.vendorId||undefined,vendorName:selectedVendor?.name||existing?.vendorName,vendorContactPerson:selectedVendor?.contactPerson||existing?.vendorContactPerson,vendorPhone:selectedVendor?.phone||existing?.vendorPhone,vendorEmail:selectedVendor?.email||existing?.vendorEmail,vendorLocation:selectedVendor?.location||existing?.vendorLocation,createdAt:existing?.createdAt||now,updatedAt:now};
+
+    const res=await fetch('/api/admin/products',{method:'POST',headers:{'content-type':'application/json','x-admin-token':token},body:JSON.stringify(payload)});
+    const d=await res.json();
+    if(res.ok){
+      setProducts(d.products||[]);
+      setMessage('Saved item.');
+      setEditingId(null);
+      setForm({ name:'', description:'', price:'0', imageUrl:'', vendorId:'', tagsInput:'', categories:'' });
+      return;
+    }
+
+    setMessage(`Failed saving item: ${normalizeApiError(d?.error)}`);
   }
   async function saveVendor(e:FormEvent){ e.preventDefault(); const now=new Date().toISOString(); const payload={...vendorForm,id:vendorForm.id||crypto.randomUUID(),createdAt:vendorForm.createdAt||now,updatedAt:now}; const res=await fetch('/api/admin/vendors',{method:'POST',headers:{'content-type':'application/json','x-admin-token':token},body:JSON.stringify(payload)}); const d=await res.json(); if(res.ok){setVendors(d.vendors||[]); setVendorForm({id:'',name:'',contactPerson:'',phone:'',email:'',location:'',notes:'',status:'active',createdAt:'',updatedAt:''});}}
   async function updateStatus(id:string,status:OrderStatus){ await fetch('/api/admin/orders',{method:'PATCH',headers:{'content-type':'application/json','x-admin-token':token},body:JSON.stringify({id,status})}); await fetchOrders(); }
