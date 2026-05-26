@@ -8,7 +8,6 @@ export default async function HomePage({
 }: {
   searchParams: { q?: string; category?: string };
 }) {
-  const featured = await listProducts({ featured: true });
   const categories = getSortedGiftCategories();
   const activeCategory = searchParams.category || '';
   const q = searchParams.q || '';
@@ -22,17 +21,6 @@ export default async function HomePage({
         <p className="mt-3 max-w-2xl text-gray-700">Browse premium gift sets designed for birthdays, thank-yous, milestones, and celebrations.</p>
       </section>
 
-      <section>
-        <div className="mb-5 flex items-center justify-between">
-          <h2 className="text-2xl font-semibold">Featured gifts</h2>
-          <Link href="/shop" className="text-sm text-pink-700">View all</Link>
-        </div>
-        <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {featured.map((product) => (
-            <ProductCard key={product.id} product={product} />
-          ))}
-        </div>
-      </section>
 
       <section>
         <h2 className="mb-6 text-3xl font-semibold">Shop gifts</h2>
