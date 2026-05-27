@@ -3,6 +3,17 @@ import { getEnv } from '@/lib/env';
 import { deleteProduct, listProducts, upsertProduct } from '@/lib/products-repo';
 import { productSchema } from '@/lib/validators';
 
+const MAX_IMAGE_UPLOAD_BYTES = 4 * 1024 * 1024;
+
+function getDataUrlByteSize(dataUrl: string): number {
+  const parts = dataUrl.split(',');
+  if (parts.length < 2) return 0;
+
+  const base64 = parts[1] || '';
+  const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
+  return Math.floor((base64.length * 3) / 4) - padding;
+}
+
 export const runtime = 'nodejs';
 
 function isAuthorized(req: NextRequest) {
@@ -47,6 +58,17 @@ export async function POST(req: NextRequest) {
     console.log('Product slug:', body?.slug);
     console.log('Image count:', body?.imageUrls?.length ?? 0);
     console.log('First image length:', body?.imageUrls?.[0]?.length ?? 0);
+
+    const imageUrl = body?.imageUrls?.[0];
+    if (typeof imageUrl === 'string' && imageUrl.startsWith('data:')) {
+      const sizeInBytes = getDataUrlByteSize(imageUrl);
+      if (sizeInBytes > MAX_IMAGE_UPLOAD_BYTES) {
+        return NextResponse.json(
+          { error: 'Image is too large. Please upload a smaller image.' },
+          { status: 413 }
+        );
+      }
+    }
 
     const parsed = productSchema.safeParse(body);
 

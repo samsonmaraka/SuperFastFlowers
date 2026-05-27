@@ -64,17 +64,23 @@ export function Navbar() {
             </li>
           </ul>
 
-          <button
+          <div className="flex items-center gap-2 md:hidden">
+            <Link href="/cart" className="inline-flex items-center rounded border border-blush px-2 py-1 text-sm font-medium text-ink hover:text-pink-700" onClick={() => setIsMobileOpen(false)}>
+              Cart
+              <CartBadge count={cartCount} />
+            </Link>
+            <button
             type="button"
-            className="rounded border border-blush p-2 text-ink md:hidden"
+            className="rounded border border-blush p-2 text-ink"
             aria-label="Toggle menu"
             aria-expanded={isMobileOpen}
             onClick={() => setIsMobileOpen((open) => !open)}
           >
-            <span className="block h-0.5 w-5 bg-current" />
-            <span className="mt-1 block h-0.5 w-5 bg-current" />
-            <span className="mt-1 block h-0.5 w-5 bg-current" />
-          </button>
+              <span className="block h-0.5 w-5 bg-current" />
+              <span className="mt-1 block h-0.5 w-5 bg-current" />
+              <span className="mt-1 block h-0.5 w-5 bg-current" />
+            </button>
+          </div>
         </div>
 
         {isMobileOpen ? (
