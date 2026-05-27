@@ -1,5 +1,15 @@
 import { z } from 'zod';
 
+const optionalCoordinate = z.preprocess((value) => {
+  if (value === '' || value === null || value === undefined) return undefined;
+  if (typeof value === 'number') return value;
+  if (typeof value === 'string') {
+    const parsed = Number(value);
+    return Number.isFinite(parsed) ? parsed : value;
+  }
+  return value;
+}, z.number().finite().optional());
+
 export const vendorSchema = z.object({
   id: z.string().min(2),
   name: z.string().min(2),
@@ -7,6 +17,8 @@ export const vendorSchema = z.object({
   phone: z.string().min(1),
   email: z.string().email(),
   location: z.string().min(1),
+  vendorLatitude: optionalCoordinate,
+  vendorLongitude: optionalCoordinate,
   notes: z.string().optional(),
   status: z.enum(['active', 'inactive']),
   createdAt: z.string(),
@@ -31,6 +43,8 @@ export const productSchema = z.object({
   vendorPhone: z.string().optional(),
   vendorEmail: z.string().optional(),
   vendorLocation: z.string().optional(),
+  vendorLatitude: optionalCoordinate,
+  vendorLongitude: optionalCoordinate,
   vendorContactName1: z.string().optional(),
   vendorContact1: z.string().optional(),
   vendorContactName2: z.string().optional(),
@@ -53,16 +67,6 @@ function isValidDeliveryDate(value: string) {
   max.setUTCHours(23, 59, 59, 999);
   return delivery >= min && delivery <= max;
 }
-const optionalCoordinate = z.preprocess((value) => {
-  if (value === '' || value === null || value === undefined) return undefined;
-  if (typeof value === 'number') return value;
-  if (typeof value === 'string') {
-    const parsed = Number(value);
-    return Number.isFinite(parsed) ? parsed : value;
-  }
-  return value;
-}, z.number().finite().optional());
-
 export const orderSchema = z.object({
   recipientName: z.string().min(2),
   recipientPhone: z.string().min(7),

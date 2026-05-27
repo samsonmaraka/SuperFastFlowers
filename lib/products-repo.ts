@@ -123,7 +123,9 @@ export async function upsertProduct(product: Product) {
         vendorContactPerson: vendor.contactPerson,
         vendorPhone: vendor.phone,
         vendorEmail: vendor.email,
-        vendorLocation: vendor.location
+        vendorLocation: vendor.location,
+        vendorLatitude: vendor.vendorLatitude,
+        vendorLongitude: vendor.vendorLongitude
       };
     }
   }
