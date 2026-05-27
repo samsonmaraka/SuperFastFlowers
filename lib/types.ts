@@ -9,8 +9,6 @@ export type Vendor = {
   phone: string;
   email: string;
   location: string;
-  vendorLatitude?: number;
-  vendorLongitude?: number;
   notes?: string;
   status: VendorStatus;
   createdAt: string;
@@ -35,8 +33,6 @@ export type Product = {
   vendorPhone?: string;
   vendorEmail?: string;
   vendorLocation?: string;
-  vendorLatitude?: number;
-  vendorLongitude?: number;
   vendorContactName1?: string;
   vendorContact1?: string;
   vendorContactName2?: string;
