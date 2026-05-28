@@ -56,7 +56,11 @@ export async function POST(req: NextRequest) {
     }
 
     const message = error instanceof Error ? error.message : 'Payment could not be initialized.';
-    return NextResponse.json({ error: message }, { status: error instanceof PesapalError && error.status ? error.status : 500 });
+    const safeDiagnostics = error instanceof PesapalError ? error.safeDiagnostics : undefined;
+    return NextResponse.json({
+      error: message,
+      ...(safeDiagnostics ? { diagnostics: safeDiagnostics } : {})
+    }, { status: error instanceof PesapalError && error.status ? error.status : 500 });
   }
 }
 
