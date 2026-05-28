@@ -1,12 +1,19 @@
 'use client';
 
 import Link from 'next/link';
-import { ReactElement, ReactNode, cloneElement, isValidElement, useEffect, useMemo, useState } from 'react';
+import { FormEvent, ReactElement, ReactNode, cloneElement, isValidElement, useEffect, useMemo, useState } from 'react';
 import { CartItem, readCart } from '@/lib/cart-storage';
 import { formatUgx } from '@/lib/format';
 
+type CheckoutResponse = {
+  redirect_url?: string;
+  error?: string;
+};
+
 export function CheckoutClient({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [checkoutError, setCheckoutError] = useState('');
 
   useEffect(() => {
     const syncCart = () => setItems(readCart());
@@ -33,12 +40,63 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
     [items]
   );
 
+  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setCheckoutError('');
+    setIsSubmitting(true);
+
+    try {
+      const formData = new FormData(event.currentTarget);
+      const orderResponse = await fetch('/api/orders', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipientName: String(formData.get('recipientName') || ''),
+          recipientPhone: String(formData.get('recipientPhone') || ''),
+          deliveryDate: String(formData.get('deliveryDate') || ''),
+          region: String(formData.get('region') || ''),
+          cityId: String(formData.get('cityId') || ''),
+          deliveryLatitude: formData.get('deliveryLatitude') || undefined,
+          deliveryLongitude: formData.get('deliveryLongitude') || undefined,
+          deliveryPinUrl: String(formData.get('deliveryPinUrl') || ''),
+          email: String(formData.get('email') || ''),
+          note: String(formData.get('note') || ''),
+          items: serializedItems,
+          totalAmount: subtotal
+        })
+      });
+      const orderJson = await orderResponse.json();
+      if (!orderResponse.ok || !orderJson.order?.id) {
+        throw new Error(orderJson.error ? 'Please check your checkout details and try again.' : 'Order creation failed. Please try again.');
+      }
+
+      const checkoutResponse = await fetch('/api/pesapal/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orderId: orderJson.order.id })
+      });
+      const checkoutJson = (await checkoutResponse.json()) as CheckoutResponse;
+      if (!checkoutResponse.ok || !checkoutJson.redirect_url) {
+        throw new Error(checkoutJson.error || 'Payment could not be started. Please try again.');
+      }
+
+      window.location.href = checkoutJson.redirect_url;
+    } catch (error) {
+      setCheckoutError(error instanceof Error ? error.message : 'Payment could not be started. Please try again.');
+      setIsSubmitting(false);
+    }
+  }
+
   const enhancedChildren = isValidElement(children)
-    ? cloneElement(children as ReactElement, {},
+    ? cloneElement(children as ReactElement, { onSubmit: handleSubmit },
         <>
           {(children as ReactElement).props.children}
           <input type="hidden" name="itemsJson" value={JSON.stringify(serializedItems)} />
           <input type="hidden" name="totalAmount" value={String(subtotal)} />
+          {checkoutError ? <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{checkoutError}</p> : null}
+          <button type="submit" disabled={isSubmitting} className="rounded bg-ink px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-60">
+            {isSubmitting ? 'Starting secure payment…' : 'Pay securely with Pesapal'}
+          </button>
         </>
       )
     : children;

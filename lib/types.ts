@@ -45,7 +45,19 @@ export type Product = {
   updatedAt: string;
 };
 
-export type OrderStatus = 'new' | 'processing' | 'completed' | 'cancelled' | 'reviewed';
+export type OrderStatus =
+  | 'new'
+  | 'processing'
+  | 'completed'
+  | 'cancelled'
+  | 'reviewed'
+  | 'PENDING_PAYMENT'
+  | 'PAYMENT_INIT_FAILED'
+  | 'PAID'
+  | 'PAYMENT_FAILED'
+  | 'PAYMENT_REVERSED'
+  | 'PAYMENT_INVALID'
+  | 'PAYMENT_PENDING';
 
 export type OrderRequest = {
   id: string;
@@ -71,4 +83,22 @@ export type OrderRequest = {
   totalWithDelivery?: number;
   status: OrderStatus;
   createdAt: string;
+  updatedAt?: string;
+  pesapal?: PesapalOrderPayment;
+};
+
+
+export type PesapalOrderPayment = {
+  orderTrackingId?: string;
+  merchantReference?: string;
+  redirectUrl?: string;
+  status?: string;
+  statusCode?: number;
+  paymentMethod?: string;
+  confirmationCode?: string;
+  paymentAccount?: string;
+  amount?: number;
+  currency?: string;
+  rawResponse?: unknown;
+  updatedAt?: string;
 };
