@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createOrder } from '@/lib/orders-repo';
 import { orderSchema } from '@/lib/validators';
 import { sendOrderSuccessEmail } from '@/lib/send-order-email';
+import { calculateOrderDeliveryFee } from '@/lib/delivery-fee';
+import { listProducts } from '@/lib/products-repo';
 
 export async function POST(req: NextRequest) {
   console.info('[ORDER_API_START] POST /api/orders reached', {
@@ -75,8 +77,15 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: parsed.error.issues }, { status: 400 });
   }
 
+  const products = await listProducts();
+  const deliveryFee = calculateOrderDeliveryFee(parsed.data, products);
+  const subtotal = parsed.data.totalAmount ?? parsed.data.items.reduce((sum, item) => sum + (item.lineTotal ?? (item.unitPrice ?? 0) * item.quantity), 0);
+
   const orderPayload = {
     ...parsed.data,
+    totalAmount: subtotal,
+    deliveryFee: deliveryFee ?? undefined,
+    totalWithDelivery: deliveryFee === null ? undefined : subtotal + deliveryFee,
     id: crypto.randomUUID(),
     status: 'new' as const,
     createdAt: new Date().toISOString()

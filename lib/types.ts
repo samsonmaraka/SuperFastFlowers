@@ -67,6 +67,8 @@ export type OrderRequest = {
     lineTotal?: number;
   }>;
   totalAmount?: number;
+  deliveryFee?: number;
+  totalWithDelivery?: number;
   status: OrderStatus;
   createdAt: string;
 };
