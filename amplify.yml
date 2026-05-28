@@ -8,20 +8,28 @@ frontend:
     build:
       commands:
         - |
-          cat <<EOT > .env.production
-          REGION=$REGION
-          AWS_REGION=$REGION
-          DYNAMODB_TABLE=$DYNAMODB_TABLE
-          DYNAMODB_ORDER_TABLE=$DYNAMODB_ORDER_TABLE
-          ADMIN_TOKEN=$ADMIN_TOKEN
-          NEXT_PUBLIC_SITE_URL=$NEXT_PUBLIC_SITE_URL
-          NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=$NEXT_PUBLIC_GOOGLE_MAPS_API_KEY
-          SES_FROM_EMAIL=$SES_FROM_EMAIL
-          PESAPAL_CONSUMER_KEY=$PESAPAL_CONSUMER_KEY
-          PESAPAL_CONSUMER_SECRET=$PESAPAL_CONSUMER_SECRET
-          PESAPAL_BASE_URL=$PESAPAL_BASE_URL
-          PESAPAL_IPN_ID=$PESAPAL_IPN_ID
-          EOT
+          node <<'NODE'
+          const fs = require('fs');
+          const envNames = [
+            'REGION',
+            'AWS_REGION',
+            'DYNAMODB_TABLE',
+            'DYNAMODB_ORDER_TABLE',
+            'ADMIN_TOKEN',
+            'NEXT_PUBLIC_SITE_URL',
+            'NEXT_PUBLIC_GOOGLE_MAPS_API_KEY',
+            'SES_FROM_EMAIL',
+            'PESAPAL_BASE_URL',
+            'PESAPAL_CONSUMER_KEY',
+            'PESAPAL_CONSUMER_SECRET',
+            'PESAPAL_IPN_ID'
+          ];
+          const lines = envNames.map((name) => {
+            const value = name === 'AWS_REGION' ? (process.env.AWS_REGION || process.env.REGION || '') : (process.env[name] || '');
+            return `${name}=${JSON.stringify(value)}`;
+          });
+          fs.writeFileSync('.env.production', `${lines.join('\n')}\n`);
+          NODE
         - npm run build
   artifacts:
     baseDirectory: .next

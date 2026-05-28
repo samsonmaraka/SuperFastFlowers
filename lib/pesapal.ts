@@ -27,7 +27,7 @@ export type PesapalTransactionStatus = {
   [key: string]: unknown;
 };
 
-type PesapalTokenResponse = {
+export type PesapalTokenResponse = {
   token?: string;
   expiryDate?: string;
   error?: unknown;
@@ -58,16 +58,63 @@ type PesapalSubmitOrderResponse = {
   [key: string]: unknown;
 };
 
+export type PesapalSafeDiagnostics = {
+  authUrl?: string;
+  env: {
+    PESAPAL_BASE_URL: boolean;
+    PESAPAL_CONSUMER_KEY: boolean;
+    PESAPAL_CONSUMER_SECRET: boolean;
+    PESAPAL_IPN_ID: boolean;
+    NEXT_PUBLIC_SITE_URL: boolean;
+  };
+  httpStatus?: number;
+  pesapalStatus?: string;
+  pesapalMessage?: string;
+  pesapalError?: unknown;
+};
+
 export class PesapalError extends Error {
   status?: number;
   details?: unknown;
+  safeDiagnostics?: PesapalSafeDiagnostics;
 
-  constructor(message: string, options?: { status?: number; details?: unknown }) {
+  constructor(message: string, options?: { status?: number; details?: unknown; safeDiagnostics?: PesapalSafeDiagnostics }) {
     super(message);
     this.name = 'PesapalError';
     this.status = options?.status;
     this.details = options?.details;
+    this.safeDiagnostics = options?.safeDiagnostics;
   }
+}
+
+export function getPesapalEnvPresence() {
+  const env = getEnv();
+  return {
+    PESAPAL_BASE_URL: Boolean(env.pesapalBaseUrl),
+    PESAPAL_CONSUMER_KEY: Boolean(env.pesapalConsumerKey),
+    PESAPAL_CONSUMER_SECRET: Boolean(env.pesapalConsumerSecret),
+    PESAPAL_IPN_ID: Boolean(env.pesapalIpnId),
+    NEXT_PUBLIC_SITE_URL: Boolean(env.siteUrl)
+  };
+}
+
+function safePesapalDiagnostics(options?: {
+  authUrl?: string;
+  httpStatus?: number;
+  data?: Pick<PesapalTokenResponse, 'error' | 'message' | 'status'>;
+}): PesapalSafeDiagnostics {
+  return {
+    authUrl: options?.authUrl,
+    env: getPesapalEnvPresence(),
+    httpStatus: options?.httpStatus,
+    pesapalStatus: options?.data?.status,
+    pesapalMessage: options?.data?.message,
+    pesapalError: options?.data?.error
+  };
+}
+
+function logPesapalAuthDiagnostics(label: string, diagnostics: PesapalSafeDiagnostics) {
+  console.info(label, diagnostics);
 }
 
 function requirePesapalEnv() {
@@ -80,7 +127,9 @@ function requirePesapalEnv() {
   ].filter(([, value]) => !value).map(([name]) => name);
 
   if (missing.length) {
-    throw new PesapalError(`Missing Pesapal environment variables: ${missing.join(', ')}`);
+    throw new PesapalError(`Missing Pesapal environment variables: ${missing.join(', ')}`, {
+      safeDiagnostics: safePesapalDiagnostics()
+    });
   }
 
   return env;
@@ -104,9 +153,27 @@ function pesapalHeaders(token?: string) {
   };
 }
 
-export async function getPesapalToken() {
+function normalizePesapalBaseUrl(baseUrl: string) {
+  return baseUrl
+    .trim()
+    .replace(/\/+$/, '')
+    .replace(/\/api\/Auth\/RequestToken$/i, '')
+    .replace(/\/api\/URLSetup\/RegisterIPN$/i, '')
+    .replace(/\/api\/Transactions\/SubmitOrderRequest$/i, '')
+    .replace(/\/api\/Transactions\/GetTransactionStatus$/i, '');
+}
+
+export function buildPesapalUrl(path: string) {
+  const env = getEnv();
+  const normalizedBaseUrl = normalizePesapalBaseUrl(env.pesapalBaseUrl);
+  const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+  return `${normalizedBaseUrl}${normalizedPath}`;
+}
+
+export async function getPesapalTokenResponse() {
   const env = requirePesapalEnv();
-  const response = await fetch(`${env.pesapalBaseUrl}/api/Auth/RequestToken`, {
+  const authUrl = `${normalizePesapalBaseUrl(env.pesapalBaseUrl)}/api/Auth/RequestToken`;
+  const response = await fetch(authUrl, {
     method: 'POST',
     headers: pesapalHeaders(),
     body: JSON.stringify({
@@ -116,19 +183,31 @@ export async function getPesapalToken() {
     cache: 'no-store'
   });
   const data = await readJsonResponse<PesapalTokenResponse>(response);
+  const safeDiagnostics = safePesapalDiagnostics({ authUrl, httpStatus: response.status, data });
 
-  if (!response.ok || !data.token) {
-    throw new PesapalError('Pesapal authentication failed.', { status: response.status, details: data });
+  logPesapalAuthDiagnostics('[PESAPAL_AUTH_RESPONSE]', safeDiagnostics);
+
+  if (response.status !== 200 || !data.token) {
+    throw new PesapalError('Pesapal authentication failed.', {
+      status: response.status,
+      details: data,
+      safeDiagnostics
+    });
   }
 
-  return data.token;
+  return data;
+}
+
+export async function getPesapalToken() {
+  const data = await getPesapalTokenResponse();
+  return data.token as string;
 }
 
 export async function registerPesapalIpn() {
   const env = requirePesapalEnv();
   const token = await getPesapalToken();
   const ipnUrl = `${env.siteUrl}/api/pesapal/ipn`;
-  const response = await fetch(`${env.pesapalBaseUrl}/api/URLSetup/RegisterIPN`, {
+  const response = await fetch(buildPesapalUrl('/api/URLSetup/RegisterIPN'), {
     method: 'POST',
     headers: pesapalHeaders(token),
     body: JSON.stringify({
@@ -149,11 +228,13 @@ export async function registerPesapalIpn() {
 export async function submitPesapalOrder({ order, merchantReference, amount }: PesapalSubmitOrderInput) {
   const env = requirePesapalEnv();
   if (!env.pesapalIpnId) {
-    throw new PesapalError('Pesapal IPN registration is required before checkout. Register the IPN URL and set PESAPAL_IPN_ID to the returned ipn_id.');
+    throw new PesapalError('Pesapal IPN registration is required before checkout. Register the IPN URL and set PESAPAL_IPN_ID to the returned ipn_id.', {
+      safeDiagnostics: safePesapalDiagnostics()
+    });
   }
 
   const token = await getPesapalToken();
-  const response = await fetch(`${env.pesapalBaseUrl}/api/Transactions/SubmitOrderRequest`, {
+  const response = await fetch(buildPesapalUrl('/api/Transactions/SubmitOrderRequest'), {
     method: 'POST',
     headers: pesapalHeaders(token),
     body: JSON.stringify({
@@ -187,11 +268,10 @@ export async function submitPesapalOrder({ order, merchantReference, amount }: P
 }
 
 export async function getPesapalTransactionStatus(orderTrackingId: string) {
-  const env = requirePesapalEnv();
   if (!orderTrackingId) throw new PesapalError('Missing Pesapal order tracking ID.');
 
   const token = await getPesapalToken();
-  const url = new URL(`${env.pesapalBaseUrl}/api/Transactions/GetTransactionStatus`);
+  const url = new URL(buildPesapalUrl('/api/Transactions/GetTransactionStatus'));
   url.searchParams.set('orderTrackingId', orderTrackingId);
 
   const response = await fetch(url.toString(), {
