@@ -4,6 +4,7 @@ import { orderSchema } from '@/lib/validators';
 import { sendOrderSuccessEmail } from '@/lib/send-order-email';
 import { calculateOrderDeliveryFee } from '@/lib/delivery-fee';
 import { listProducts } from '@/lib/products-repo';
+import { OrderStatus } from '@/lib/types';
 
 export async function POST(req: NextRequest) {
   console.info('[ORDER_API_START] POST /api/orders reached', {
@@ -87,7 +88,7 @@ export async function POST(req: NextRequest) {
     deliveryFee: deliveryFee ?? undefined,
     totalWithDelivery: deliveryFee === null ? undefined : subtotal + deliveryFee,
     id: crypto.randomUUID(),
-    status: 'new' as const,
+    status: (isJsonRequest ? 'PENDING_PAYMENT' : 'new') as OrderStatus,
     createdAt: new Date().toISOString()
   };
 

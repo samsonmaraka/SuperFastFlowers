@@ -53,7 +53,20 @@ export const productSchema = z.object({
   updatedAt: z.string()
 });
 
-export const orderStatusSchema = z.enum(['new', 'processing', 'completed', 'cancelled', 'reviewed']);
+export const orderStatusSchema = z.enum([
+  'new',
+  'processing',
+  'completed',
+  'cancelled',
+  'reviewed',
+  'PENDING_PAYMENT',
+  'PAYMENT_INIT_FAILED',
+  'PAID',
+  'PAYMENT_FAILED',
+  'PAYMENT_REVERSED',
+  'PAYMENT_INVALID',
+  'PAYMENT_PENDING'
+]);
 
 function isValidDeliveryDate(value: string) {
   const delivery = new Date(`${value}T00:00:00.000Z`);
