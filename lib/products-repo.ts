@@ -7,13 +7,29 @@ import {
   QueryCommand,
   ScanCommand
 } from '@aws-sdk/lib-dynamodb';
-import { Product } from '@/lib/types';
+import { Product, Vendor } from '@/lib/types';
 import { db } from '@/lib/dynamodb';
 import { getEnv, isDynamoConfigured } from '@/lib/env';
 import { seedProducts } from '@/data/seed-products';
 import { getVendor } from '@/lib/vendors-repo';
 
 const localProductsPath = path.join(process.cwd(), 'data', '.local-products.json');
+
+type ProductSaveErrorCode = 'VENDOR_REQUIRED' | 'VENDOR_NOT_FOUND' | 'VENDOR_INACTIVE';
+
+export class ProductSaveError extends Error {
+  code: ProductSaveErrorCode;
+  status: number;
+  details: Record<string, unknown>;
+
+  constructor(code: ProductSaveErrorCode, message: string, status = 400, details: Record<string, unknown> = {}) {
+    super(message);
+    this.name = 'ProductSaveError';
+    this.code = code;
+    this.status = status;
+    this.details = details;
+  }
+}
 
 async function loadLocalProducts() {
   try {
@@ -37,6 +53,42 @@ function ensureProductsStorageConfigured() {
 
 async function persistLocalProducts(products: Product[]) {
   await fs.writeFile(localProductsPath, JSON.stringify(products, null, 2), 'utf8');
+}
+
+function applyVendorSnapshot(product: Product, vendor: Vendor): Product {
+  return {
+    ...product,
+    vendorId: vendor.id,
+    vendorName: vendor.name,
+    vendorContactPerson: vendor.contactPerson,
+    vendorPhone: vendor.phone,
+    vendorEmail: vendor.email,
+    vendorLocation: vendor.location,
+    vendorLatitude: vendor.vendorLatitude,
+    vendorLongitude: vendor.vendorLongitude
+  };
+}
+
+export async function getActiveVendorForProduct(product: Product) {
+  if (!product.vendorId) {
+    throw new ProductSaveError('VENDOR_REQUIRED', 'Please select an active vendor before saving this product.', 400);
+  }
+
+  const vendor = await getVendor(product.vendorId);
+  if (!vendor) {
+    throw new ProductSaveError('VENDOR_NOT_FOUND', 'Selected vendor was not found. Please choose an active vendor and try again.', 404, {
+      vendorId: product.vendorId
+    });
+  }
+
+  if (vendor.status !== 'active') {
+    throw new ProductSaveError('VENDOR_INACTIVE', 'Selected vendor is inactive. Please choose an active vendor before saving this product.', 400, {
+      vendorId: vendor.id,
+      vendorStatus: vendor.status
+    });
+  }
+
+  return vendor;
 }
 
 export async function listProducts(options?: { category?: string; q?: string; featured?: boolean }) {
@@ -77,6 +129,30 @@ function filterProducts(products: Product[], category?: string, q?: string, feat
   });
 }
 
+export async function getProductBySlug(slug: string) {
+  ensureProductsStorageConfigured();
+  if (!isDynamoConfigured()) {
+    console.warn('[products-repo] DynamoDB disabled in getProductBySlug.', {
+      hasTableName: Boolean(getEnv().tableName),
+      tableName: getEnv().tableName || '(empty)'
+    });
+    const localProducts = await loadLocalProducts();
+    return localProducts.find((p) => p.slug === slug) || null;
+  }
+
+  const bySlug = await db.send(
+    new QueryCommand({
+      TableName: getEnv().tableName,
+      IndexName: getEnv().productSlugIndexName,
+      KeyConditionExpression: 'gsi1pk = :gsi1pk',
+      ExpressionAttributeValues: { ':gsi1pk': `SLUG#${slug}` },
+      Limit: 1
+    })
+  );
+
+  return ((bySlug.Items || [])[0] as Product | undefined) || null;
+}
+
 export async function getProductByIdOrSlug(idOrSlug: string) {
   ensureProductsStorageConfigured();
   if (!isDynamoConfigured()) {
@@ -97,38 +173,14 @@ export async function getProductByIdOrSlug(idOrSlug: string) {
 
   if (byId.Item) return byId.Item as Product;
 
-  const bySlug = await db.send(
-    new QueryCommand({
-      TableName: getEnv().tableName,
-      IndexName: getEnv().productSlugIndexName,
-      KeyConditionExpression: 'gsi1pk = :gsi1pk',
-      ExpressionAttributeValues: { ':gsi1pk': `SLUG#${idOrSlug}` },
-      Limit: 1
-    })
-  );
-
-  return ((bySlug.Items || [])[0] as Product | undefined) || null;
+  return getProductBySlug(idOrSlug);
 }
 
 export async function upsertProduct(product: Product) {
   ensureProductsStorageConfigured();
-  let nextProduct = { ...product };
-  if (product.vendorId) {
-    const vendor = await getVendor(product.vendorId);
-    if (vendor) {
-      nextProduct = {
-        ...nextProduct,
-        vendorId: vendor.id,
-        vendorName: vendor.name,
-        vendorContactPerson: vendor.contactPerson,
-        vendorPhone: vendor.phone,
-        vendorEmail: vendor.email,
-        vendorLocation: vendor.location,
-        vendorLatitude: vendor.vendorLatitude,
-        vendorLongitude: vendor.vendorLongitude
-      };
-    }
-  }
+  const vendor = await getActiveVendorForProduct(product);
+  const nextProduct = applyVendorSnapshot(product, vendor);
+
   if (!isDynamoConfigured()) {
     console.warn('[products-repo] DynamoDB disabled in upsertProduct.', {
       hasTableName: Boolean(getEnv().tableName),
