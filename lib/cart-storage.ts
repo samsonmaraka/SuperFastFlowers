@@ -1,4 +1,4 @@
-export type CartItem = { productId: string; name: string; price: number; quantity: number };
+export type CartItem = { productId: string; name: string; price: number; quantity: number; preparationDays?: number };
 
 type CartMeta = { lastUpdated: string };
 
@@ -28,7 +28,11 @@ function isCartItem(value: unknown): value is CartItem {
     typeof candidate.price === 'number' &&
     Number.isFinite(candidate.price) &&
     typeof candidate.quantity === 'number' &&
-    Number.isFinite(candidate.quantity)
+    Number.isFinite(candidate.quantity) &&
+    (candidate.preparationDays === undefined ||
+      (typeof candidate.preparationDays === 'number' &&
+        Number.isFinite(candidate.preparationDays) &&
+        candidate.preparationDays >= 0))
   );
 }
 

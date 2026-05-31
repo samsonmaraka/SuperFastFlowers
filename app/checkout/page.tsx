@@ -1,9 +1,6 @@
 import Link from 'next/link';
 import { CheckoutClient } from '@/components/checkout-client';
 import { DeliveryPinMap } from '@/components/delivery-pin-map';
-import { deliveryAreas } from '@/lib/delivery-areas';
-
-/* delivery areas moved to shared lib */
 
 function toDateInputValue(date: Date) {
   return date.toISOString().split('T')[0];
@@ -51,7 +48,7 @@ export default function CheckoutPage() {
             max={maxDeliveryDate}
             className="w-full rounded border p-2"
           />
-          <span className="text-xs text-gray-600">Delivery date must be at least 2 days from today and within 14 days.</span>
+          <span className="text-xs text-gray-600">Delivery date must be within 14 days. Items that need more preparation automatically move the earliest available date.</span>
         </label>
         <label className="block space-y-1">
           <span className="text-sm font-medium text-gray-800">Region</span>
@@ -64,19 +61,7 @@ export default function CheckoutPage() {
           </select>
           <span className="text-xs text-gray-600">We only deliver to Kampala Region and Entebbe area for now.</span>
         </label>
-        <label className="block space-y-1">
-          <span className="text-sm font-medium text-gray-800">Area</span>
-          <select required className="sel w-full rounded border p-2" id="fi-cityId" name="cityId" defaultValue="">
-            <option value="" disabled>
-              Please select
-            </option>
-            {deliveryAreas.map((area) => (
-              <option key={area.value} value={area.value}>
-                {area.label}
-              </option>
-            ))}
-          </select>
-        </label>
+        <input type="hidden" name="cityId" value="delivery-pin" />
         <DeliveryPinMap />
         <input name="email" type="email" required placeholder="Email" className="w-full rounded border p-2" />
         <textarea name="note" placeholder="Gift note / preferences" className="w-full rounded border p-2" rows={5} />

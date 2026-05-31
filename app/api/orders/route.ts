@@ -5,6 +5,7 @@ import { sendOrderSuccessEmail } from '@/lib/send-order-email';
 import { calculateOrderDeliveryFee } from '@/lib/delivery-fee';
 import { listProducts } from '@/lib/products-repo';
 import { OrderStatus } from '@/lib/types';
+import { getDateOnlyAtUtcMidnight, getMinimumDeliveryDate, getRequiredPreparationDays } from '@/lib/preparation-days';
 
 export async function POST(req: NextRequest) {
   console.info('[ORDER_API_START] POST /api/orders reached', {
@@ -79,6 +80,17 @@ export async function POST(req: NextRequest) {
   }
 
   const products = await listProducts();
+  const requiredPreparationDays = getRequiredPreparationDays(parsed.data.items, products);
+  const deliveryDate = getDateOnlyAtUtcMidnight(parsed.data.deliveryDate);
+  const minimumDeliveryDate = getMinimumDeliveryDate(requiredPreparationDays);
+
+  if (!deliveryDate || deliveryDate < minimumDeliveryDate) {
+    return NextResponse.json(
+      { error: `Delivery date must be at least ${requiredPreparationDays} day(s) from today for the selected item(s).` },
+      { status: 400 }
+    );
+  }
+
   const deliveryFee = calculateOrderDeliveryFee(parsed.data, products);
   const subtotal = parsed.data.totalAmount ?? parsed.data.items.reduce((sum, item) => sum + (item.lineTotal ?? (item.unitPrice ?? 0) * item.quantity), 0);
 

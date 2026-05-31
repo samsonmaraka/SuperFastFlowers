@@ -35,7 +35,16 @@ export function AddToCartButton({ product }: { product: Product }) {
             ? { ...item, quantity: item.quantity + 1 }
             : item
         )
-      : [...cart, { productId: product.id, name: product.name, price: product.price, quantity: 1 }];
+      : [
+          ...cart,
+          {
+            productId: product.id,
+            name: product.name,
+            price: product.price,
+            quantity: 1,
+            preparationDays: product.preparationDays
+          }
+        ];
 
     writeCart(nextCart);
     setJustAdded(true);

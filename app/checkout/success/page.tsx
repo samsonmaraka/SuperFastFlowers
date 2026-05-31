@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { ClearCartOnSuccess } from '@/components/clear-cart-on-success';
+import { DownloadOrderPdfButton } from '@/components/download-order-pdf-button';
 import { deliveryAreas } from '@/lib/delivery-areas';
 import { formatUgx } from '@/lib/format';
 import { getOrderById } from '@/lib/orders-repo';
@@ -40,7 +41,7 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
   const calculatedDeliveryFee = order ? calculateOrderDeliveryFee(order, products) : null;
   const deliveryFee = typeof order?.deliveryFee === 'number' ? order.deliveryFee : calculatedDeliveryFee;
   const totalBill = typeof order?.totalWithDelivery === 'number' ? order.totalWithDelivery : subtotal + (deliveryFee ?? 0);
-  const areaLabel = deliveryAreas.find((area) => area.value === order?.cityId)?.label;
+  const areaLabel = order?.cityId && order.cityId !== 'delivery-pin' ? deliveryAreas.find((area) => area.value === order.cityId)?.label : undefined;
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">
@@ -96,7 +97,8 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
         </div>
       ) : null}
 
-      <div className="flex gap-3">
+      <div className="flex flex-wrap gap-3 print:hidden">
+        {order ? <DownloadOrderPdfButton /> : null}
         <Link href="/" className="rounded bg-ink px-4 py-2 text-white">
           Continue shopping
         </Link>

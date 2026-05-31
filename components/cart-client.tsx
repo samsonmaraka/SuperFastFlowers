@@ -35,6 +35,10 @@ export function CartClient() {
     () => items.reduce((sum, item) => sum + item.price * item.quantity, 0),
     [items]
   );
+  const maxPreparationDays = useMemo(
+    () => Math.max(2, ...items.map((item) => item.preparationDays ?? 2)),
+    [items]
+  );
 
   const updateQty = (productId: string, quantity: number) => {
     const next = items.map((i) => (i.productId === productId ? { ...i, quantity: Math.max(1, quantity) } : i));
@@ -78,7 +82,20 @@ export function CartClient() {
           </div>
         </div>
       ))}
-      <p className="text-lg font-semibold">Total: UGX {formatUgx(total)}</p>
+      <div className="rounded-lg border border-dashed border-pink-200 bg-pink-50 p-4 text-sm text-gray-700">
+        <div className="flex items-center justify-between gap-4">
+          <span>Items subtotal</span>
+          <span className="font-semibold text-ink">UGX {formatUgx(total)}</span>
+        </div>
+        <div className="mt-2 flex items-center justify-between gap-4">
+          <span>Delivery fee</span>
+          <span className="font-semibold text-ink">Calculated at checkout</span>
+        </div>
+        <p className="mt-2 text-xs text-gray-600">
+          Delivery is calculated after you choose your delivery pin because it depends on the distance from the vendor to the recipient. The earliest delivery date for this cart is D+{maxPreparationDays}.
+        </p>
+      </div>
+      <p className="text-lg font-semibold">Total before delivery: UGX {formatUgx(total)}</p>
       <Link href="/checkout" className="inline-block rounded bg-ink px-4 py-2 text-white">
         Continue to checkout
       </Link>

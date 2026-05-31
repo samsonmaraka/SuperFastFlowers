@@ -15,7 +15,7 @@ export const vendorSchema = z.object({
   name: z.string().min(2),
   contactPerson: z.string().min(1),
   phone: z.string().min(1),
-  email: z.string().email(),
+  email: z.preprocess((value) => (value === '' ? undefined : value), z.string().email().optional()),
   location: z.string().min(1),
   vendorLatitude: optionalCoordinate,
   vendorLongitude: optionalCoordinate,
@@ -49,6 +49,7 @@ export const productSchema = z.object({
   vendorContact1: z.string().optional(),
   vendorContactName2: z.string().optional(),
   vendorContact2: z.string().optional(),
+  preparationDays: z.number().int().min(0).max(30).optional(),
   createdAt: z.string(),
   updatedAt: z.string()
 });
@@ -72,18 +73,15 @@ function isValidDeliveryDate(value: string) {
   const delivery = new Date(`${value}T00:00:00.000Z`);
   if (Number.isNaN(delivery.getTime())) return false;
   const now = new Date();
-  const min = new Date(now);
-  min.setUTCDate(min.getUTCDate() + 2);
-  min.setUTCHours(0, 0, 0, 0);
   const max = new Date(now);
   max.setUTCDate(max.getUTCDate() + 14);
   max.setUTCHours(23, 59, 59, 999);
-  return delivery >= min && delivery <= max;
+  return delivery <= max;
 }
 export const orderSchema = z.object({
   recipientName: z.string().min(2),
   recipientPhone: z.string().min(7),
-  deliveryDate: z.string().refine(isValidDeliveryDate, 'Delivery date must be between 2 and 14 days from today.'),
+  deliveryDate: z.string().refine(isValidDeliveryDate, 'Delivery date must be a valid date within 14 days from today.'),
   region: z.enum(['Kampala Region', 'Entebbe area']),
   cityId: z.string().min(1),
   deliveryLatitude: optionalCoordinate,

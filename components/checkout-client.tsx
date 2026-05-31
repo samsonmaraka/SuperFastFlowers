@@ -28,6 +28,12 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
   }, []);
 
   const subtotal = useMemo(() => items.reduce((sum, item) => sum + item.price * item.quantity, 0), [items]);
+  const maxPreparationDays = useMemo(() => Math.max(2, ...items.map((item) => item.preparationDays ?? 2)), [items]);
+  const minDeliveryDate = useMemo(() => {
+    const nextDate = new Date();
+    nextDate.setDate(nextDate.getDate() + maxPreparationDays);
+    return nextDate.toISOString().split('T')[0];
+  }, [maxPreparationDays]);
   const serializedItems = useMemo(
     () =>
       items.map((item) => ({
@@ -39,6 +45,16 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
       })),
     [items]
   );
+
+  useEffect(() => {
+    const deliveryDateInput = document.querySelector<HTMLInputElement>('input[name="deliveryDate"]');
+    if (!deliveryDateInput) return;
+
+    deliveryDateInput.min = minDeliveryDate;
+    if (deliveryDateInput.value && deliveryDateInput.value < minDeliveryDate) {
+      deliveryDateInput.value = '';
+    }
+  }, [minDeliveryDate]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -93,6 +109,9 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
           {(children as ReactElement).props.children}
           <input type="hidden" name="itemsJson" value={JSON.stringify(serializedItems)} />
           <input type="hidden" name="totalAmount" value={String(subtotal)} />
+          <p className="rounded border border-pink-100 bg-pink-50 p-3 text-sm text-gray-700">
+            Delivery fee is added after your pin is checked. Earliest delivery for these items is D+{maxPreparationDays} ({minDeliveryDate}).
+          </p>
           {checkoutError ? <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{checkoutError}</p> : null}
           <button type="submit" disabled={isSubmitting} className="rounded bg-ink px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-60">
             {isSubmitting ? 'Starting secure payment…' : 'Pay securely with Pesapal'}
@@ -132,9 +151,19 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
             );
           })}
         </div>
-        <div className="mt-4 flex items-center justify-between border-t border-blush pt-3 text-base font-semibold text-ink">
-          <span>Subtotal / Total</span>
-          <span>UGX {formatUgx(subtotal)}</span>
+        <div className="mt-4 space-y-2 border-t border-blush pt-3 text-sm text-ink">
+          <div className="flex items-center justify-between">
+            <span>Subtotal</span>
+            <span>UGX {formatUgx(subtotal)}</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span>Delivery fee</span>
+            <span>Calculated after delivery pin</span>
+          </div>
+          <div className="flex items-center justify-between text-base font-semibold">
+            <span>Total before delivery</span>
+            <span>UGX {formatUgx(subtotal)}</span>
+          </div>
         </div>
       </section>
       {enhancedChildren}

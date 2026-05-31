@@ -234,6 +234,7 @@ export async function submitPesapalOrder({ order, merchantReference, amount }: P
   }
 
   const token = await getPesapalToken();
+  const deliveryArea = order.cityId === 'delivery-pin' ? order.region : order.cityId;
   const response = await fetch(buildPesapalUrl('/api/Transactions/SubmitOrderRequest'), {
     method: 'POST',
     headers: pesapalHeaders(token),
@@ -250,8 +251,8 @@ export async function submitPesapalOrder({ order, merchantReference, amount }: P
         phone_number: order.recipientPhone,
         first_name: order.recipientName,
         last_name: '',
-        line_1: order.cityId,
-        city: order.cityId,
+        line_1: deliveryArea,
+        city: deliveryArea,
         state: order.region,
         country_code: 'UG'
       }

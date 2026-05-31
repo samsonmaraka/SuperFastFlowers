@@ -7,7 +7,7 @@ export type Vendor = {
   name: string;
   contactPerson: string;
   phone: string;
-  email: string;
+  email?: string;
   location: string;
   vendorLatitude?: number;
   vendorLongitude?: number;
@@ -41,6 +41,7 @@ export type Product = {
   vendorContact1?: string;
   vendorContactName2?: string;
   vendorContact2?: string;
+  preparationDays?: number;
   createdAt: string;
   updatedAt: string;
 };
