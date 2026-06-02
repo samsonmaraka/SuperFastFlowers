@@ -13,18 +13,42 @@ export function imageFieldContainsBase64(value: string) {
   return value.startsWith('data:') || /^[A-Za-z0-9+/]+={0,2}$/.test(value.slice(0, 120));
 }
 
-function getProductImagesPrefix() {
+export function getProductImagesPrefix() {
   return (process.env.PRODUCT_IMAGES_PREFIX || DEFAULT_PRODUCT_IMAGES_PREFIX).replace(/^\/+|\/+$/g, '');
 }
 
-function getProductImagesPublicBaseUrl() {
-  return (process.env.PRODUCT_IMAGES_PUBLIC_BASE_URL || DEFAULT_PRODUCT_IMAGES_PUBLIC_BASE_URL).replace(/\/+$/g, '');
+export function normalizeProductImagesPublicBaseUrl(value: string, envName = 'PRODUCT_IMAGES_PUBLIC_BASE_URL') {
+  const correctedValue = value.trim().replace(/^https::\/\//i, 'https://').replace(/\/+$/g, '');
+
+  if (!correctedValue) {
+    throw new Error(`${envName} must not be empty.`);
+  }
+
+  if (!correctedValue.startsWith('https://')) {
+    throw new Error(`${envName} must start with https://. Received value starts with: ${correctedValue.slice(0, 12)}`);
+  }
+
+  try {
+    new URL(correctedValue);
+  } catch {
+    throw new Error(`${envName} must be a valid HTTPS URL.`);
+  }
+
+  return correctedValue;
+}
+
+export function getProductImagesPublicBaseUrl() {
+  return normalizeProductImagesPublicBaseUrl(process.env.PRODUCT_IMAGES_PUBLIC_BASE_URL || DEFAULT_PRODUCT_IMAGES_PUBLIC_BASE_URL);
+}
+
+export function buildProductImagePublicUrl(objectKey: string) {
+  return `${getProductImagesPublicBaseUrl()}/${objectKey.split('/').map(encodeURIComponent).join('/')}`;
 }
 
 function normalizeStoredImageValue(value: string) {
   const prefix = getProductImagesPrefix();
   if (value.startsWith(`${prefix}/`)) {
-    return `${getProductImagesPublicBaseUrl()}/${value.split('/').map(encodeURIComponent).join('/')}`;
+    return buildProductImagePublicUrl(value);
   }
 
   return value;

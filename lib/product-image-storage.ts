@@ -2,7 +2,12 @@ import { Sha256 } from '@aws-crypto/sha256-js';
 import { defaultProvider } from '@aws-sdk/credential-provider-node';
 import { SignatureV4 } from '@smithy/signature-v4';
 import { getEnv } from '@/lib/env';
-import { isDataImageUrl, imageFieldContainsBase64 } from '@/lib/product-images';
+import {
+  buildProductImagePublicUrl,
+  getProductImagesPublicBaseUrl,
+  imageFieldContainsBase64,
+  isDataImageUrl
+} from '@/lib/product-images';
 import { Product } from '@/lib/types';
 
 type DataImage = {
@@ -23,14 +28,13 @@ type SignedRequest = {
 
 const DEFAULT_PRODUCT_IMAGES_BUCKET = 'giftora-product-images-prod';
 const DEFAULT_PRODUCT_IMAGES_PREFIX = 'products';
-const DEFAULT_PRODUCT_IMAGES_PUBLIC_BASE_URL = 'https://giftora-product-images-prod.s3.eu-north-1.amazonaws.com';
 
 function getProductImageStorageConfig() {
   const env = getEnv();
   return {
     bucket: process.env.PRODUCT_IMAGES_BUCKET || DEFAULT_PRODUCT_IMAGES_BUCKET,
     prefix: (process.env.PRODUCT_IMAGES_PREFIX || DEFAULT_PRODUCT_IMAGES_PREFIX).replace(/^\/+|\/+$/g, ''),
-    publicBaseUrl: (process.env.PRODUCT_IMAGES_PUBLIC_BASE_URL || DEFAULT_PRODUCT_IMAGES_PUBLIC_BASE_URL).replace(/\/+$/g, ''),
+    publicBaseUrl: getProductImagesPublicBaseUrl(),
     region: env.awsRegion || process.env.AWS_REGION || process.env.REGION || 'eu-north-1'
   };
 }
@@ -72,17 +76,24 @@ function buildObjectKey(productId: string, extension: string) {
   return `${prefix}/${safeProductId}/${Date.now()}-${randomPart}.${extension}`;
 }
 
-function buildPublicUrl(objectKey: string) {
-  const { publicBaseUrl } = getProductImageStorageConfig();
-  return `${publicBaseUrl}/${objectKey.split('/').map(encodeURIComponent).join('/')}`;
-}
-
 function isS3CompatibleStoredValue(value: string) {
   return /^https?:\/\//i.test(value) || value.startsWith(`${getProductImageStorageConfig().prefix}/`);
 }
 
 function logImageDiagnostic(event: 'imageUploadStarted' | 'imageUploadSucceeded' | 'imageUploadFailed', details: Record<string, unknown>) {
   console.log(`[product-images] ${event}`, details);
+}
+
+function normalizeSignedRequestProtocol(protocol: string) {
+  const normalizedProtocol = protocol.trim().replace(/:+$/g, '');
+  if (normalizedProtocol !== 'https') {
+    throw new Error(`S3 signed request protocol must be https. Received: ${protocol}`);
+  }
+  return normalizedProtocol;
+}
+
+export function buildSignedS3RequestUrl(signedRequest: Pick<SignedRequest, 'protocol' | 'hostname' | 'path'>) {
+  return `${normalizeSignedRequestProtocol(signedRequest.protocol)}://${signedRequest.hostname}${signedRequest.path}`;
 }
 
 async function uploadBufferToS3(params: { objectKey: string; body: Buffer; contentType: string }) {
@@ -112,7 +123,15 @@ async function uploadBufferToS3(params: { objectKey: string; body: Buffer; conte
   } satisfies SignedRequest;
 
   const signedRequest = await signer.sign(request);
-  const response = await fetch(`${signedRequest.protocol}://${signedRequest.hostname}${signedRequest.path}`, {
+  const uploadUrl = buildSignedS3RequestUrl(signedRequest);
+  console.log('[product-images] s3PutObjectRequestPrepared', {
+    bucket,
+    region,
+    objectKey: params.objectKey,
+    uploadUrl
+  });
+
+  const response = await fetch(uploadUrl, {
     method: signedRequest.method,
     headers: signedRequest.headers,
     body: params.body
@@ -125,7 +144,7 @@ async function uploadBufferToS3(params: { objectKey: string; body: Buffer; conte
 }
 
 export async function uploadNewProductImagesToS3(product: Product): Promise<Product> {
-  const { bucket, region } = getProductImageStorageConfig();
+  const { bucket, region, publicBaseUrl } = getProductImageStorageConfig();
   const uploadedImageUrls: string[] = [];
 
   for (const imageValue of product.imageUrls) {
@@ -140,7 +159,7 @@ export async function uploadNewProductImagesToS3(product: Product): Promise<Prod
     }
 
     const objectKey = buildObjectKey(product.id, dataImage.extension);
-    const finalImageUrl = buildPublicUrl(objectKey);
+    const finalImageUrl = buildProductImagePublicUrl(objectKey);
 
     logImageDiagnostic('imageUploadStarted', {
       bucket,
@@ -148,7 +167,9 @@ export async function uploadNewProductImagesToS3(product: Product): Promise<Prod
       objectKey,
       productId: product.id,
       contentType: dataImage.contentType,
-      byteLength: dataImage.buffer.length
+      byteLength: dataImage.buffer.length,
+      publicBaseUrl,
+      finalImageUrl
     });
 
     try {
