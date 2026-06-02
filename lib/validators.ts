@@ -1,4 +1,10 @@
 import { z } from 'zod';
+import { isDataImageUrl, isProductImageStorageKey } from '@/lib/product-images';
+
+const productImageValue = z.string().refine((value) => {
+  if (isDataImageUrl(value) || isProductImageStorageKey(value)) return true;
+  return z.string().url().safeParse(value).success;
+}, 'Product image must be a hosted URL or an uploaded image.');
 
 const optionalCoordinate = z.preprocess((value) => {
   if (value === '' || value === null || value === undefined) return undefined;
@@ -34,7 +40,7 @@ export const productSchema = z.object({
   category: z.string().min(2),
   tags: z.array(z.string().trim().min(1)).default([]),
   categories: z.array(z.string().trim().min(1)).optional(),
-  imageUrls: z.array(z.string().url()).min(1),
+  imageUrls: z.array(productImageValue).min(1),
   stockStatus: z.enum(['in_stock', 'low_stock', 'out_of_stock']),
   featured: z.boolean(),
   vendorId: z.string().optional(),

@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import { AddToCartButton } from '@/components/add-to-cart-button';
 import { formatUgx } from '@/lib/format';
+import { getPrimaryProductImage } from '@/lib/product-images';
 import { Product } from '@/lib/types';
 
 export function ProductCard({ product }: { product: Product }) {
   return (
     <article className="overflow-hidden rounded-xl border border-blush bg-white shadow-sm">
-      <img src={product.imageUrls[0]} alt={product.name} className="h-48 w-full object-cover" />
+      <img src={getPrimaryProductImage(product)} alt={product.name} className="h-48 w-full object-cover" />
       <div className="space-y-2 p-4">
         <p className="text-xs uppercase tracking-wide text-pink-700">{product.category}</p>
         <h3 className="text-lg font-semibold">

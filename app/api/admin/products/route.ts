@@ -8,10 +8,8 @@ import {
   ProductSaveError,
   upsertProduct
 } from '@/lib/products-repo';
+import { uploadNewProductImagesToS3 } from '@/lib/product-image-storage';
 import { productSchema } from '@/lib/validators';
-
-const MAX_LEGACY_BASE64_IMAGE_BYTES = 250 * 1024;
-const LARGE_IMAGE_MESSAGE = 'Large uploaded images cannot be stored directly. Use a hosted HTTPS image URL, or implement S3 image upload.';
 
 type AdminProductErrorCode =
   | 'UNAUTHORIZED'
@@ -20,18 +18,9 @@ type AdminProductErrorCode =
   | 'VENDOR_NOT_FOUND'
   | 'VENDOR_INACTIVE'
   | 'DUPLICATE_SLUG'
-  | 'IMAGE_TOO_LARGE'
+  | 'IMAGE_UPLOAD_FAILED'
   | 'SAVE_FAILED'
   | 'DELETE_FAILED';
-
-function getDataUrlByteSize(dataUrl: string): number {
-  const parts = dataUrl.split(',');
-  if (parts.length < 2) return 0;
-
-  const base64 = parts[1] || '';
-  const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
-  return Math.floor((base64.length * 3) / 4) - padding;
-}
 
 function errorResponse(error: string, code: AdminProductErrorCode, status: number, details: Record<string, unknown> = {}) {
   return NextResponse.json({ error, code, details }, { status });
@@ -108,17 +97,6 @@ export async function POST(req: NextRequest) {
     console.log('Image count:', body?.imageUrls?.length ?? 0);
     console.log('First image length:', body?.imageUrls?.[0]?.length ?? 0);
 
-    const imageUrl = body?.imageUrls?.[0];
-    if (typeof imageUrl === 'string' && imageUrl.startsWith('data:')) {
-      const sizeInBytes = getDataUrlByteSize(imageUrl);
-      if (sizeInBytes > MAX_LEGACY_BASE64_IMAGE_BYTES) {
-        return errorResponse(LARGE_IMAGE_MESSAGE, 'IMAGE_TOO_LARGE', 413, {
-          maxBytes: MAX_LEGACY_BASE64_IMAGE_BYTES,
-          sizeInBytes
-        });
-      }
-    }
-
     const parsed = productSchema.safeParse(body);
 
     if (!parsed.success) {
@@ -151,8 +129,16 @@ export async function POST(req: NextRequest) {
 
     console.log('Validation passed');
 
+    let productToSave = parsed.data;
     try {
-      await upsertProduct(parsed.data);
+      productToSave = await uploadNewProductImagesToS3(parsed.data);
+    } catch (error) {
+      logServerError('POST /api/admin/products image upload failed', error);
+      return errorResponse('Product image upload failed. Please choose a valid image and try saving again.', 'IMAGE_UPLOAD_FAILED', 500);
+    }
+
+    try {
+      await upsertProduct(productToSave);
       console.log('upsertProduct succeeded');
     } catch (error) {
       if (error instanceof ProductSaveError) {
