@@ -8,6 +8,7 @@ import {
   ScanCommand
 } from '@aws-sdk/lib-dynamodb';
 import { Product, Vendor } from '@/lib/types';
+import { normalizeProductForDisplay } from '@/lib/product-images';
 import { db } from '@/lib/dynamodb';
 import { getEnv, isDynamoConfigured } from '@/lib/env';
 import { seedProducts } from '@/data/seed-products';
@@ -101,7 +102,7 @@ export async function listProducts(options?: { category?: string; q?: string; fe
       tableName: getEnv().tableName || '(empty)'
     });
     const localProducts = await loadLocalProducts();
-    return filterProducts(localProducts, category, q, featured);
+    return filterProducts(localProducts.map(normalizeProductForDisplay), category, q, featured);
   }
 
   const res = await db.send(
@@ -113,7 +114,7 @@ export async function listProducts(options?: { category?: string; q?: string; fe
     })
   );
 
-  return filterProducts((res.Items || []) as Product[], category, q, featured);
+  return filterProducts(((res.Items || []) as Product[]).map(normalizeProductForDisplay), category, q, featured);
 }
 
 function filterProducts(products: Product[], category?: string, q?: string, featured?: boolean) {
@@ -137,7 +138,8 @@ export async function getProductBySlug(slug: string) {
       tableName: getEnv().tableName || '(empty)'
     });
     const localProducts = await loadLocalProducts();
-    return localProducts.find((p) => p.slug === slug) || null;
+    const product = localProducts.find((p) => p.slug === slug) || null;
+    return product ? normalizeProductForDisplay(product) : null;
   }
 
   const bySlug = await db.send(
@@ -150,7 +152,8 @@ export async function getProductBySlug(slug: string) {
     })
   );
 
-  return ((bySlug.Items || [])[0] as Product | undefined) || null;
+  const product = ((bySlug.Items || [])[0] as Product | undefined) || null;
+  return product ? normalizeProductForDisplay(product) : null;
 }
 
 export async function getProductByIdOrSlug(idOrSlug: string) {
@@ -161,7 +164,8 @@ export async function getProductByIdOrSlug(idOrSlug: string) {
       tableName: getEnv().tableName || '(empty)'
     });
     const localProducts = await loadLocalProducts();
-    return localProducts.find((p) => p.id === idOrSlug || p.slug === idOrSlug) || null;
+    const product = localProducts.find((p) => p.id === idOrSlug || p.slug === idOrSlug) || null;
+    return product ? normalizeProductForDisplay(product) : null;
   }
 
   const byId = await db.send(
@@ -171,7 +175,7 @@ export async function getProductByIdOrSlug(idOrSlug: string) {
     })
   );
 
-  if (byId.Item) return byId.Item as Product;
+  if (byId.Item) return normalizeProductForDisplay(byId.Item as Product);
 
   return getProductBySlug(idOrSlug);
 }
