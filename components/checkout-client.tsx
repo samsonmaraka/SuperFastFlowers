@@ -13,6 +13,7 @@ type CheckoutResponse = {
 export function CheckoutClient({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitMode, setSubmitMode] = useState<'pesapal' | 'test' | null>(null);
   const [checkoutError, setCheckoutError] = useState('');
 
   useEffect(() => {
@@ -58,8 +59,12 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
+    const submitter = (event.nativeEvent as SubmitEvent).submitter as HTMLButtonElement | null;
+    const requestedMode = submitter?.value === 'test' ? 'test' : 'pesapal';
+
     setCheckoutError('');
     setIsSubmitting(true);
+    setSubmitMode(requestedMode);
 
     try {
       const formData = new FormData(event.currentTarget);
@@ -86,7 +91,8 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
         throw new Error(orderJson.error ? 'Please check your checkout details and try again.' : 'Order creation failed. Please try again.');
       }
 
-      const checkoutResponse = await fetch('/api/pesapal/checkout', {
+      const paymentEndpoint = requestedMode === 'test' ? '/api/pesapal/test-success' : '/api/pesapal/checkout';
+      const checkoutResponse = await fetch(paymentEndpoint, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ orderId: orderJson.order.id })
@@ -100,6 +106,7 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
     } catch (error) {
       setCheckoutError(error instanceof Error ? error.message : 'Payment could not be started. Please try again.');
       setIsSubmitting(false);
+      setSubmitMode(null);
     }
   }
 
@@ -113,9 +120,26 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
             Delivery fee is added after your pin is checked. Earliest delivery for these items is D+{maxPreparationDays} ({minDeliveryDate}).
           </p>
           {checkoutError ? <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{checkoutError}</p> : null}
-          <button type="submit" disabled={isSubmitting} className="rounded bg-ink px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-60">
-            {isSubmitting ? 'Starting secure payment…' : 'Pay securely with Pesapal'}
-          </button>
+          <div className="flex flex-wrap gap-3">
+            <button
+              type="submit"
+              name="paymentMode"
+              value="pesapal"
+              disabled={isSubmitting}
+              className="rounded bg-ink px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {submitMode === 'pesapal' ? 'Starting secure payment…' : 'Pay securely with Pesapal'}
+            </button>
+            <button
+              type="submit"
+              name="paymentMode"
+              value="test"
+              disabled={isSubmitting}
+              className="rounded bg-red-600 px-4 py-2 text-white hover:bg-red-700 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {submitMode === 'test' ? 'Registering test payment…' : 'Test successful payment'}
+            </button>
+          </div>
         </>
       )
     : children;
