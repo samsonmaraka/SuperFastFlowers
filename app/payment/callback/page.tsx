@@ -8,6 +8,7 @@ type PaymentCallbackPageProps = {
   searchParams?: {
     OrderTrackingId?: string;
     OrderMerchantReference?: string;
+    TestPayment?: string;
   };
 };
 
@@ -37,29 +38,47 @@ const statusCopy = {
 export default async function PaymentCallbackPage({ searchParams }: PaymentCallbackPageProps) {
   const orderTrackingId = searchParams?.OrderTrackingId || '';
   const merchantReference = searchParams?.OrderMerchantReference || '';
+  const isTestPayment = searchParams?.TestPayment === 'success';
 
   let title = 'Payment status unavailable';
   let message = 'We could not verify this payment because the callback was missing Pesapal payment identifiers.';
   let displayStatus = 'Missing payment details';
+  let paidOrderId = '';
 
   if (orderTrackingId && merchantReference) {
     try {
-      const transactionStatus = await getPesapalTransactionStatus(orderTrackingId);
-      const orderStatus = mapPesapalTransactionToOrderStatus(transactionStatus);
-      const order = await getOrderByPesapalMerchantReference(merchantReference);
+      if (isTestPayment) {
+        const order = await getOrderByPesapalMerchantReference(merchantReference);
 
-      if (order) {
-        await updateOrderPayment(order.id, {
-          ...pesapalStatusToPayment(transactionStatus),
-          orderTrackingId,
-          merchantReference
-        }, orderStatus);
+        if (order?.status === 'PAID' && order.pesapal?.orderTrackingId === orderTrackingId) {
+          paidOrderId = order.id;
+          title = statusCopy.PAID.title;
+          message = `${statusCopy.PAID.message} This was registered by the test successful payment button.`;
+          displayStatus = order.pesapal.status || 'COMPLETED';
+        } else {
+          title = 'Test payment unavailable';
+          message = 'The test payment link could not be matched to a paid test order.';
+          displayStatus = 'Test payment not found';
+        }
+      } else {
+        const transactionStatus = await getPesapalTransactionStatus(orderTrackingId);
+        const orderStatus = mapPesapalTransactionToOrderStatus(transactionStatus);
+        const order = await getOrderByPesapalMerchantReference(merchantReference);
+
+        if (order) {
+          paidOrderId = order.id;
+          await updateOrderPayment(order.id, {
+            ...pesapalStatusToPayment(transactionStatus),
+            orderTrackingId,
+            merchantReference
+          }, orderStatus);
+        }
+
+        const copy = statusCopy[orderStatus as keyof typeof statusCopy] || statusCopy.PAYMENT_PENDING;
+        title = copy.title;
+        message = copy.message;
+        displayStatus = String(transactionStatus.payment_status_description || orderStatus);
       }
-
-      const copy = statusCopy[orderStatus as keyof typeof statusCopy] || statusCopy.PAYMENT_PENDING;
-      title = copy.title;
-      message = copy.message;
-      displayStatus = String(transactionStatus.payment_status_description || orderStatus);
     } catch (error) {
       console.error('[PESAPAL_CALLBACK_VERIFY_FAILED]', error);
       title = 'Payment verification failed';
@@ -93,7 +112,13 @@ export default async function PaymentCallbackPage({ searchParams }: PaymentCallb
           ) : null}
         </dl>
         <div className="mt-6 flex flex-wrap gap-3">
-          <Link href="/shop" className="rounded bg-ink px-4 py-2 text-white">Continue shopping</Link>
+          {paidOrderId ? (
+            <Link href={`/checkout/success?orderId=${encodeURIComponent(paidOrderId)}`} className="rounded bg-ink px-4 py-2 text-white">
+              View order success details
+            </Link>
+          ) : (
+            <Link href="/shop" className="rounded bg-ink px-4 py-2 text-white">Continue shopping</Link>
+          )}
           <Link href="/contact" className="rounded border border-ink px-4 py-2 text-ink">Contact Giftora</Link>
         </div>
       </section>
