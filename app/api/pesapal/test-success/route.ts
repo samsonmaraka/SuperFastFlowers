@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getEnv } from '@/lib/env';
 import { getOrderById, updateOrderPayment } from '@/lib/orders-repo';
 
 export const runtime = 'nodejs';
@@ -36,7 +37,21 @@ export async function POST(req: NextRequest) {
     }
   }, 'PAID');
 
-  const redirectUrl = new URL('/payment/callback', req.nextUrl.origin);
+  const { siteUrl } = getEnv();
+  if (!siteUrl) {
+    console.warn('[pesapal-test-success] Missing public site URL for redirect.', {
+      hasSiteUrl: false,
+      requestOrigin: req.nextUrl.origin
+    });
+    return NextResponse.json({ error: 'Missing NEXT_PUBLIC_SITE_URL.' }, { status: 500 });
+  }
+
+  const redirectUrl = new URL('/payment/callback', siteUrl);
+  console.info('[pesapal-test-success] Built test success redirect URL.', {
+    hasSiteUrl: Boolean(siteUrl),
+    redirectOrigin: redirectUrl.origin,
+    requestOrigin: req.nextUrl.origin
+  });
   redirectUrl.searchParams.set('OrderTrackingId', orderTrackingId);
   redirectUrl.searchParams.set('OrderMerchantReference', merchantReference);
   redirectUrl.searchParams.set('TestPayment', 'success');
