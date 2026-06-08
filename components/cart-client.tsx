@@ -87,15 +87,17 @@ export function CartClient() {
           <span>Items subtotal</span>
           <span className="font-semibold text-ink">UGX {formatUgx(total)}</span>
         </div>
+        {/* Delivery fees are now factored into product prices.
         <div className="mt-2 flex items-center justify-between gap-4">
           <span>Delivery fee</span>
           <span className="font-semibold text-ink">Calculated at checkout</span>
         </div>
+        */}
         <p className="mt-2 text-xs text-gray-600">
-          Delivery is calculated after you choose your delivery pin because it depends on the distance from the vendor to the recipient. The earliest delivery date for this cart is D+{maxPreparationDays}.
+          The earliest delivery date for this cart is D+{maxPreparationDays}.
         </p>
       </div>
-      <p className="text-lg font-semibold">Total before delivery: UGX {formatUgx(total)}</p>
+      <p className="text-lg font-semibold">Total: UGX {formatUgx(total)}</p>
       <Link href="/checkout" className="inline-block rounded bg-ink px-4 py-2 text-white">
         Continue to checkout
       </Link>

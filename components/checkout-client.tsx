@@ -117,7 +117,7 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
           <input type="hidden" name="itemsJson" value={JSON.stringify(serializedItems)} />
           <input type="hidden" name="totalAmount" value={String(subtotal)} />
           <p className="rounded border border-pink-100 bg-pink-50 p-3 text-sm text-gray-700">
-            Delivery fee is added after your pin is checked. Earliest delivery for these items is D+{maxPreparationDays} ({minDeliveryDate}).
+            Earliest delivery for these items is D+{maxPreparationDays} ({minDeliveryDate}).
           </p>
           {checkoutError ? <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{checkoutError}</p> : null}
           <div className="flex flex-wrap gap-3">
@@ -130,6 +130,7 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
             >
               {submitMode === 'pesapal' ? 'Starting secure payment…' : 'Pay securely with Pesapal'}
             </button>
+            {/* Test successful payment button disabled for production checkout.
             <button
               type="submit"
               name="paymentMode"
@@ -139,6 +140,7 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
             >
               {submitMode === 'test' ? 'Registering test payment…' : 'Test successful payment'}
             </button>
+            */}
           </div>
         </>
       )
@@ -180,12 +182,14 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
             <span>Subtotal</span>
             <span>UGX {formatUgx(subtotal)}</span>
           </div>
+          {/* Delivery fees are now factored into product prices.
           <div className="flex items-center justify-between">
             <span>Delivery fee</span>
             <span>Calculated after delivery pin</span>
           </div>
+          */}
           <div className="flex items-center justify-between text-base font-semibold">
-            <span>Total before delivery</span>
+            <span>Total</span>
             <span>UGX {formatUgx(subtotal)}</span>
           </div>
         </div>
