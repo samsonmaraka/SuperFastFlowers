@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createOrder } from '@/lib/orders-repo';
 import { orderSchema } from '@/lib/validators';
 import { sendOrderSuccessEmail } from '@/lib/send-order-email';
-import { calculateOrderDeliveryFee } from '@/lib/delivery-fee';
 import { listProducts } from '@/lib/products-repo';
 import { OrderStatus } from '@/lib/types';
 import { getDateOnlyAtUtcMidnight, getMinimumDeliveryDate, getRequiredPreparationDays } from '@/lib/preparation-days';
@@ -91,14 +90,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const deliveryFee = calculateOrderDeliveryFee(parsed.data, products);
+  // Delivery fees are now factored into product prices, so do not calculate or add a separate delivery charge.
   const subtotal = parsed.data.totalAmount ?? parsed.data.items.reduce((sum, item) => sum + (item.lineTotal ?? (item.unitPrice ?? 0) * item.quantity), 0);
 
   const orderPayload = {
     ...parsed.data,
     totalAmount: subtotal,
-    deliveryFee: deliveryFee ?? undefined,
-    totalWithDelivery: deliveryFee === null ? undefined : subtotal + deliveryFee,
+    deliveryFee: undefined,
+    totalWithDelivery: subtotal,
     id: crypto.randomUUID(),
     status: (isJsonRequest ? 'PENDING_PAYMENT' : 'new') as OrderStatus,
     createdAt: new Date().toISOString()

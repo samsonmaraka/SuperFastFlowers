@@ -4,7 +4,6 @@ import { getEnv } from '@/lib/env';
 import { listProducts } from '@/lib/products-repo';
 import { OrderRequest } from '@/lib/types';
 import { formatUgx } from '@/lib/format';
-import { calculateOrderDeliveryFee } from '@/lib/delivery-fee';
 
 type OrderEmailLine = {
   productId: string;
@@ -125,23 +124,21 @@ export async function sendOrderSuccessEmail(order: OrderRequest) {
   const lines = await buildOrderLines(order, products);
   const computedTotal = typeof order.totalAmount === 'number' ? order.totalAmount : lines.reduce((sum, line) => sum + (line.lineTotal || 0), 0);
   const hasPriceData = lines.some((line) => line.lineTotal !== undefined) || typeof order.totalAmount === 'number';
-  const deliveryFee = typeof order.deliveryFee === 'number' ? order.deliveryFee : calculateOrderDeliveryFee(order, products);
-  const totalWithDelivery = typeof order.totalWithDelivery === 'number' ? order.totalWithDelivery : hasPriceData ? computedTotal + (deliveryFee ?? 0) : undefined;
+  // Delivery fees are now factored into product prices, so do not calculate or display a separate delivery charge.
+  const totalWithDelivery = typeof order.totalWithDelivery === 'number' ? order.totalWithDelivery : hasPriceData ? computedTotal : undefined;
 
   const orderedItemsText = lines
     .map((line) => `- ${line.name} (ID: ${line.productId}) | Qty: ${line.quantity} | Unit price: ${line.unitPrice !== undefined ? `UGX ${formatUgx(line.unitPrice)}` : 'N/A'} | Line total: ${line.lineTotal !== undefined ? `UGX ${formatUgx(line.lineTotal)}` : 'N/A'}`)
     .join('\n');
   const orderedItemsHtml = buildItemsTable(lines);
 
-  const deliveryFeeText = deliveryFee === null ? 'To be confirmed' : `UGX ${formatUgx(deliveryFee)}`;
-  const totalWithDeliveryText = totalWithDelivery === undefined ? 'N/A' : deliveryFee === null ? 'To be confirmed' : `UGX ${formatUgx(totalWithDelivery)}`;
+  const totalWithDeliveryText = totalWithDelivery === undefined ? 'N/A' : `UGX ${formatUgx(totalWithDelivery)}`;
   const pinUrlHtml = order.deliveryPinUrl ? `<a href="${escapeHtml(order.deliveryPinUrl)}">View delivery pin</a>` : 'Not provided';
 
   const textBody = `Order received successfully\n\nHello ${order.recipientName},\n\nA successful order has been received.\nOrder reference: ${order.id}\n\nOrdered items:\n${orderedItemsText}\n\nSubtotal: ${hasPriceData ? `UGX ${formatUgx(computedTotal)}` : 'N/A'}
-Delivery fee: ${deliveryFeeText}
-Total bill: ${totalWithDeliveryText}\n\nDelivery/contact details:\nRecipient name: ${order.recipientName}\nRecipient phone: ${order.recipientPhone}\nDelivery date: ${order.deliveryDate}\nRegion: ${order.region}\nPin URL: ${order.deliveryPinUrl || 'Not provided'}\nCoordinates: ${order.deliveryLatitude ?? 'N/A'}, ${order.deliveryLongitude ?? 'N/A'}\nCustomer email: ${order.email}\nNote: ${order.note || 'N/A'}\n\nVisit ${siteUrl}`;
+Total: ${totalWithDeliveryText}\n\nDelivery/contact details:\nRecipient name: ${order.recipientName}\nRecipient phone: ${order.recipientPhone}\nDelivery date: ${order.deliveryDate}\nRegion: ${order.region}\nPin URL: ${order.deliveryPinUrl || 'Not provided'}\nCoordinates: ${order.deliveryLatitude ?? 'N/A'}, ${order.deliveryLongitude ?? 'N/A'}\nCustomer email: ${order.email}\nNote: ${order.note || 'N/A'}\n\nVisit ${siteUrl}`;
 
-  const htmlBody = `<div style="font-family:Arial,sans-serif;color:#231f20;"><h2>Order received successfully</h2><p>Hello ${escapeHtml(order.recipientName)},</p><p>A successful order has been received.</p><p><strong>Order reference:</strong> ${escapeHtml(order.id)}</p><h3>Ordered items</h3>${orderedItemsHtml}<p><strong>Subtotal:</strong> ${hasPriceData ? `UGX ${formatUgx(computedTotal)}` : 'N/A'}</p><p><strong>Delivery fee:</strong> ${deliveryFeeText}</p><p><strong>Total bill:</strong> ${totalWithDeliveryText}</p><h3>Delivery/contact details</h3><ul><li><strong>Recipient name:</strong> ${escapeHtml(order.recipientName)}</li><li><strong>Recipient phone:</strong> ${escapeHtml(order.recipientPhone)}</li><li><strong>Delivery date:</strong> ${escapeHtml(order.deliveryDate)}</li><li><strong>Region:</strong> ${escapeHtml(order.region)}</li><li><strong>Pin URL:</strong> ${pinUrlHtml}</li><li><strong>Coordinates:</strong> ${order.deliveryLatitude ?? 'N/A'}, ${order.deliveryLongitude ?? 'N/A'}</li><li><strong>Customer email:</strong> ${escapeHtml(order.email)}</li><li><strong>Note:</strong> ${escapeHtml(order.note || 'N/A')}</li></ul><p><a href="${escapeHtml(siteUrl)}">Return to SuperFastFlowers</a></p></div>`;
+  const htmlBody = `<div style="font-family:Arial,sans-serif;color:#231f20;"><h2>Order received successfully</h2><p>Hello ${escapeHtml(order.recipientName)},</p><p>A successful order has been received.</p><p><strong>Order reference:</strong> ${escapeHtml(order.id)}</p><h3>Ordered items</h3>${orderedItemsHtml}<p><strong>Subtotal:</strong> ${hasPriceData ? `UGX ${formatUgx(computedTotal)}` : 'N/A'}</p><p><strong>Total:</strong> ${totalWithDeliveryText}</p><h3>Delivery/contact details</h3><ul><li><strong>Recipient name:</strong> ${escapeHtml(order.recipientName)}</li><li><strong>Recipient phone:</strong> ${escapeHtml(order.recipientPhone)}</li><li><strong>Delivery date:</strong> ${escapeHtml(order.deliveryDate)}</li><li><strong>Region:</strong> ${escapeHtml(order.region)}</li><li><strong>Pin URL:</strong> ${pinUrlHtml}</li><li><strong>Coordinates:</strong> ${order.deliveryLatitude ?? 'N/A'}, ${order.deliveryLongitude ?? 'N/A'}</li><li><strong>Customer email:</strong> ${escapeHtml(order.email)}</li><li><strong>Note:</strong> ${escapeHtml(order.note || 'N/A')}</li></ul><p><a href="${escapeHtml(siteUrl)}">Return to SuperFastFlowers</a></p></div>`;
 
   console.info('[ORDER_EMAIL_START] SES send starting', {
     orderId: order.id,

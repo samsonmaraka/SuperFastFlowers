@@ -4,8 +4,6 @@ import { DownloadOrderPdfButton } from '@/components/download-order-pdf-button';
 import { deliveryAreas } from '@/lib/delivery-areas';
 import { formatUgx } from '@/lib/format';
 import { getOrderById } from '@/lib/orders-repo';
-import { calculateOrderDeliveryFee } from '@/lib/delivery-fee';
-import { listProducts } from '@/lib/products-repo';
 
 type SuccessPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -37,10 +35,8 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
     }) || [];
 
   const subtotal = typeof order?.totalAmount === 'number' ? order.totalAmount : orderItems.reduce((sum, item) => sum + item.lineTotal, 0);
-  const products = order ? await listProducts() : [];
-  const calculatedDeliveryFee = order ? calculateOrderDeliveryFee(order, products) : null;
-  const deliveryFee = typeof order?.deliveryFee === 'number' ? order.deliveryFee : calculatedDeliveryFee;
-  const totalBill = typeof order?.totalWithDelivery === 'number' ? order.totalWithDelivery : subtotal + (deliveryFee ?? 0);
+  // Delivery fees are now factored into product prices, so do not calculate or display a separate delivery charge.
+  const totalBill = typeof order?.totalWithDelivery === 'number' ? order.totalWithDelivery : subtotal;
   const areaLabel = order?.cityId && order.cityId !== 'delivery-pin' ? deliveryAreas.find((area) => area.value === order.cityId)?.label : undefined;
 
   return (
@@ -85,12 +81,14 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
               <span>Subtotal</span>
               <span>UGX {formatUgx(subtotal)}</span>
             </div>
+            {/* Delivery fees are now factored into product prices.
             <div className="flex items-center justify-between">
               <span>Delivery fee</span>
               <span>{deliveryFee === null ? 'To be confirmed' : `UGX ${formatUgx(deliveryFee)}`}</span>
             </div>
+            */}
             <div className="flex items-center justify-between pt-1 text-base font-semibold">
-              <span>Total bill</span>
+              <span>Total</span>
               <span>UGX {formatUgx(totalBill)}</span>
             </div>
           </div>
