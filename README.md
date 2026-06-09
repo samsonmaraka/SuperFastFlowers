@@ -145,11 +145,16 @@ If `DYNAMODB_TABLE` is not set, app uses seed data in memory for local MVP brows
 1. Push repository to GitHub.
 2. In AWS Amplify, create a new app and connect repo/branch.
 3. Add environment variables in Amplify:
-   - `NEXT_PUBLIC_SITE_URL`
+   - `NEXT_PUBLIC_SITE_URL=https://www.sendagift.ug`
    - `AWS_REGION`
    - `DYNAMODB_TABLE`
    - `DYNAMODB_ORDER_TABLE`
-   - `ADMIN_TOKEN`
+   - `ADMIN_TOKEN` (store the real value only in Amplify, not in committed files)
+   - `PESAPAL_BASE_URL`
+   - `PESAPAL_CONSUMER_KEY`
+   - `PESAPAL_CONSUMER_SECRET`
+   - `PESAPAL_IPN_ID` (set after registering the production IPN URL)
+   - `SES_FROM_EMAIL`
 4. Ensure Amplify execution role has IAM permissions:
    - `dynamodb:GetItem`
    - `dynamodb:Query`
@@ -157,6 +162,14 @@ If `DYNAMODB_TABLE` is not set, app uses seed data in memory for local MVP brows
    - `dynamodb:PutItem`
    - `dynamodb:DeleteItem`
 5. Deploy.
+
+
+### Production domain checklist
+
+- Primary website URL: `https://www.sendagift.ug`.
+- Root domain `https://sendagift.ug` should redirect to `https://www.sendagift.ug`.
+- Register the Pesapal production IPN URL as `https://www.sendagift.ug/api/pesapal/ipn`, then store the returned IPN ID in Amplify as `PESAPAL_IPN_ID`.
+- Keep Pesapal keys, Google Maps keys, SES secrets, and admin tokens in Amplify environment variables only.
 
 ### Create DynamoDB tables (AWS CLI)
 

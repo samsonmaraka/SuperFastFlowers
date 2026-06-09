@@ -1,15 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getEnv } from '@/lib/env';
+import { isAdminAuthorized } from '@/lib/admin-auth';
 import { registerPesapalIpn } from '@/lib/pesapal';
 
 export const runtime = 'nodejs';
 
-function isAuthorized(req: NextRequest) {
-  return req.headers.get('x-admin-token') === getEnv().adminToken;
-}
-
 export async function POST(req: NextRequest) {
-  if (!isAuthorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!isAdminAuthorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
     const response = await registerPesapalIpn();

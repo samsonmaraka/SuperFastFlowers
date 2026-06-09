@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getEnv } from '@/lib/env';
+import { isAdminAuthorized } from '@/lib/admin-auth';
 import {
   deleteProduct,
   getActiveVendorForProduct,
@@ -54,14 +54,10 @@ function logServerError(context: string, error: unknown) {
 
 export const runtime = 'nodejs';
 
-function isAuthorized(req: NextRequest) {
-  const token = req.headers.get('x-admin-token');
-  return token === getEnv().adminToken;
-}
 
 export async function GET(req: NextRequest) {
   try {
-    if (!isAuthorized(req)) {
+    if (!isAdminAuthorized(req)) {
       return errorResponse('Unauthorized', 'UNAUTHORIZED', 401);
     }
 
@@ -85,7 +81,7 @@ export async function POST(req: NextRequest) {
   try {
     console.log('POST /api/admin/products called');
 
-    if (!isAuthorized(req)) {
+    if (!isAdminAuthorized(req)) {
       console.log('Unauthorized admin request');
       return errorResponse('Unauthorized', 'UNAUTHORIZED', 401);
     }
@@ -164,7 +160,7 @@ export async function DELETE(req: NextRequest) {
   try {
     console.log('DELETE /api/admin/products called');
 
-    if (!isAuthorized(req)) {
+    if (!isAdminAuthorized(req)) {
       console.log('Unauthorized delete request');
       return errorResponse('Unauthorized', 'UNAUTHORIZED', 401);
     }

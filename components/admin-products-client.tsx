@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { Product, Vendor, OrderRequest, OrderStatus } from '@/lib/types';
 import { VendorLocationMap } from '@/components/vendor-location-map';
 
-const ADMIN_LOGIN_CODE = 'samsonmaraka';
 const activeStatuses: OrderStatus[] = ['new', 'reviewed', 'processing'];
 const statusOptions: OrderStatus[] = ['new', 'processing', 'completed', 'cancelled'];
 
@@ -103,7 +102,7 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
   async function fetchOrders(group?:'active'|'closed'){ const q=group?`?statusGroup=${group}`:''; const res=await fetch(`/api/admin/orders${q}`,{headers:{'x-admin-token':token}}); if(res.ok){const d=await res.json(); setOrders(d.orders||[]);} }
   useEffect(()=>{ if(isLoggedIn){ void fetchVendors(); void fetchOrders();} },[isLoggedIn, token]);
 
-  const login=(e:FormEvent)=>{ e.preventDefault(); if(loginCode!==ADMIN_LOGIN_CODE){setMessage('Invalid admin login code.');return;} setToken(loginCode);setIsLoggedIn(true);setMessage('Admin login successful.'); };
+  const login=(e:FormEvent)=>{ e.preventDefault(); const trimmedLoginCode = loginCode.trim(); if(!trimmedLoginCode){setMessage('Enter the admin login code.');return;} setToken(trimmedLoginCode);setIsLoggedIn(true);setMessage('Admin login submitted.'); };
   if(!isLoggedIn) return <form onSubmit={login} className='space-y-4 rounded-lg border bg-white p-4'><h2 className='text-lg font-semibold'>Admin login</h2><input type='password' value={loginCode} onChange={e=>setLoginCode(e.target.value)} className='w-full rounded border p-2'/><button className='rounded bg-ink px-3 py-2 text-white'>Login</button><p>{message}</p></form>;
 
   async function saveItem(e:FormEvent){
