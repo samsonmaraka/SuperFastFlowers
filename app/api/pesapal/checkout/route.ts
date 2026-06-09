@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrderById, updateOrderPayment } from '@/lib/orders-repo';
-import { PesapalError, submitPesapalOrder } from '@/lib/pesapal';
+import { buildPesapalMerchantReference, getPesapalSafeDiagnostics, PesapalError, submitPesapalOrder } from '@/lib/pesapal';
 
 export const runtime = 'nodejs';
 
@@ -8,17 +8,32 @@ export async function POST(req: NextRequest) {
   let orderId = '';
   let merchantReference = '';
 
+  console.info('[PESAPAL_CHECKOUT_START]', getPesapalSafeDiagnostics({ debugCode: 'PESAPAL_CHECKOUT_START' }));
+
   try {
     const body = await req.json() as { orderId?: string };
     orderId = body.orderId || '';
+    console.info('[PESAPAL_CHECKOUT_ORDER_ID]', { orderId });
     if (!orderId) return NextResponse.json({ error: 'Missing orderId.' }, { status: 400 });
 
     const order = await getOrderById(orderId);
+    console.info('[PESAPAL_CHECKOUT_ORDER_LOOKUP]', { orderId, orderFound: Boolean(order) });
     if (!order) return NextResponse.json({ error: 'Order not found.' }, { status: 404 });
 
-    merchantReference = `GIFTORA-${order.id}`;
+    merchantReference = buildPesapalMerchantReference(order.id);
     const amount = order.totalWithDelivery ?? order.totalAmount ?? 0;
     if (amount <= 0) return NextResponse.json({ error: 'Order total must be greater than zero.' }, { status: 400 });
+
+    console.info('[PESAPAL_CHECKOUT_PAYMENT_DETAILS]', {
+      orderId,
+      orderFound: true,
+      totalAmount: amount,
+      currency: 'UGX',
+      merchantReference,
+      callback_url: `${getPesapalSafeDiagnostics().siteUrl}/payment/callback`,
+      cancellation_url: `${getPesapalSafeDiagnostics().siteUrl}/checkout`,
+      safeDiagnostics: getPesapalSafeDiagnostics({ debugCode: 'PESAPAL_CHECKOUT_PAYMENT_DETAILS' })
+    });
 
     await updateOrderPayment(order.id, {
       merchantReference,
@@ -46,7 +61,15 @@ export async function POST(req: NextRequest) {
       merchant_reference: pesapalOrder.merchant_reference || merchantReference
     });
   } catch (error) {
-    console.error('[PESAPAL_CHECKOUT_FAILED]', { orderId, merchantReference, error });
+    console.error('[PESAPAL_CHECKOUT_FAILED]', {
+      orderId,
+      merchantReference,
+      errorName: error instanceof Error ? error.name : 'UnknownError',
+      errorMessage: error instanceof Error ? error.message : String(error),
+      errorStack: error instanceof Error ? error.stack : undefined,
+      pesapalDetails: error instanceof PesapalError ? error.details : undefined,
+      safeDiagnostics: error instanceof PesapalError ? error.safeDiagnostics : getPesapalSafeDiagnostics({ debugCode: 'PESAPAL_CHECKOUT_EXCEPTION' })
+    });
     if (orderId) {
       await updateOrderPayment(orderId, {
         merchantReference,
@@ -55,12 +78,19 @@ export async function POST(req: NextRequest) {
       }, 'PAYMENT_INIT_FAILED');
     }
 
-    const message = error instanceof Error ? error.message : 'Payment could not be initialized.';
-    const safeDiagnostics = error instanceof PesapalError ? error.safeDiagnostics : undefined;
+    const pesapalError = error instanceof PesapalError ? error : null;
+    const safeDiagnostics = pesapalError?.safeDiagnostics || getPesapalSafeDiagnostics({ debugCode: 'PESAPAL_CHECKOUT_EXCEPTION' });
+    const fallbackMessage = error instanceof Error ? error.message : 'Payment could not be initialized.';
+
     return NextResponse.json({
-      error: message,
-      ...(safeDiagnostics ? { diagnostics: safeDiagnostics } : {})
-    }, { status: error instanceof PesapalError && error.status ? error.status : 500 });
+      error: pesapalError?.message === 'PESAPAL_IPN_ID is missing. Register IPN and configure the returned ipn_id.'
+        ? pesapalError.message
+        : 'Pesapal order submission failed.',
+      debugCode: pesapalError?.debugCode || safeDiagnostics.debugCode || 'PESAPAL_CHECKOUT_EXCEPTION',
+      pesapalStatus: safeDiagnostics.pesapalStatus,
+      pesapalMessage: safeDiagnostics.pesapalMessage || fallbackMessage,
+      safeDiagnostics
+    }, { status: pesapalError?.status || 500 });
   }
 }
 

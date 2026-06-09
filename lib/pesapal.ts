@@ -58,15 +58,21 @@ type PesapalSubmitOrderResponse = {
   [key: string]: unknown;
 };
 
+export type PesapalEnvironment = 'production' | 'sandbox' | 'unknown';
+
 export type PesapalSafeDiagnostics = {
-  authUrl?: string;
-  env: {
-    PESAPAL_BASE_URL: boolean;
-    PESAPAL_CONSUMER_KEY: boolean;
-    PESAPAL_CONSUMER_SECRET: boolean;
-    PESAPAL_IPN_ID: boolean;
-    NEXT_PUBLIC_SITE_URL: boolean;
-  };
+  debugCode?: string;
+  environment: PesapalEnvironment;
+  hasBaseUrl: boolean;
+  hasConsumerKey: boolean;
+  hasConsumerSecret: boolean;
+  hasIpnId: boolean;
+  siteUrl: string;
+  submitUrlHost?: string;
+  submitUrlPath?: string;
+  callbackUrl?: string;
+  cancellationUrl?: string;
+  maskedIpnId?: string;
   httpStatus?: number;
   pesapalStatus?: string;
   pesapalMessage?: string;
@@ -77,35 +83,79 @@ export class PesapalError extends Error {
   status?: number;
   details?: unknown;
   safeDiagnostics?: PesapalSafeDiagnostics;
+  debugCode?: string;
 
-  constructor(message: string, options?: { status?: number; details?: unknown; safeDiagnostics?: PesapalSafeDiagnostics }) {
+  constructor(message: string, options?: { status?: number; details?: unknown; safeDiagnostics?: PesapalSafeDiagnostics; debugCode?: string }) {
     super(message);
     this.name = 'PesapalError';
     this.status = options?.status;
     this.details = options?.details;
-    this.safeDiagnostics = options?.safeDiagnostics;
+    this.debugCode = options?.debugCode || options?.safeDiagnostics?.debugCode;
+    this.safeDiagnostics = options?.safeDiagnostics
+      ? { ...options.safeDiagnostics, ...(this.debugCode ? { debugCode: this.debugCode } : {}) }
+      : undefined;
   }
 }
 
-export function getPesapalEnvPresence() {
-  const env = getEnv();
-  return {
-    PESAPAL_BASE_URL: Boolean(env.pesapalBaseUrl),
-    PESAPAL_CONSUMER_KEY: Boolean(env.pesapalConsumerKey),
-    PESAPAL_CONSUMER_SECRET: Boolean(env.pesapalConsumerSecret),
-    PESAPAL_IPN_ID: Boolean(env.pesapalIpnId),
-    NEXT_PUBLIC_SITE_URL: Boolean(env.siteUrl)
-  };
+function normalizePesapalBaseUrl(baseUrl: string) {
+  return baseUrl
+    .trim()
+    .replace(/\/+$|\s+$/g, '')
+    .replace(/\/api\/Auth\/RequestToken$/i, '')
+    .replace(/\/api\/URLSetup\/RegisterIPN$/i, '')
+    .replace(/\/api\/Transactions\/SubmitOrderRequest$/i, '')
+    .replace(/\/api\/Transactions\/GetTransactionStatus$/i, '');
 }
 
-function safePesapalDiagnostics(options?: {
-  authUrl?: string;
+function getPesapalEnvironment(baseUrl: string): PesapalEnvironment {
+  const normalized = normalizePesapalBaseUrl(baseUrl).toLowerCase();
+  if (!normalized) return 'unknown';
+  if (normalized.includes('pay.pesapal.com')) return 'production';
+  if (normalized.includes('cybqa.pesapal.com') || normalized.includes('demo.pesapal.com') || normalized.includes('sandbox')) return 'sandbox';
+  return 'unknown';
+}
+
+function maskValue(value: string) {
+  if (!value) return '';
+  if (value.length <= 8) return `${value.slice(0, 2)}...${value.slice(-2)}`;
+  return `${value.slice(0, 4)}...${value.slice(-4)}`;
+}
+
+function getSubmitUrlParts(baseUrl: string) {
+  if (!baseUrl) return {};
+  try {
+    const url = new URL(`${normalizePesapalBaseUrl(baseUrl)}/api/Transactions/SubmitOrderRequest`);
+    return { submitUrlHost: url.host, submitUrlPath: url.pathname };
+  } catch {
+    return { submitUrlPath: '/api/Transactions/SubmitOrderRequest' };
+  }
+}
+
+export function getPesapalSafeDiagnostics(options?: {
+  debugCode?: string;
   httpStatus?: number;
-  data?: Pick<PesapalTokenResponse, 'error' | 'message' | 'status'>;
+  data?: Pick<PesapalTokenResponse | PesapalSubmitOrderResponse, 'error' | 'message' | 'status'>;
+  submitUrl?: string;
+  callbackUrl?: string;
+  cancellationUrl?: string;
 }): PesapalSafeDiagnostics {
+  const env = getEnv();
+  const submitUrlParts = options?.submitUrl
+    ? getSubmitUrlParts(options.submitUrl.replace(/\/api\/Transactions\/SubmitOrderRequest$/i, ''))
+    : getSubmitUrlParts(env.pesapalBaseUrl);
+
   return {
-    authUrl: options?.authUrl,
-    env: getPesapalEnvPresence(),
+    debugCode: options?.debugCode,
+    environment: getPesapalEnvironment(env.pesapalBaseUrl),
+    hasBaseUrl: Boolean(env.pesapalBaseUrl),
+    hasConsumerKey: Boolean(env.pesapalConsumerKey),
+    hasConsumerSecret: Boolean(env.pesapalConsumerSecret),
+    hasIpnId: Boolean(env.pesapalIpnId),
+    siteUrl: env.siteUrl,
+    ...submitUrlParts,
+    callbackUrl: options?.callbackUrl,
+    cancellationUrl: options?.cancellationUrl,
+    maskedIpnId: env.pesapalIpnId ? maskValue(env.pesapalIpnId) : undefined,
     httpStatus: options?.httpStatus,
     pesapalStatus: options?.data?.status,
     pesapalMessage: options?.data?.message,
@@ -113,7 +163,19 @@ function safePesapalDiagnostics(options?: {
   };
 }
 
-function logPesapalAuthDiagnostics(label: string, diagnostics: PesapalSafeDiagnostics) {
+
+export function getPesapalEnvPresence() {
+  const diagnostics = getPesapalSafeDiagnostics();
+  return {
+    PESAPAL_BASE_URL: diagnostics.hasBaseUrl,
+    PESAPAL_CONSUMER_KEY: diagnostics.hasConsumerKey,
+    PESAPAL_CONSUMER_SECRET: diagnostics.hasConsumerSecret,
+    PESAPAL_IPN_ID: diagnostics.hasIpnId,
+    NEXT_PUBLIC_SITE_URL: Boolean(diagnostics.siteUrl)
+  };
+}
+
+function logSafePesapalDiagnostics(label: string, diagnostics: PesapalSafeDiagnostics) {
   console.info(label, diagnostics);
 }
 
@@ -128,7 +190,8 @@ function requirePesapalEnv() {
 
   if (missing.length) {
     throw new PesapalError(`Missing Pesapal environment variables: ${missing.join(', ')}`, {
-      safeDiagnostics: safePesapalDiagnostics()
+      debugCode: 'PESAPAL_ENV_MISSING',
+      safeDiagnostics: getPesapalSafeDiagnostics({ debugCode: 'PESAPAL_ENV_MISSING' })
     });
   }
 
@@ -141,7 +204,12 @@ async function readJsonResponse<T>(response: Response): Promise<T> {
   try {
     return JSON.parse(text) as T;
   } catch {
-    throw new PesapalError('Pesapal returned a non-JSON response.', { status: response.status, details: text });
+    throw new PesapalError('Pesapal returned a non-JSON response.', {
+      status: response.status,
+      details: text,
+      debugCode: 'PESAPAL_NON_JSON_RESPONSE',
+      safeDiagnostics: getPesapalSafeDiagnostics({ debugCode: 'PESAPAL_NON_JSON_RESPONSE', httpStatus: response.status })
+    });
   }
 }
 
@@ -153,21 +221,23 @@ function pesapalHeaders(token?: string) {
   };
 }
 
-function normalizePesapalBaseUrl(baseUrl: string) {
-  return baseUrl
-    .trim()
-    .replace(/\/+$/, '')
-    .replace(/\/api\/Auth\/RequestToken$/i, '')
-    .replace(/\/api\/URLSetup\/RegisterIPN$/i, '')
-    .replace(/\/api\/Transactions\/SubmitOrderRequest$/i, '')
-    .replace(/\/api\/Transactions\/GetTransactionStatus$/i, '');
-}
-
 export function buildPesapalUrl(path: string) {
   const env = getEnv();
   const normalizedBaseUrl = normalizePesapalBaseUrl(env.pesapalBaseUrl);
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
   return `${normalizedBaseUrl}${normalizedPath}`;
+}
+
+export function buildPesapalMerchantReference(orderId: string) {
+  const normalizedOrderId = orderId.replace(/[^A-Za-z0-9_.:-]/g, '-');
+  return `ORDER-${normalizedOrderId}`.slice(0, 50);
+}
+
+export function orderIdFromPesapalMerchantReference(merchantReference: string) {
+  return merchantReference
+    .replace(/^GIFTORA-/, '')
+    .replace(/^ORDER-/, '')
+    .replace(/^ORDER#/, '');
 }
 
 export async function getPesapalTokenResponse() {
@@ -183,15 +253,16 @@ export async function getPesapalTokenResponse() {
     cache: 'no-store'
   });
   const data = await readJsonResponse<PesapalTokenResponse>(response);
-  const safeDiagnostics = safePesapalDiagnostics({ authUrl, httpStatus: response.status, data });
+  const safeDiagnostics = getPesapalSafeDiagnostics({ debugCode: 'PESAPAL_AUTH_RESPONSE', httpStatus: response.status, data });
 
-  logPesapalAuthDiagnostics('[PESAPAL_AUTH_RESPONSE]', safeDiagnostics);
+  logSafePesapalDiagnostics('[PESAPAL_AUTH_RESPONSE]', safeDiagnostics);
 
   if (response.status !== 200 || !data.token) {
     throw new PesapalError('Pesapal authentication failed.', {
       status: response.status,
       details: data,
-      safeDiagnostics
+      debugCode: 'PESAPAL_AUTH_FAILED',
+      safeDiagnostics: getPesapalSafeDiagnostics({ debugCode: 'PESAPAL_AUTH_FAILED', httpStatus: response.status, data })
     });
   }
 
@@ -219,7 +290,12 @@ export async function registerPesapalIpn() {
   const data = await readJsonResponse<PesapalIpnResponse>(response);
 
   if (!response.ok || !data.ipn_id) {
-    throw new PesapalError('Pesapal IPN registration failed.', { status: response.status, details: data });
+    throw new PesapalError('Pesapal IPN registration failed.', {
+      status: response.status,
+      details: data,
+      debugCode: 'PESAPAL_IPN_REGISTRATION_FAILED',
+      safeDiagnostics: getPesapalSafeDiagnostics({ debugCode: 'PESAPAL_IPN_REGISTRATION_FAILED', httpStatus: response.status, data })
+    });
   }
 
   return data;
@@ -228,41 +304,84 @@ export async function registerPesapalIpn() {
 export async function submitPesapalOrder({ order, merchantReference, amount }: PesapalSubmitOrderInput) {
   const env = requirePesapalEnv();
   if (!env.pesapalIpnId) {
-    throw new PesapalError('Pesapal IPN registration is required before checkout. Register the IPN URL and set PESAPAL_IPN_ID to the returned ipn_id.', {
-      safeDiagnostics: safePesapalDiagnostics()
+    throw new PesapalError('PESAPAL_IPN_ID is missing. Register IPN and configure the returned ipn_id.', {
+      status: 500,
+      debugCode: 'PESAPAL_IPN_ID_MISSING',
+      safeDiagnostics: getPesapalSafeDiagnostics({ debugCode: 'PESAPAL_IPN_ID_MISSING' })
     });
   }
 
   const token = await getPesapalToken();
   const deliveryArea = order.cityId === 'delivery-pin' ? order.region : order.cityId;
-  const response = await fetch(buildPesapalUrl('/api/Transactions/SubmitOrderRequest'), {
+  const submitUrl = buildPesapalUrl('/api/Transactions/SubmitOrderRequest');
+  const callbackUrl = `${env.siteUrl}/payment/callback`;
+  const cancellationUrl = `${env.siteUrl}/checkout`;
+  const requestBody = {
+    id: merchantReference,
+    currency: 'UGX',
+    amount,
+    description: 'Giftora order payment',
+    callback_url: callbackUrl,
+    cancellation_url: cancellationUrl,
+    notification_id: env.pesapalIpnId,
+    billing_address: {
+      email_address: order.email,
+      phone_number: order.recipientPhone,
+      first_name: order.recipientName,
+      last_name: '',
+      line_1: deliveryArea,
+      city: deliveryArea,
+      state: order.region,
+      country_code: 'UG'
+    }
+  };
+
+  const submitUrlObject = new URL(submitUrl);
+  console.info('[PESAPAL_SUBMIT_ORDER_REQUEST]', {
+    merchantReference,
+    amount,
+    currency: requestBody.currency,
+    callback_url: callbackUrl,
+    cancellation_url: cancellationUrl,
+    notification_id_masked: maskValue(env.pesapalIpnId),
+    hasBaseUrl: Boolean(env.pesapalBaseUrl),
+    environment: getPesapalEnvironment(env.pesapalBaseUrl),
+    submitUrlHost: submitUrlObject.host,
+    submitUrlPath: submitUrlObject.pathname
+  });
+
+  const response = await fetch(submitUrl, {
     method: 'POST',
     headers: pesapalHeaders(token),
-    body: JSON.stringify({
-      id: merchantReference,
-      currency: 'UGX',
-      amount,
-      description: 'Giftora order payment',
-      callback_url: `${env.siteUrl}/payment/callback`,
-      cancellation_url: `${env.siteUrl}/checkout`,
-      notification_id: env.pesapalIpnId,
-      billing_address: {
-        email_address: order.email,
-        phone_number: order.recipientPhone,
-        first_name: order.recipientName,
-        last_name: '',
-        line_1: deliveryArea,
-        city: deliveryArea,
-        state: order.region,
-        country_code: 'UG'
-      }
-    }),
+    body: JSON.stringify(requestBody),
     cache: 'no-store'
   });
   const data = await readJsonResponse<PesapalSubmitOrderResponse>(response);
+  const safeDiagnostics = getPesapalSafeDiagnostics({
+    debugCode: 'PESAPAL_SUBMIT_ORDER_RESPONSE',
+    httpStatus: response.status,
+    data,
+    submitUrl,
+    callbackUrl,
+    cancellationUrl
+  });
+
+  console.info('[PESAPAL_SUBMIT_ORDER_RESPONSE]', {
+    httpStatus: response.status,
+    responseBody: data,
+    safeDiagnostics
+  });
 
   if (!response.ok || !data.order_tracking_id || !data.redirect_url) {
-    throw new PesapalError('Pesapal order submission failed.', { status: response.status, details: data });
+    throw new PesapalError('Pesapal order submission failed.', {
+      status: response.status,
+      details: data,
+      debugCode: 'PESAPAL_SUBMIT_ORDER_FAILED',
+      safeDiagnostics: {
+        ...safeDiagnostics,
+        debugCode: 'PESAPAL_SUBMIT_ORDER_FAILED'
+      }
+    });
   }
 
   return data;
@@ -283,7 +402,12 @@ export async function getPesapalTransactionStatus(orderTrackingId: string) {
   const data = await readJsonResponse<PesapalTransactionStatus>(response);
 
   if (!response.ok) {
-    throw new PesapalError('Pesapal transaction status lookup failed.', { status: response.status, details: data });
+    throw new PesapalError('Pesapal transaction status lookup failed.', {
+      status: response.status,
+      details: data,
+      debugCode: 'PESAPAL_STATUS_LOOKUP_FAILED',
+      safeDiagnostics: getPesapalSafeDiagnostics({ debugCode: 'PESAPAL_STATUS_LOOKUP_FAILED', httpStatus: response.status, data })
+    });
   }
 
   return data;

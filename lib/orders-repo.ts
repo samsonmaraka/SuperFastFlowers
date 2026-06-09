@@ -1,6 +1,7 @@
 import { PutCommand, QueryCommand, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { db } from '@/lib/dynamodb';
 import { getEnv } from '@/lib/env';
+import { orderIdFromPesapalMerchantReference } from '@/lib/pesapal';
 import { OrderRequest, OrderStatus, PesapalOrderPayment } from '@/lib/types';
 
 const memoryOrders: OrderRequest[] = [];
@@ -21,7 +22,7 @@ export async function getOrderById(orderId: string) {
 }
 
 export async function getOrderByPesapalMerchantReference(merchantReference: string) {
-  const orderId = merchantReference.replace(/^GIFTORA-/, '');
+  const orderId = orderIdFromPesapalMerchantReference(merchantReference);
   const order = await getOrderById(orderId);
   if (order) return order;
 
