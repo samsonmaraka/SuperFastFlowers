@@ -24,8 +24,12 @@ frontend:
             'PESAPAL_CONSUMER_SECRET',
             'PESAPAL_IPN_ID'
           ];
+          const defaults = {
+            NEXT_PUBLIC_SITE_URL: 'https://www.sendagift.ug'
+          };
           const lines = envNames.map((name) => {
-            const value = name === 'AWS_REGION' ? (process.env.AWS_REGION || process.env.REGION || '') : (process.env[name] || '');
+            const envValue = name === 'AWS_REGION' ? (process.env.AWS_REGION || process.env.REGION || '') : (process.env[name] || '');
+            const value = envValue || defaults[name] || '';
             return `${name}=${JSON.stringify(value)}`;
           });
           fs.writeFileSync('.env.production', `${lines.join('\n')}\n`);

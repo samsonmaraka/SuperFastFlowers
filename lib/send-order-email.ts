@@ -1,6 +1,7 @@
 import 'server-only';
 import { SESClient, SendEmailCommand } from '@aws-sdk/client-ses';
 import { getEnv } from '@/lib/env';
+import { getPublicSiteUrl } from '@/lib/site-url';
 import { listProducts } from '@/lib/products-repo';
 import { OrderRequest } from '@/lib/types';
 import { formatUgx } from '@/lib/format';
@@ -119,7 +120,7 @@ export async function sendOrderSuccessEmail(order: OrderRequest) {
   const sesClient = new SESClient({ region: awsRegion });
   const sesClientResolvedRegion = await sesClient.config.region();
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL || 'http://localhost:3000';
+  const siteUrl = getPublicSiteUrl();
   const products = await listProducts();
   const lines = await buildOrderLines(order, products);
   const computedTotal = typeof order.totalAmount === 'number' ? order.totalAmount : lines.reduce((sum, line) => sum + (line.lineTotal || 0), 0);
