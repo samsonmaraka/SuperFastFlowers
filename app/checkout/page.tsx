@@ -21,7 +21,7 @@ export default function CheckoutPage() {
     <div className="mx-auto max-w-3xl px-4 py-10">
       <h1 className="mb-3 text-3xl font-semibold">Checkout</h1>
       <p className="mb-5 text-gray-700">
-        Enter the delivery details, then pay securely with Pesapal to confirm your Giftora order.
+        Enter the delivery details, then pay securely with Pesapal to confirm your Sendagift UG order.
       </p>
       <CheckoutClient>
       <form action="/api/orders" method="post" className="space-y-3 rounded-xl border bg-white p-6">
