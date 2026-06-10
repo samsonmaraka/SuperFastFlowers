@@ -15,8 +15,6 @@ export default async function ShopPage({
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
-      <h1 className="mb-6 text-3xl font-semibold">Shop gifts</h1>
-
       <nav className="mb-5">
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
           <Link

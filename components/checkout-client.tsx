@@ -4,11 +4,39 @@ import Link from 'next/link';
 import { FormEvent, ReactElement, ReactNode, cloneElement, isValidElement, useEffect, useMemo, useState } from 'react';
 import { CartItem, readCart } from '@/lib/cart-storage';
 import { formatUgx } from '@/lib/format';
+import { DEFAULT_PREPARATION_DAYS } from '@/lib/preparation-days';
 
 type CheckoutResponse = {
   redirect_url?: string;
   error?: string;
 };
+
+function getOrdinalSuffix(day: number) {
+  if (day >= 11 && day <= 13) return 'th';
+
+  switch (day % 10) {
+    case 1:
+      return 'st';
+    case 2:
+      return 'nd';
+    case 3:
+      return 'rd';
+    default:
+      return 'th';
+  }
+}
+
+function formatDeliveryDateLabel(dateValue: string) {
+  const date = new Date(`${dateValue}T00:00:00.000Z`);
+  if (Number.isNaN(date.getTime())) return dateValue;
+
+  const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'UTC' }).format(date);
+  const month = new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' }).format(date);
+  const day = date.getUTCDate();
+  const year = date.getUTCFullYear();
+
+  return `${weekday} ${day}${getOrdinalSuffix(day)} ${month} ${year}`;
+}
 
 export function CheckoutClient({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -29,12 +57,16 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
   }, []);
 
   const subtotal = useMemo(() => items.reduce((sum, item) => sum + item.price * item.quantity, 0), [items]);
-  const maxPreparationDays = useMemo(() => Math.max(2, ...items.map((item) => item.preparationDays ?? 2)), [items]);
+  const maxPreparationDays = useMemo(
+    () => Math.max(DEFAULT_PREPARATION_DAYS, ...items.map((item) => item.preparationDays ?? DEFAULT_PREPARATION_DAYS)),
+    [items]
+  );
   const minDeliveryDate = useMemo(() => {
     const nextDate = new Date();
     nextDate.setDate(nextDate.getDate() + maxPreparationDays);
     return nextDate.toISOString().split('T')[0];
   }, [maxPreparationDays]);
+  const minDeliveryDateLabel = useMemo(() => formatDeliveryDateLabel(minDeliveryDate), [minDeliveryDate]);
   const serializedItems = useMemo(
     () =>
       items.map((item) => ({
@@ -117,7 +149,7 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
           <input type="hidden" name="itemsJson" value={JSON.stringify(serializedItems)} />
           <input type="hidden" name="totalAmount" value={String(subtotal)} />
           <p className="rounded border border-pink-100 bg-pink-50 p-3 text-sm text-gray-700">
-            Earliest delivery for these items is D+{maxPreparationDays} ({minDeliveryDate}).
+            Earliest delivery for these items is {minDeliveryDateLabel}.
           </p>
           {checkoutError ? <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{checkoutError}</p> : null}
           <div className="flex flex-wrap gap-3">
