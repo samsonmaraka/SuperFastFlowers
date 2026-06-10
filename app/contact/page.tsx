@@ -8,6 +8,12 @@ export default function ContactPage() {
           maramson@gmail.com
         </a>
       </p>
+      <p className="text-gray-700">
+        Phone:{' '}
+        <a href="tel:+256774924285" className="text-pink-700">
+          +256774924285
+        </a>
+      </p>
     </div>
   );
 }
