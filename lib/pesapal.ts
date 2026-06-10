@@ -320,7 +320,7 @@ export async function submitPesapalOrder({ order, merchantReference, amount }: P
     id: merchantReference,
     currency: 'UGX',
     amount,
-    description: 'Giftora order payment',
+    description: 'Sendagift UG order payment',
     callback_url: callbackUrl,
     cancellation_url: cancellationUrl,
     notification_id: env.pesapalIpnId,

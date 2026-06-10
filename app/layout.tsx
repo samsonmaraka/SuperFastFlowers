@@ -7,12 +7,12 @@ import { getPublicSiteUrl } from '@/lib/site-url';
 export const metadata: Metadata = {
   metadataBase: new URL(getPublicSiteUrl()),
   title: {
-    default: 'Giftora | Thoughtful Gifts for Every Celebration',
-    template: '%s | Giftora'
+    default: 'Sendagift UG | Thoughtful Gifts for Every Celebration',
+    template: '%s | Sendagift UG'
   },
   description: 'Discover premium curated gifts for birthdays, holidays, and milestones.',
   openGraph: {
-    title: 'Giftora',
+    title: 'Sendagift UG',
     description: 'Thoughtful gifts with premium design and easy checkout.',
     type: 'website'
   }

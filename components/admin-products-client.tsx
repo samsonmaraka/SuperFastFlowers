@@ -42,7 +42,7 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
   const [token, setToken] = useState(''); const [loginCode, setLoginCode] = useState(''); const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [message, setMessage] = useState('');
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [form, setForm] = useState({ name:'', description:'', price:'0', preparationDays:'2', imageUrl:'', vendorId:'', tagsInput:'', categories:'' });
+  const [form, setForm] = useState({ name:'', description:'', price:'', preparationDays:'2', imageUrl:'', vendorId:'', tagsInput:'', categories:'' });
   const [vendorForm, setVendorForm] = useState<Vendor>({ id:'', name:'', contactPerson:'', phone:'', email:'', location:'', vendorLatitude: undefined, vendorLongitude: undefined, notes:'', status:'active', createdAt:'', updatedAt:'' });
 
   const activeVendors = useMemo(()=> vendors.filter(v=>v.status==='active'),[vendors]);
@@ -113,6 +113,7 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
     if (!form.imageUrl.trim()) { setMessage('An image URL or uploaded image is required.'); return; }
     if (!form.vendorId || !selectedVendor) { setMessage('Please select an active vendor before saving this item.'); return; }
 
+    if (!form.price.trim()) { setMessage('Price is required.'); return; }
     const priceValue = Number(form.price);
     if (!Number.isFinite(priceValue) || priceValue < 0) { setMessage('Price must be a valid number greater than or equal to 0.'); return; }
 
@@ -129,7 +130,7 @@ export function AdminProductsClient({ initial }: { initial: Product[] }) {
       setProducts(d.products||[]);
       setMessage('Saved item.');
       setEditingId(null);
-      setForm({ name:'', description:'', price:'0', preparationDays:'2', imageUrl:'', vendorId:'', tagsInput:'', categories:'' });
+      setForm({ name:'', description:'', price:'', preparationDays:'2', imageUrl:'', vendorId:'', tagsInput:'', categories:'' });
       return;
     }
 

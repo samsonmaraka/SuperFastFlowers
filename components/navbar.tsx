@@ -45,7 +45,7 @@ export function Navbar() {
       <nav className="mx-auto max-w-6xl px-4 py-3">
         <div className="flex items-center justify-between">
           <Link href="/" className="text-xl font-semibold tracking-tight" onClick={() => setIsMobileOpen(false)}>
-            Giftora
+            Sendagift UG
           </Link>
 
           <ul className="hidden items-center gap-4 text-sm font-medium md:flex">

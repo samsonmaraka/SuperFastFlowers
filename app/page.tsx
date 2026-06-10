@@ -16,7 +16,7 @@ export default async function HomePage({
   return (
     <div className="mx-auto max-w-6xl space-y-14 px-4 py-10">
       <section className="rounded-2xl bg-gradient-to-r from-rose to-white p-10">
-        <p className="text-sm uppercase tracking-[0.2em] text-pink-700">Giftora Curated Collection</p>
+        <p className="text-sm uppercase tracking-[0.2em] text-pink-700">Sendagift UG Curated Collection</p>
         <h1 className="mt-3 max-w-2xl text-4xl font-semibold leading-tight">Thoughtful gifts for life&apos;s most meaningful moments.</h1>
         <p className="mt-3 max-w-2xl text-gray-700">Browse premium gift sets designed for birthdays, thank-yous, milestones, and celebrations.</p>
       </section>

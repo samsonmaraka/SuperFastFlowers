@@ -15,7 +15,7 @@ type PaymentCallbackPageProps = {
 const statusCopy = {
   PAID: {
     title: 'Payment received',
-    message: 'Thank you — Pesapal has confirmed your payment. Our team will continue preparing your Giftora order.'
+    message: 'Thank you — Pesapal has confirmed your payment. Our team will continue preparing your Sendagift UG order.'
   },
   PAYMENT_PENDING: {
     title: 'Payment is still pending',
@@ -27,11 +27,11 @@ const statusCopy = {
   },
   PAYMENT_REVERSED: {
     title: 'Payment reversed',
-    message: 'Pesapal reported that this payment was reversed. Please contact Giftora if you need help.'
+    message: 'Pesapal reported that this payment was reversed. Please contact Sendagift UG if you need help.'
   },
   PAYMENT_INVALID: {
     title: 'Payment invalid',
-    message: 'Pesapal could not validate this payment. Please contact Giftora before retrying.'
+    message: 'Pesapal could not validate this payment. Please contact Sendagift UG before retrying.'
   }
 };
 
@@ -82,7 +82,7 @@ export default async function PaymentCallbackPage({ searchParams }: PaymentCallb
     } catch (error) {
       console.error('[PESAPAL_CALLBACK_VERIFY_FAILED]', error);
       title = 'Payment verification failed';
-      message = 'We could not verify the payment with Pesapal right now. Please contact Giftora if your payment was deducted.';
+      message = 'We could not verify the payment with Pesapal right now. Please contact Sendagift UG if your payment was deducted.';
       displayStatus = 'Verification failed';
     }
   }
@@ -119,7 +119,7 @@ export default async function PaymentCallbackPage({ searchParams }: PaymentCallb
           ) : (
             <Link href="/shop" className="rounded bg-ink px-4 py-2 text-white">Continue shopping</Link>
           )}
-          <Link href="/contact" className="rounded border border-ink px-4 py-2 text-ink">Contact Giftora</Link>
+          <Link href="/contact" className="rounded border border-ink px-4 py-2 text-ink">Contact Sendagift UG</Link>
         </div>
       </section>
     </main>
