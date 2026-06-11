@@ -14,7 +14,10 @@ function buildGoogleMapsLink(lat: number, lng: number) {
 type GoogleMaps = {
   maps: {
     Map: new (element: Element, options: Record<string, unknown>) => GoogleMapInstance;
-    Marker: new (options: { position: SelectedCoords; map: GoogleMapInstance }) => GoogleMarkerInstance;
+    Marker: new (options: { position: SelectedCoords; map: GoogleMapInstance; draggable?: boolean }) => GoogleMarkerInstance;
+    places?: {
+      Autocomplete: new (input: HTMLInputElement, options: Record<string, unknown>) => GooglePlaceAutocompleteInstance;
+    };
   };
 };
 
@@ -26,11 +29,23 @@ type GoogleMapsListener = { remove: () => void };
 
 type GoogleMapInstance = {
   addListener: (event: 'click', handler: (event: GoogleMapMouseEvent) => void) => GoogleMapsListener;
+  setCenter: (position: SelectedCoords) => void;
+  setZoom: (zoom: number) => void;
 };
 
 type GoogleMarkerInstance = {
+  addListener: (event: 'dragend', handler: (event: GoogleMapMouseEvent) => void) => GoogleMapsListener;
   setPosition: (position: SelectedCoords) => void;
   setMap: (map: GoogleMapInstance | null) => void;
+};
+
+type GooglePlaceAutocompleteInstance = {
+  addListener: (event: 'place_changed', handler: () => void) => GoogleMapsListener;
+  getPlace: () => {
+    geometry?: {
+      location?: { lat: () => number; lng: () => number };
+    };
+  };
 };
 
 declare global {
@@ -54,7 +69,7 @@ function loadGoogleMapsScript(apiKey: string) {
     }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places`;
     script.async = true;
     script.defer = true;
     script.setAttribute('data-google-maps', '1');
@@ -68,23 +83,27 @@ export function DeliveryPinMap() {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const mapRef = useRef<GoogleMapInstance | null>(null);
   const markerRef = useRef<GoogleMarkerInstance | null>(null);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
 
   const [selectedCoords, setSelectedCoords] = useState<SelectedCoords | null>(null);
   const [deliveryPinUrl, setDeliveryPinUrl] = useState('');
   const [mapUnavailable, setMapUnavailable] = useState(!apiKey);
+  const [searchUnavailable, setSearchUnavailable] = useState(false);
 
   const helperText = useMemo(() => {
     if (mapUnavailable) {
       return 'Google Maps API key is not configured. Paste a Google Maps pin link manually.';
     }
 
-    return 'Pan/drag and zoom on the map, then click the exact delivery spot to drop a pin automatically.';
+    return 'Search for a landmark or address, select a result to drop a pin, then drag the pin or click the exact delivery spot to adjust it.';
   }, [mapUnavailable]);
 
   useEffect(() => {
     if (!apiKey) return;
 
     let clickListener: GoogleMapsListener | null = null;
+    let dragListener: GoogleMapsListener | null = null;
+    let autocompleteListener: GoogleMapsListener | null = null;
     let disposed = false;
 
     const setupMap = async () => {
@@ -109,15 +128,24 @@ export function DeliveryPinMap() {
         keyboardShortcuts: false
       });
 
-      const setPin = (lat: number, lng: number) => {
+      const setPin = (lat: number, lng: number, shouldZoom = false) => {
         const roundedLat = Number(lat.toFixed(6));
         const roundedLng = Number(lng.toFixed(6));
         const point = { lat: roundedLat, lng: roundedLng };
 
         if (!markerRef.current) {
-          markerRef.current = new window.google!.maps.Marker({ position: point, map });
+          markerRef.current = new window.google!.maps.Marker({ position: point, map, draggable: true });
+          dragListener = markerRef.current.addListener('dragend', (event: GoogleMapMouseEvent) => {
+            if (!event.latLng) return;
+            setPin(event.latLng.lat(), event.latLng.lng());
+          });
         } else {
           markerRef.current.setPosition(point);
+        }
+
+        if (shouldZoom) {
+          map.setCenter(point);
+          map.setZoom(16);
         }
 
         setSelectedCoords(point);
@@ -129,6 +157,22 @@ export function DeliveryPinMap() {
         setPin(event.latLng.lat(), event.latLng.lng());
       });
 
+      if (window.google.maps.places && searchInputRef.current) {
+        const autocomplete = new window.google.maps.places.Autocomplete(searchInputRef.current, {
+          fields: ['geometry', 'name', 'formatted_address']
+        });
+
+        autocompleteListener = autocomplete.addListener('place_changed', () => {
+          const place = autocomplete.getPlace();
+          const location = place.geometry?.location;
+          if (!location) return;
+          setPin(location.lat(), location.lng(), true);
+        });
+        setSearchUnavailable(false);
+      } else {
+        setSearchUnavailable(true);
+      }
+
       mapRef.current = map;
       setMapUnavailable(false);
     };
@@ -138,6 +182,8 @@ export function DeliveryPinMap() {
     return () => {
       disposed = true;
       if (clickListener) clickListener.remove();
+      if (dragListener) dragListener.remove();
+      if (autocompleteListener) autocompleteListener.remove();
       markerRef.current?.setMap(null);
       markerRef.current = null;
       mapRef.current = null;
@@ -148,7 +194,21 @@ export function DeliveryPinMap() {
     <label className="block space-y-2">
       <span className="text-sm font-medium text-gray-800">Delivery pin on map (optional)</span>
       <p className="text-sm text-gray-700">{helperText}</p>
-      {!mapUnavailable ? <div id={MAP_ELEMENT_ID} className="h-72 w-full overflow-hidden rounded border" /> : null}
+      {!mapUnavailable ? (
+        <>
+          <input
+            ref={searchInputRef}
+            type="text"
+            placeholder="Search for a landmark, building, or address"
+            className="w-full rounded border p-2"
+            autoComplete="off"
+          />
+          {searchUnavailable ? (
+            <p className="text-xs text-amber-700">Location search is unavailable. You can still pan and click the map to set a pin.</p>
+          ) : null}
+          <div id={MAP_ELEMENT_ID} className="h-72 w-full overflow-hidden rounded border" />
+        </>
+      ) : null}
       <input type="hidden" name="deliveryLatitude" value={selectedCoords?.lat ?? ''} />
       <input type="hidden" name="deliveryLongitude" value={selectedCoords?.lng ?? ''} />
       <input
