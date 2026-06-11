@@ -15,8 +15,9 @@ type GoogleMaps = {
   maps: {
     Map: new (element: Element, options: Record<string, unknown>) => GoogleMapInstance;
     Marker: new (options: { position: SelectedCoords; map: GoogleMapInstance; draggable?: boolean }) => GoogleMarkerInstance;
+    importLibrary?: (name: 'places') => Promise<GooglePlacesLibrary>;
     places?: {
-      Autocomplete: new (input: HTMLInputElement, options: Record<string, unknown>) => GooglePlaceAutocompleteInstance;
+      PlaceAutocompleteElement?: GooglePlaceAutocompleteElementConstructor;
     };
   };
 };
@@ -39,13 +40,27 @@ type GoogleMarkerInstance = {
   setMap: (map: GoogleMapInstance | null) => void;
 };
 
-type GooglePlaceAutocompleteInstance = {
-  addListener: (event: 'place_changed', handler: () => void) => GoogleMapsListener;
-  getPlace: () => {
-    geometry?: {
-      location?: { lat: () => number; lng: () => number };
-    };
+type GoogleLatLng = { lat: () => number; lng: () => number };
+
+type GooglePlace = {
+  fetchFields: (request: { fields: string[] }) => Promise<void>;
+  location?: GoogleLatLng;
+};
+
+type GooglePlacePredictionSelectEvent = Event & {
+  placePrediction?: {
+    toPlace: () => GooglePlace;
   };
+};
+
+type GooglePlaceAutocompleteElement = HTMLElement & {
+  placeholder: string;
+};
+
+type GooglePlaceAutocompleteElementConstructor = new (options?: Record<string, unknown>) => GooglePlaceAutocompleteElement;
+
+type GooglePlacesLibrary = {
+  PlaceAutocompleteElement: GooglePlaceAutocompleteElementConstructor;
 };
 
 declare global {
@@ -83,7 +98,7 @@ export function DeliveryPinMap() {
   const apiKey = process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY;
   const mapRef = useRef<GoogleMapInstance | null>(null);
   const markerRef = useRef<GoogleMarkerInstance | null>(null);
-  const searchInputRef = useRef<HTMLInputElement | null>(null);
+  const searchContainerRef = useRef<HTMLDivElement | null>(null);
 
   const [selectedCoords, setSelectedCoords] = useState<SelectedCoords | null>(null);
   const [deliveryPinUrl, setDeliveryPinUrl] = useState('');
@@ -103,7 +118,8 @@ export function DeliveryPinMap() {
 
     let clickListener: GoogleMapsListener | null = null;
     let dragListener: GoogleMapsListener | null = null;
-    let autocompleteListener: GoogleMapsListener | null = null;
+    let placeAutocompleteElement: GooglePlaceAutocompleteElement | null = null;
+    let placeAutocompleteHandler: ((event: Event) => void) | null = null;
     let disposed = false;
 
     const setupMap = async () => {
@@ -157,17 +173,42 @@ export function DeliveryPinMap() {
         setPin(event.latLng.lat(), event.latLng.lng());
       });
 
-      if (window.google.maps.places && searchInputRef.current) {
-        const autocomplete = new window.google.maps.places.Autocomplete(searchInputRef.current, {
-          fields: ['geometry', 'name', 'formatted_address']
-        });
+      const searchContainer = searchContainerRef.current;
+      let PlaceAutocompleteElement = window.google.maps.places?.PlaceAutocompleteElement;
 
-        autocompleteListener = autocomplete.addListener('place_changed', () => {
-          const place = autocomplete.getPlace();
-          const location = place.geometry?.location;
+      if (!PlaceAutocompleteElement && window.google.maps.importLibrary) {
+        try {
+          PlaceAutocompleteElement = (await window.google.maps.importLibrary('places')).PlaceAutocompleteElement;
+        } catch {
+          PlaceAutocompleteElement = undefined;
+        }
+      }
+
+      if (disposed) return;
+
+      if (PlaceAutocompleteElement && searchContainer) {
+        searchContainer.replaceChildren();
+
+        placeAutocompleteElement = new PlaceAutocompleteElement();
+        placeAutocompleteElement.placeholder = 'Search for a landmark, building, or address';
+        placeAutocompleteElement.className = 'block w-full';
+
+        placeAutocompleteHandler = async (event: Event) => {
+          const placePrediction = (event as GooglePlacePredictionSelectEvent).placePrediction;
+          if (!placePrediction) return;
+
+          const place = placePrediction.toPlace();
+          await place.fetchFields({ fields: ['location'] });
+
+          if (disposed) return;
+
+          const location = place.location;
           if (!location) return;
           setPin(location.lat(), location.lng(), true);
-        });
+        };
+
+        placeAutocompleteElement.addEventListener('gmp-select', placeAutocompleteHandler);
+        searchContainer.appendChild(placeAutocompleteElement);
         setSearchUnavailable(false);
       } else {
         setSearchUnavailable(true);
@@ -183,7 +224,10 @@ export function DeliveryPinMap() {
       disposed = true;
       if (clickListener) clickListener.remove();
       if (dragListener) dragListener.remove();
-      if (autocompleteListener) autocompleteListener.remove();
+      if (placeAutocompleteElement && placeAutocompleteHandler) {
+        placeAutocompleteElement.removeEventListener('gmp-select', placeAutocompleteHandler);
+      }
+      placeAutocompleteElement?.remove();
       markerRef.current?.setMap(null);
       markerRef.current = null;
       mapRef.current = null;
@@ -196,13 +240,7 @@ export function DeliveryPinMap() {
       <p className="text-sm text-gray-700">{helperText}</p>
       {!mapUnavailable ? (
         <>
-          <input
-            ref={searchInputRef}
-            type="text"
-            placeholder="Search for a landmark, building, or address"
-            className="w-full rounded border p-2"
-            autoComplete="off"
-          />
+          <div ref={searchContainerRef} className="w-full rounded border p-2" />
           {searchUnavailable ? (
             <p className="text-xs text-amber-700">Location search is unavailable. You can still pan and click the map to set a pin.</p>
           ) : null}
