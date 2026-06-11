@@ -18,8 +18,14 @@ type VendorGoogleMapMouseEvent = { latLng?: { lat: () => number; lng: () => numb
 type VendorGoogleMapsListener = { remove: () => void };
 type VendorGoogleMapInstance = {
   addListener: (event: 'click', handler: (event: VendorGoogleMapMouseEvent) => void) => VendorGoogleMapsListener;
+  setCenter: (position: Coords) => void;
+  setZoom: (zoom: number) => void;
 };
-type VendorGoogleMarkerInstance = { setPosition: (position: Coords) => void; setMap: (map: VendorGoogleMapInstance | null) => void };
+type VendorGoogleMarkerInstance = {
+  addListener: (event: 'dragend', handler: (event: VendorGoogleMapMouseEvent) => void) => VendorGoogleMapsListener;
+  setPosition: (position: Coords) => void;
+  setMap: (map: VendorGoogleMapInstance | null) => void;
+};
 
 function loadGoogleMapsScript(apiKey: string) {
   return new Promise<void>((resolve, reject) => {
@@ -36,7 +42,7 @@ function loadGoogleMapsScript(apiKey: string) {
     }
 
     const script = document.createElement('script');
-    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}`;
+    script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&libraries=places`;
     script.async = true;
     script.defer = true;
     script.setAttribute('data-google-maps', '1');
