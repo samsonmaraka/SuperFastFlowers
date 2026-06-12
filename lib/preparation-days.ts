@@ -26,3 +26,34 @@ export function getMinimumDeliveryDate(preparationDays: number, now = new Date()
   min.setUTCHours(0, 0, 0, 0);
   return min;
 }
+
+export function getDateInputValue(date: Date) {
+  return date.toISOString().split('T')[0];
+}
+
+function getOrdinalSuffix(day: number) {
+  if (day >= 11 && day <= 13) return 'th';
+
+  switch (day % 10) {
+    case 1:
+      return 'st';
+    case 2:
+      return 'nd';
+    case 3:
+      return 'rd';
+    default:
+      return 'th';
+  }
+}
+
+export function formatDeliveryDateLabel(date: Date | string) {
+  const parsedDate = typeof date === 'string' ? new Date(`${date}T00:00:00.000Z`) : date;
+  if (Number.isNaN(parsedDate.getTime())) return typeof date === 'string' ? date : '';
+
+  const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'UTC' }).format(parsedDate);
+  const month = new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' }).format(parsedDate);
+  const day = parsedDate.getUTCDate();
+  const year = parsedDate.getUTCFullYear();
+
+  return `${weekday} ${day}${getOrdinalSuffix(day)} ${month} ${year}`;
+}

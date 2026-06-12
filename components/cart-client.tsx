@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { formatUgx } from '@/lib/format';
 import { CartItem, readCart, writeCart } from '@/lib/cart-storage';
+import { DEFAULT_PREPARATION_DAYS, formatDeliveryDateLabel, getMinimumDeliveryDate } from '@/lib/preparation-days';
 
 const TEMPLATE_PRODUCT_NAME = 'Celebration Bloom Vase';
 
@@ -36,8 +37,12 @@ export function CartClient() {
     [items]
   );
   const maxPreparationDays = useMemo(
-    () => Math.max(2, ...items.map((item) => item.preparationDays ?? 2)),
+    () => Math.max(DEFAULT_PREPARATION_DAYS, ...items.map((item) => item.preparationDays ?? DEFAULT_PREPARATION_DAYS)),
     [items]
+  );
+  const earliestDeliveryDateLabel = useMemo(
+    () => formatDeliveryDateLabel(getMinimumDeliveryDate(maxPreparationDays)),
+    [maxPreparationDays]
   );
 
   const updateQty = (productId: string, quantity: number) => {
@@ -94,7 +99,7 @@ export function CartClient() {
         </div>
         */}
         <p className="mt-2 text-xs text-gray-600">
-          The earliest delivery date for this cart is D+{maxPreparationDays}.
+          The earliest delivery date for this cart is {earliestDeliveryDateLabel}.
         </p>
       </div>
       <p className="text-lg font-semibold">Total: UGX {formatUgx(total)}</p>

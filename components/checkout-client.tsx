@@ -4,39 +4,12 @@ import Link from 'next/link';
 import { FormEvent, ReactElement, ReactNode, cloneElement, isValidElement, useEffect, useMemo, useState } from 'react';
 import { CartItem, readCart } from '@/lib/cart-storage';
 import { formatUgx } from '@/lib/format';
-import { DEFAULT_PREPARATION_DAYS } from '@/lib/preparation-days';
+import { DEFAULT_PREPARATION_DAYS, formatDeliveryDateLabel, getDateInputValue, getMinimumDeliveryDate } from '@/lib/preparation-days';
 
 type CheckoutResponse = {
   redirect_url?: string;
   error?: string;
 };
-
-function getOrdinalSuffix(day: number) {
-  if (day >= 11 && day <= 13) return 'th';
-
-  switch (day % 10) {
-    case 1:
-      return 'st';
-    case 2:
-      return 'nd';
-    case 3:
-      return 'rd';
-    default:
-      return 'th';
-  }
-}
-
-function formatDeliveryDateLabel(dateValue: string) {
-  const date = new Date(`${dateValue}T00:00:00.000Z`);
-  if (Number.isNaN(date.getTime())) return dateValue;
-
-  const weekday = new Intl.DateTimeFormat('en-US', { weekday: 'long', timeZone: 'UTC' }).format(date);
-  const month = new Intl.DateTimeFormat('en-US', { month: 'long', timeZone: 'UTC' }).format(date);
-  const day = date.getUTCDate();
-  const year = date.getUTCFullYear();
-
-  return `${weekday} ${day}${getOrdinalSuffix(day)} ${month} ${year}`;
-}
 
 export function CheckoutClient({ children }: { children: ReactNode }) {
   const [items, setItems] = useState<CartItem[]>([]);
@@ -61,11 +34,10 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
     () => Math.max(DEFAULT_PREPARATION_DAYS, ...items.map((item) => item.preparationDays ?? DEFAULT_PREPARATION_DAYS)),
     [items]
   );
-  const minDeliveryDate = useMemo(() => {
-    const nextDate = new Date();
-    nextDate.setDate(nextDate.getDate() + maxPreparationDays);
-    return nextDate.toISOString().split('T')[0];
-  }, [maxPreparationDays]);
+  const minDeliveryDate = useMemo(
+    () => getDateInputValue(getMinimumDeliveryDate(maxPreparationDays)),
+    [maxPreparationDays]
+  );
   const minDeliveryDateLabel = useMemo(() => formatDeliveryDateLabel(minDeliveryDate), [minDeliveryDate]);
   const serializedItems = useMemo(
     () =>
