@@ -45,14 +45,6 @@ export default async function ShopPage({
         </div>
       </nav>
 
-      <form className="mb-6">
-        {activeCategory ? <input type="hidden" name="category" value={activeCategory} /> : null}
-        <div className="flex gap-3">
-          <input name="q" defaultValue={searchParams.q} placeholder="Search gifts" className="w-full rounded border p-2" />
-          <button className="rounded bg-ink px-4 py-2 text-white">Search</button>
-        </div>
-      </form>
-
       <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
         {products.map((product) => (
           <ProductCard key={product.id} product={product} />
