@@ -31,7 +31,7 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
 
   const subtotal = useMemo(() => items.reduce((sum, item) => sum + item.price * item.quantity, 0), [items]);
   const maxPreparationDays = useMemo(
-    () => Math.max(DEFAULT_PREPARATION_DAYS, ...items.map((item) => item.preparationDays ?? DEFAULT_PREPARATION_DAYS)),
+    () => Math.max(0, ...items.map((item) => item.preparationDays ?? DEFAULT_PREPARATION_DAYS)),
     [items]
   );
   const minDeliveryDate = useMemo(

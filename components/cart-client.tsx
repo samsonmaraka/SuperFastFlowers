@@ -37,7 +37,7 @@ export function CartClient() {
     [items]
   );
   const maxPreparationDays = useMemo(
-    () => Math.max(DEFAULT_PREPARATION_DAYS, ...items.map((item) => item.preparationDays ?? DEFAULT_PREPARATION_DAYS)),
+    () => Math.max(0, ...items.map((item) => item.preparationDays ?? DEFAULT_PREPARATION_DAYS)),
     [items]
   );
   const earliestDeliveryDateLabel = useMemo(

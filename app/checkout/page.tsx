@@ -1,10 +1,7 @@
 import Link from 'next/link';
 import { CheckoutClient } from '@/components/checkout-client';
 import { DeliveryPinMap } from '@/components/delivery-pin-map';
-
-function toDateInputValue(date: Date) {
-  return date.toISOString().split('T')[0];
-}
+import { getDateInputValue, getMinimumDeliveryDate } from '@/lib/preparation-days';
 
 function addDays(date: Date, days: number) {
   const nextDate = new Date(date);
@@ -14,8 +11,8 @@ function addDays(date: Date, days: number) {
 
 export default function CheckoutPage() {
   const today = new Date();
-  const minDeliveryDate = toDateInputValue(addDays(today, 2));
-  const maxDeliveryDate = toDateInputValue(addDays(today, 14));
+  const minDeliveryDate = getDateInputValue(getMinimumDeliveryDate(0, today));
+  const maxDeliveryDate = getDateInputValue(addDays(today, 14));
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">

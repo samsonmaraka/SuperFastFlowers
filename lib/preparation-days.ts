@@ -10,7 +10,7 @@ export function getProductPreparationDays(product?: Pick<Product, 'preparationDa
 
 export function getRequiredPreparationDays(items: Array<{ productId: string }>, products: Product[]) {
   return Math.max(
-    DEFAULT_PREPARATION_DAYS,
+    0,
     ...items.map((item) => getProductPreparationDays(products.find((product) => product.id === item.productId)))
   );
 }
