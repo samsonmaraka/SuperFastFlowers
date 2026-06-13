@@ -1,5 +1,6 @@
 'use client';
 
+import Image from 'next/image';
 import Link from 'next/link';
 import { FormEvent, ReactElement, ReactNode, cloneElement, isValidElement, useEffect, useMemo, useState } from 'react';
 import { CartItem, readCart } from '@/lib/cart-storage';
@@ -125,15 +126,22 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
           </p>
           {checkoutError ? <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{checkoutError}</p> : null}
           <div className="flex flex-wrap gap-3">
-            <button
-              type="submit"
-              name="paymentMode"
-              value="pesapal"
-              disabled={isSubmitting}
-              className="rounded bg-ink px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {submitMode === 'pesapal' ? 'Starting secure payment…' : 'Pay securely with Pesapal'}
-            </button>
+            <div className="inline-flex flex-col items-center gap-2">
+              <button
+                type="submit"
+                name="paymentMode"
+                value="pesapal"
+                disabled={isSubmitting}
+                className="rounded bg-ink px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {submitMode === 'pesapal' ? 'Starting secure payment…' : 'Pay with MTN momo, Airtelmoney or card'}
+              </button>
+              <div className="flex items-center justify-center gap-3" aria-label="Available payment methods">
+                <Image src="/momo.png" alt="MTN MoMo" width={447} height={447} className="h-8 w-auto object-contain" />
+                <Image src="/Airtelmoney.png" alt="Airtel Money" width={554} height={554} className="h-8 w-auto object-contain" />
+                <Image src="/card.png" alt="Card payment" width={628} height={488} className="h-8 w-auto object-contain" />
+              </div>
+            </div>
             {/* Test successful payment button disabled for production checkout.
             <button
               type="submit"
