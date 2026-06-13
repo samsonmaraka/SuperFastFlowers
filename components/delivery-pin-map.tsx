@@ -107,7 +107,7 @@ export function DeliveryPinMap() {
 
   const helperText = useMemo(() => {
     if (mapUnavailable) {
-      return 'Google Maps API key is not configured. Paste a Google Maps pin link manually.';
+      return 'Google Maps API key is not configured, so delivery pin selection is currently unavailable.';
     }
 
     return 'Search for a landmark or address, select a result to drop a pin, then drag the pin or click the exact delivery spot to adjust it.';
@@ -235,7 +235,7 @@ export function DeliveryPinMap() {
   }, [apiKey]);
 
   return (
-    <label className="block space-y-2">
+    <div className="block space-y-2">
       <span className="text-sm font-medium text-gray-800">Delivery pin on map (optional)</span>
       <p className="text-sm text-gray-700">{helperText}</p>
       {!mapUnavailable ? (
@@ -249,21 +249,16 @@ export function DeliveryPinMap() {
       ) : null}
       <input type="hidden" name="deliveryLatitude" value={selectedCoords?.lat ?? ''} />
       <input type="hidden" name="deliveryLongitude" value={selectedCoords?.lng ?? ''} />
-      <input
-        name="deliveryPinUrl"
-        type="url"
-        value={deliveryPinUrl}
-        onChange={(event) => setDeliveryPinUrl(event.target.value)}
-        placeholder="Paste or use auto-filled Google Maps pin link."
-        className="w-full rounded border p-2"
-      />
-      {selectedCoords ? (
-        <p className="text-xs text-gray-600">
-          Selected pin: {selectedCoords.lat}, {selectedCoords.lng}
+      <input type="hidden" name="deliveryPinUrl" value={deliveryPinUrl} />
+      {deliveryPinUrl ? (
+        <p className="break-all rounded border border-pink-100 bg-pink-50 p-2 text-sm text-gray-700">
+          <a href={deliveryPinUrl} target="_blank" rel="noreferrer" className="text-pink-700 underline">
+            {deliveryPinUrl}
+          </a>
         </p>
       ) : (
-        <p className="text-xs text-gray-600">No pin selected yet.</p>
+        <p className="text-xs text-gray-600">Select a location to generate a Google Maps link.</p>
       )}
-    </label>
+    </div>
   );
 }

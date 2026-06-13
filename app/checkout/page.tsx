@@ -49,17 +49,10 @@ export default function CheckoutPage() {
               />
               <span className="text-xs text-gray-600">Delivery date must be within 14 days. Items that need more preparation automatically move the earliest available date.</span>
             </label>
-            <label className="block space-y-1">
-              <span className="text-sm font-medium text-gray-800">Region</span>
-              <select name="region" required className="w-full rounded border p-2" defaultValue="">
-                <option value="" disabled>
-                  Please select
-                </option>
-                <option value="Kampala Region">Kampala Region</option>
-                <option value="Entebbe area">Entebbe area</option>
-              </select>
-              <span className="text-xs text-gray-600">We only deliver to Kampala Region and Entebbe area for now.</span>
-            </label>
+            <p className="text-center text-lg font-bold text-ink">
+              We only deliver to Kampala Region and Entebbe area for now
+            </p>
+            <input type="hidden" name="region" value="Kampala Region" />
             <input type="hidden" name="cityId" value="delivery-pin" />
             <DeliveryPinMap />
             <textarea
