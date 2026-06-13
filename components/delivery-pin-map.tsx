@@ -235,23 +235,25 @@ export function DeliveryPinMap() {
   }, [apiKey]);
 
   return (
-    <div className="block space-y-2">
-      <span className="text-sm font-medium text-gray-800">Delivery pin on map (optional)</span>
-      <p className="text-sm text-gray-700">{helperText}</p>
+    <div className="space-y-2 rounded-xl border border-blush bg-pink-50/40 p-3 shadow-sm">
+      <div>
+        <span className="text-sm font-medium text-gray-800">Delivery pin on map (optional)</span>
+        <p className="mt-1 text-sm text-gray-700">{helperText}</p>
+      </div>
       {!mapUnavailable ? (
-        <>
-          <div ref={searchContainerRef} className="w-full rounded border p-2" />
+        <div className="overflow-hidden rounded-lg border border-pink-100 bg-white shadow-sm">
+          <div ref={searchContainerRef} className="w-full border-b border-pink-100 bg-white p-2" />
           {searchUnavailable ? (
-            <p className="text-xs text-amber-700">Location search is unavailable. You can still pan and click the map to set a pin.</p>
+            <p className="border-b border-pink-100 bg-amber-50 px-3 py-2 text-xs text-amber-700">Location search is unavailable. You can still pan and click the map to set a pin.</p>
           ) : null}
-          <div id={MAP_ELEMENT_ID} className="h-72 w-full overflow-hidden rounded border" />
-        </>
+          <div id={MAP_ELEMENT_ID} className="h-72 w-full" />
+        </div>
       ) : null}
       <input type="hidden" name="deliveryLatitude" value={selectedCoords?.lat ?? ''} />
       <input type="hidden" name="deliveryLongitude" value={selectedCoords?.lng ?? ''} />
       <input type="hidden" name="deliveryPinUrl" value={deliveryPinUrl} />
       {deliveryPinUrl ? (
-        <p className="break-all rounded border border-pink-100 bg-pink-50 p-2 text-sm text-gray-700">
+        <p className="break-all rounded border border-pink-100 bg-white p-2 text-sm text-gray-700">
           <a href={deliveryPinUrl} target="_blank" rel="noreferrer" className="text-pink-700 underline">
             {deliveryPinUrl}
           </a>

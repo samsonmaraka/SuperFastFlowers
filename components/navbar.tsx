@@ -31,7 +31,7 @@ function HeaderSearch() {
           id="site-search"
           name="q"
           type="search"
-          placeholder="Search birthdays, thank-yous, roses, hampers..."
+          placeholder="I am looking for......"
           className="min-w-0 flex-1 rounded-full bg-transparent px-4 py-2 text-sm text-ink outline-none placeholder:text-gray-500"
         />
         <button type="submit" className="rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white transition hover:bg-pink-700">
@@ -63,7 +63,7 @@ export function Navbar() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-10 bg-cream/90 px-4 py-3 backdrop-blur">
+    <header className="bg-cream/90 px-4 py-3">
       <div className="mx-auto max-w-6xl rounded-2xl border border-blush/80 bg-gradient-to-r from-rose via-blush to-white p-4 shadow-sm md:p-5">
         <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(420px,0.95fr)] md:items-start">
           <div className="flex items-center justify-between gap-3">
