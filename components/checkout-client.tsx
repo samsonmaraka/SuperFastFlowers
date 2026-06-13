@@ -126,21 +126,22 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
           </p>
           {checkoutError ? <p className="rounded border border-red-200 bg-red-50 p-3 text-sm text-red-700">{checkoutError}</p> : null}
           <div className="flex flex-wrap gap-3">
-            <div className="inline-flex flex-col items-center gap-2">
+            <div className="inline-flex flex-col gap-2">
               <button
                 type="submit"
                 name="paymentMode"
                 value="pesapal"
                 disabled={isSubmitting}
-                className="rounded bg-ink px-4 py-2 text-white disabled:cursor-not-allowed disabled:opacity-60"
+                className="inline-flex flex-wrap items-center justify-center gap-2 rounded bg-ink px-4 py-2 text-white transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                {submitMode === 'pesapal' ? 'Starting secure payment…' : 'Pay with MTN momo, Airtelmoney or card'}
+                <span>{submitMode === 'pesapal' ? 'Starting secure payment…' : 'Pay with MTN momo, Airtelmoney or card'}</span>
+                <span className="flex items-center gap-1.5" aria-hidden="true">
+                  <Image src="/momo.png" alt="" width={447} height={447} className="h-7 w-auto rounded bg-white/90 p-0.5 object-contain" />
+                  <Image src="/Airtelmoney.png" alt="" width={554} height={554} className="h-7 w-auto rounded bg-white/90 p-0.5 object-contain" />
+                  <Image src="/card.png" alt="" width={628} height={488} className="h-7 w-auto rounded bg-white/90 p-0.5 object-contain" />
+                </span>
               </button>
-              <div className="flex items-center justify-center gap-3" aria-label="Available payment methods">
-                <Image src="/momo.png" alt="MTN MoMo" width={447} height={447} className="h-8 w-auto object-contain" />
-                <Image src="/Airtelmoney.png" alt="Airtel Money" width={554} height={554} className="h-8 w-auto object-contain" />
-                <Image src="/card.png" alt="Card payment" width={628} height={488} className="h-8 w-auto object-contain" />
-              </div>
+              <span className="text-xs text-gray-600">Secure payment opens after your order details are saved.</span>
             </div>
             {/* Test successful payment button disabled for production checkout.
             <button
