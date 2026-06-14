@@ -8,8 +8,11 @@ function getProductQuantity(productId: string) {
   return readCart().find((item) => item.productId === productId)?.quantity ?? 0;
 }
 
+function dispatchCartUpdate() {
+  window.dispatchEvent(new Event('giftora-cart-updated'));
+}
+
 export function AddToCartButton({ product }: { product: Product }) {
-  const [justAdded, setJustAdded] = useState(false);
   const [quantityInCart, setQuantityInCart] = useState(0);
 
   useEffect(() => {
@@ -25,50 +28,75 @@ export function AddToCartButton({ product }: { product: Product }) {
     };
   }, [product.id]);
 
-  const onAdd = () => {
+  const updateQuantity = (nextQuantity: number) => {
     const cart = readCart();
     const existingItem = cart.find((item) => item.productId === product.id);
 
     const nextCart = existingItem
-      ? cart.map((item) =>
-          item.productId === product.id
-            ? { ...item, quantity: item.quantity + 1 }
-            : item
-        )
-      : [
-          ...cart,
-          {
-            productId: product.id,
-            name: product.name,
-            price: product.price,
-            quantity: 1,
-            preparationDays: product.preparationDays
-          }
-        ];
+      ? nextQuantity > 0
+        ? cart.map((item) =>
+            item.productId === product.id ? { ...item, quantity: nextQuantity } : item
+          )
+        : cart.filter((item) => item.productId !== product.id)
+      : nextQuantity > 0
+        ? [
+            ...cart,
+            {
+              productId: product.id,
+              name: product.name,
+              price: product.price,
+              quantity: nextQuantity,
+              preparationDays: product.preparationDays
+            }
+          ]
+        : cart;
 
     writeCart(nextCart);
-    setJustAdded(true);
-    setQuantityInCart(nextCart.find((item) => item.productId === product.id)?.quantity ?? 0);
-    window.dispatchEvent(new Event('giftora-cart-updated'));
-    window.setTimeout(() => setJustAdded(false), 1400);
+    setQuantityInCart(nextQuantity);
+    dispatchCartUpdate();
   };
 
-  const buttonLabel = justAdded
-    ? 'Added ✓'
-    : quantityInCart > 0
-      ? quantityInCart > 1
-        ? `In cart (${quantityInCart})`
-        : 'In cart'
-      : 'Add to cart';
+  const onAdd = () => updateQuantity(quantityInCart + 1);
+  const onRemove = () => updateQuantity(Math.max(0, quantityInCart - 1));
+
+  if (quantityInCart > 0) {
+    return (
+      <div
+        className="inline-flex items-center overflow-hidden rounded-md border border-ink bg-white text-sm font-medium text-ink"
+        role="group"
+        aria-label={`${product.name} quantity in cart`}
+      >
+        <button
+          onClick={onRemove}
+          className="px-3 py-2 hover:bg-blush focus:bg-blush focus:outline-none"
+          type="button"
+          aria-label={`Remove one ${product.name} from cart`}
+        >
+          −
+        </button>
+        <span className="min-w-10 border-x border-ink px-3 py-2 text-center" aria-live="polite" aria-atomic="true">
+          {quantityInCart}
+        </span>
+        <button
+          onClick={onAdd}
+          className="px-3 py-2 hover:bg-blush focus:bg-blush focus:outline-none"
+          type="button"
+          aria-label={`Add one more ${product.name} to cart`}
+        >
+          +
+        </button>
+      </div>
+    );
+  }
 
   return (
     <button
       onClick={onAdd}
       className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-white hover:bg-black"
       type="button"
-      aria-label={`${product.name} ${buttonLabel}`}
+      aria-label={`Add ${product.name} to cart`}
     >
-      {buttonLabel}
+      Add to cart
     </button>
   );
 }
