@@ -61,7 +61,7 @@ export async function GET(req: NextRequest) {
       return errorResponse('Unauthorized', 'UNAUTHORIZED', 401);
     }
 
-    const products = await listProducts();
+    const products = await listProducts({ includeInactive: true });
 
     return NextResponse.json(
       { products },
@@ -115,7 +115,7 @@ export async function POST(req: NextRequest) {
       throw error;
     }
 
-    const existingSlugProduct = await getProductBySlug(parsed.data.slug);
+    const existingSlugProduct = await getProductBySlug(parsed.data.slug, { includeInactive: true });
     if (existingSlugProduct && existingSlugProduct.id !== parsed.data.id) {
       return errorResponse('Another product already uses this slug. Please rename the product or edit the existing item.', 'DUPLICATE_SLUG', 409, {
         slug: parsed.data.slug,
@@ -145,7 +145,7 @@ export async function POST(req: NextRequest) {
       return errorResponse('Failed to save product. Please try again or contact support if the problem continues.', 'SAVE_FAILED', 500);
     }
 
-    const products = await listProducts();
+    const products = await listProducts({ includeInactive: true });
     console.log('listProducts succeeded');
 
     return NextResponse.json({ ok: true, products });

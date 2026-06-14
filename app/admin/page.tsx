@@ -5,7 +5,7 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
 export default async function AdminPage() {
-  const products = await listProducts();
+  const products = await listProducts({ includeInactive: true });
 
   return (
     <div className="mx-auto max-w-4xl px-4 py-10">

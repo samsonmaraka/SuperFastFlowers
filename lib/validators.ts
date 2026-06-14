@@ -43,6 +43,7 @@ export const productSchema = z.object({
   imageUrls: z.array(productImageValue).min(1),
   stockStatus: z.enum(['in_stock', 'low_stock', 'out_of_stock']),
   featured: z.boolean(),
+  status: z.enum(['active', 'inactive']).default('active'),
   vendorId: z.string().optional(),
   vendorName: z.string().optional(),
   vendorContactPerson: z.string().optional(),

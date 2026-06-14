@@ -2,6 +2,8 @@ export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
 
 export type VendorStatus = 'active' | 'inactive';
 
+export type ProductStatus = 'active' | 'inactive';
+
 export type Vendor = {
   id: string;
   name: string;
@@ -29,6 +31,7 @@ export type Product = {
   imageUrls: string[];
   stockStatus: StockStatus;
   featured: boolean;
+  status: ProductStatus;
   vendorId?: string;
   vendorName?: string;
   vendorContactPerson?: string;

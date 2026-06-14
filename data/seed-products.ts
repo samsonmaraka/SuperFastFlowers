@@ -13,6 +13,7 @@ export const seedProducts: Product[] = [
     imageUrls: ['https://images.unsplash.com/photo-1559620192-032c4bc4674e?w=1200&q=80'],
     stockStatus: 'in_stock',
     featured: true,
+    status: 'active',
     createdAt: '2026-01-05T10:00:00.000Z',
     updatedAt: '2026-01-05T10:00:00.000Z'
   },
@@ -28,6 +29,7 @@ export const seedProducts: Product[] = [
     imageUrls: ['https://images.unsplash.com/photo-1463320726281-696a485928c7?w=1200&q=80'],
     stockStatus: 'low_stock',
     featured: true,
+    status: 'active',
     createdAt: '2026-01-05T10:00:00.000Z',
     updatedAt: '2026-01-05T10:00:00.000Z'
   },
@@ -43,6 +45,7 @@ export const seedProducts: Product[] = [
     imageUrls: ['https://images.unsplash.com/photo-1602874801006-8f3a655f0f84?w=1200&q=80'],
     stockStatus: 'in_stock',
     featured: false,
+    status: 'active',
     createdAt: '2026-01-05T10:00:00.000Z',
     updatedAt: '2026-01-05T10:00:00.000Z'
   }
