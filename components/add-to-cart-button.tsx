@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { readCart, writeCart } from '@/lib/cart-storage';
 import { Product } from '@/lib/types';
@@ -12,7 +13,17 @@ function dispatchCartUpdate() {
   window.dispatchEvent(new Event('giftora-cart-updated'));
 }
 
-export function AddToCartButton({ product }: { product: Product }) {
+type AddToCartButtonProps = {
+  product: Product;
+  showCheckoutShortcut?: boolean;
+  checkoutShortcutLabel?: string;
+};
+
+export function AddToCartButton({
+  product,
+  showCheckoutShortcut = false,
+  checkoutShortcutLabel = 'Send gift now'
+}: AddToCartButtonProps) {
   const [quantityInCart, setQuantityInCart] = useState(0);
 
   useEffect(() => {
@@ -61,30 +72,41 @@ export function AddToCartButton({ product }: { product: Product }) {
 
   if (quantityInCart > 0) {
     return (
-      <div
-        className="inline-flex items-center gap-4 text-sm font-medium text-ink"
-        role="group"
-        aria-label={`${product.name} quantity in cart`}
-      >
-        <button
-          onClick={onRemove}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-ink text-lg leading-none text-white shadow-lg shadow-ink/20 transition hover:-translate-y-0.5 hover:bg-pink-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-pink-700/40 focus:ring-offset-2"
-          type="button"
-          aria-label={`Remove one ${product.name} from cart`}
+      <div className="flex flex-col items-stretch gap-2 text-sm font-medium text-ink">
+        <div
+          className="inline-flex items-center justify-center gap-4"
+          role="group"
+          aria-label={`${product.name} quantity in cart`}
         >
-          −
-        </button>
-        <span className="min-w-4 text-center" aria-live="polite" aria-atomic="true">
-          {quantityInCart}
-        </span>
-        <button
-          onClick={onAdd}
-          className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-ink text-lg leading-none text-white shadow-lg shadow-ink/20 transition hover:-translate-y-0.5 hover:bg-pink-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-pink-700/40 focus:ring-offset-2"
-          type="button"
-          aria-label={`Add one more ${product.name} to cart`}
-        >
-          +
-        </button>
+          <button
+            onClick={onRemove}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-ink text-lg leading-none text-white shadow-lg shadow-ink/20 transition hover:-translate-y-0.5 hover:bg-pink-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-pink-700/40 focus:ring-offset-2"
+            type="button"
+            aria-label={`Remove one ${product.name} from cart`}
+          >
+            −
+          </button>
+          <span className="min-w-4 text-center" aria-live="polite" aria-atomic="true">
+            {quantityInCart}
+          </span>
+          <button
+            onClick={onAdd}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-ink text-lg leading-none text-white shadow-lg shadow-ink/20 transition hover:-translate-y-0.5 hover:bg-pink-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-pink-700/40 focus:ring-offset-2"
+            type="button"
+            aria-label={`Add one more ${product.name} to cart`}
+          >
+            +
+          </button>
+        </div>
+        {showCheckoutShortcut ? (
+          <Link
+            href="/checkout"
+            className="inline-flex items-center justify-center rounded-md border border-ink/15 bg-white px-3 py-2 text-center text-sm font-medium text-ink shadow-sm transition hover:-translate-y-0.5 hover:border-pink-700 hover:text-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-700/40 focus:ring-offset-2"
+            aria-label={`${checkoutShortcutLabel} for ${product.name}`}
+          >
+            {checkoutShortcutLabel}
+          </Link>
+        ) : null}
       </div>
     );
   }

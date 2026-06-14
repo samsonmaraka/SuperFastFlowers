@@ -11,10 +11,10 @@ export function ProductCard({ product }: { product: Product }) {
       <div className="space-y-2 p-4">
         <h3 className="text-lg font-semibold text-ink">{product.name}</h3>
         <p className="line-clamp-2 text-sm text-gray-600">{product.description}</p>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-start justify-between gap-3">
           <span className="font-semibold">UGX {formatUgx(product.price)}</span>
-          <div className="relative z-20">
-            <AddToCartButton product={product} />
+          <div className="relative z-20 shrink-0">
+            <AddToCartButton product={product} showCheckoutShortcut checkoutShortcutLabel="Send gift now" />
           </div>
         </div>
       </div>
