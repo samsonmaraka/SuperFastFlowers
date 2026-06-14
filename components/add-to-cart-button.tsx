@@ -62,24 +62,24 @@ export function AddToCartButton({ product }: { product: Product }) {
   if (quantityInCart > 0) {
     return (
       <div
-        className="inline-flex items-center overflow-hidden rounded-md border border-ink bg-white text-sm font-medium text-ink"
+        className="inline-flex items-center gap-4 text-sm font-medium text-ink"
         role="group"
         aria-label={`${product.name} quantity in cart`}
       >
         <button
           onClick={onRemove}
-          className="px-3 py-2 hover:bg-blush focus:bg-blush focus:outline-none"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-ink text-lg leading-none text-white shadow-lg shadow-ink/20 transition hover:-translate-y-0.5 hover:bg-pink-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-pink-700/40 focus:ring-offset-2"
           type="button"
           aria-label={`Remove one ${product.name} from cart`}
         >
           −
         </button>
-        <span className="min-w-10 border-x border-ink px-3 py-2 text-center" aria-live="polite" aria-atomic="true">
+        <span className="min-w-4 text-center" aria-live="polite" aria-atomic="true">
           {quantityInCart}
         </span>
         <button
           onClick={onAdd}
-          className="px-3 py-2 hover:bg-blush focus:bg-blush focus:outline-none"
+          className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-ink text-lg leading-none text-white shadow-lg shadow-ink/20 transition hover:-translate-y-0.5 hover:bg-pink-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-pink-700/40 focus:ring-offset-2"
           type="button"
           aria-label={`Add one more ${product.name} to cart`}
         >
