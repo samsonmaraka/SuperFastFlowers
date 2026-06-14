@@ -92,8 +92,8 @@ export async function getActiveVendorForProduct(product: Product) {
   return vendor;
 }
 
-export async function listProducts(options?: { category?: string; q?: string; featured?: boolean }) {
-  const { category, q, featured } = options || {};
+export async function listProducts(options?: { category?: string; q?: string; featured?: boolean; includeInactive?: boolean }) {
+  const { category, q, featured, includeInactive = false } = options || {};
   ensureProductsStorageConfigured();
 
   if (!isDynamoConfigured()) {
@@ -102,7 +102,7 @@ export async function listProducts(options?: { category?: string; q?: string; fe
       tableName: getEnv().tableName || '(empty)'
     });
     const localProducts = await loadLocalProducts();
-    return filterProducts(localProducts.map(normalizeProductForDisplay), category, q, featured);
+    return filterProducts(localProducts.map(normalizeProductForDisplay), category, q, featured, includeInactive);
   }
 
   const res = await db.send(
@@ -114,10 +114,10 @@ export async function listProducts(options?: { category?: string; q?: string; fe
     })
   );
 
-  return filterProducts(((res.Items || []) as Product[]).map(normalizeProductForDisplay), category, q, featured);
+  return filterProducts(((res.Items || []) as Product[]).map(normalizeProductForDisplay), category, q, featured, includeInactive);
 }
 
-function filterProducts(products: Product[], category?: string, q?: string, featured?: boolean) {
+function filterProducts(products: Product[], category?: string, q?: string, featured?: boolean, includeInactive = false) {
   return products.filter((p) => {
     const normalizedCategories = p.categories ?? [];
     const matchesCategory = category ? normalizedCategories.some((slug) => slug.toLowerCase() === category.toLowerCase()) : true;
@@ -125,12 +125,14 @@ function filterProducts(products: Product[], category?: string, q?: string, feat
       ? [p.name, p.description, p.category, normalizedCategories.join(' '), (p.tags ?? []).join(' ')].join(' ').toLowerCase().includes(q.toLowerCase())
       : true;
     const matchesFeatured = featured !== undefined ? p.featured === featured : true;
+    const matchesStatus = includeInactive ? true : (p.status ?? 'active') === 'active';
 
-    return matchesCategory && matchesQ && matchesFeatured;
+    return matchesCategory && matchesQ && matchesFeatured && matchesStatus;
   });
 }
 
-export async function getProductBySlug(slug: string) {
+export async function getProductBySlug(slug: string, options?: { includeInactive?: boolean }) {
+  const { includeInactive = false } = options || {};
   ensureProductsStorageConfigured();
   if (!isDynamoConfigured()) {
     console.warn('[products-repo] DynamoDB disabled in getProductBySlug.', {
@@ -139,6 +141,7 @@ export async function getProductBySlug(slug: string) {
     });
     const localProducts = await loadLocalProducts();
     const product = localProducts.find((p) => p.slug === slug) || null;
+    if (product && !includeInactive && (product.status ?? 'active') !== 'active') return null;
     return product ? normalizeProductForDisplay(product) : null;
   }
 
@@ -153,10 +156,12 @@ export async function getProductBySlug(slug: string) {
   );
 
   const product = ((bySlug.Items || [])[0] as Product | undefined) || null;
+  if (product && !includeInactive && (product.status ?? 'active') !== 'active') return null;
   return product ? normalizeProductForDisplay(product) : null;
 }
 
-export async function getProductByIdOrSlug(idOrSlug: string) {
+export async function getProductByIdOrSlug(idOrSlug: string, options?: { includeInactive?: boolean }) {
+  const { includeInactive = false } = options || {};
   ensureProductsStorageConfigured();
   if (!isDynamoConfigured()) {
     console.warn('[products-repo] DynamoDB disabled in getProductByIdOrSlug.', {
@@ -165,6 +170,7 @@ export async function getProductByIdOrSlug(idOrSlug: string) {
     });
     const localProducts = await loadLocalProducts();
     const product = localProducts.find((p) => p.id === idOrSlug || p.slug === idOrSlug) || null;
+    if (product && !includeInactive && (product.status ?? 'active') !== 'active') return null;
     return product ? normalizeProductForDisplay(product) : null;
   }
 
@@ -175,9 +181,13 @@ export async function getProductByIdOrSlug(idOrSlug: string) {
     })
   );
 
-  if (byId.Item) return normalizeProductForDisplay(byId.Item as Product);
+  if (byId.Item) {
+    const product = byId.Item as Product;
+    if (!includeInactive && (product.status ?? 'active') !== 'active') return null;
+    return normalizeProductForDisplay(product);
+  }
 
-  return getProductBySlug(idOrSlug);
+  return getProductBySlug(idOrSlug, { includeInactive });
 }
 
 export async function upsertProduct(product: Product) {
