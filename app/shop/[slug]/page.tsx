@@ -1,5 +1,6 @@
 import { notFound } from 'next/navigation';
 import { AddToCartButton } from '@/components/add-to-cart-button';
+import { SendThisGiftButton } from '@/components/send-this-gift-button';
 import { getProductByIdOrSlug } from '@/lib/products-repo';
 import { formatUgx } from '@/lib/format';
 import { getPrimaryProductImage } from '@/lib/product-images';
@@ -21,7 +22,12 @@ export default async function ProductPage({ params }: { params: { slug: string }
         <h1 className="text-3xl font-semibold">{product.name}</h1>
         <p className="text-gray-700">{product.description || 'No description available yet.'}</p>
         <p className="text-2xl font-semibold">UGX {formatUgx(product.price)}</p>
-        <AddToCartButton product={product} />
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start">
+          <SendThisGiftButton product={product} />
+          <div className="sm:pt-0.5">
+            <AddToCartButton product={product} />
+          </div>
+        </div>
       </div>
     </div>
   );
