@@ -1,4 +1,4 @@
-import { DeleteCommand, PutCommand, QueryCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
+import { DeleteCommand, PutCommand, QueryCommand, ScanCommand, UpdateCommand } from '@aws-sdk/lib-dynamodb';
 import { db } from '@/lib/dynamodb';
 import { getEnv, isDynamoConfigured } from '@/lib/env';
 import { UserRole, UserRoleAssignment, VendorAdminAssignment, VendorPermission } from '@/lib/auth-types';
@@ -33,6 +33,13 @@ export async function revokeUserRole(userId: string, role: UserRole, revokedByUs
   }
   await db.send(new UpdateCommand({ TableName: getEnv().tableName, Key: { pk: `USER#${userId}`, sk: `ROLE#${role}` }, UpdateExpression: 'SET #status = :status, revokedByUserId = :revokedByUserId, revokedAt = :revokedAt', ExpressionAttributeNames: { '#status': 'status' }, ExpressionAttributeValues: { ':status': 'revoked', ':revokedByUserId': revokedByUserId, ':revokedAt': revokedAt } }));
   return { userId, role, status: 'revoked' as const, grantedAt: '', revokedByUserId, revokedAt };
+}
+
+export async function listVendorAssignments(filters?: { userId?: string; vendorId?: string }) {
+  const all = !isDynamoConfigured()
+    ? [...memoryVendorAssignments.values()]
+    : ((await db.send(new ScanCommand({ TableName: getEnv().tableName, FilterExpression: 'entityType = :entityType', ExpressionAttributeValues: { ':entityType': 'VENDOR_ADMIN_ASSIGNMENT' } }))).Items || []) as VendorAdminAssignment[];
+  return all.filter((assignment) => assignment.status === 'active' && (!filters?.userId || assignment.userId === filters.userId) && (!filters?.vendorId || assignment.vendorId === filters.vendorId));
 }
 
 export async function getVendorAssignmentsForUser(userId: string) {

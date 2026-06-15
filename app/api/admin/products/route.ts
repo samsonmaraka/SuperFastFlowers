@@ -3,6 +3,7 @@ import { requireAdminApiAccess } from '@/lib/admin-auth';
 import {
   deleteProduct,
   getActiveVendorForProduct,
+  getProductByIdOrSlug,
   getProductBySlug,
   listProducts,
   ProductSaveError,
@@ -10,6 +11,8 @@ import {
 } from '@/lib/products-repo';
 import { uploadNewProductImagesToS3 } from '@/lib/product-image-storage';
 import { productSchema } from '@/lib/validators';
+import { writeAuditLog } from '@/lib/audit-repo';
+import { canManageProduct, filterProductsForAdmin, isSuperAdminContext } from '@/lib/vendor-permissions';
 
 type AdminProductErrorCode =
   | 'UNAUTHORIZED'
@@ -20,7 +23,8 @@ type AdminProductErrorCode =
   | 'DUPLICATE_SLUG'
   | 'IMAGE_UPLOAD_FAILED'
   | 'SAVE_FAILED'
-  | 'DELETE_FAILED';
+  | 'DELETE_FAILED'
+  | 'FORBIDDEN';
 
 function errorResponse(error: string, code: AdminProductErrorCode, status: number, details: Record<string, unknown> = {}) {
   return NextResponse.json({ error, code, details }, { status });
@@ -54,14 +58,20 @@ function logServerError(context: string, error: unknown) {
 
 export const runtime = 'nodejs';
 
+async function auditProduct(access: Awaited<ReturnType<typeof requireAdminApiAccess>>, action: string, productId: string, vendorId?: string) {
+  if (access.mode !== 'vendor-admin') return;
+  try { await writeAuditLog({ auditId: crypto.randomUUID(), actorUserId: access.current.user.userId, actorEmail: access.current.user.email, action, targetType: 'PRODUCT', targetId: productId, vendorId, createdAt: new Date().toISOString() }); } catch (error) { console.error('[AUDIT_LOG_FAILED]', error); }
+}
+
 
 export async function GET(req: NextRequest) {
   try {
-    try { await requireAdminApiAccess(req); } catch {
+    let access;
+    try { access = await requireAdminApiAccess(req); } catch {
       return errorResponse('Unauthorized', 'UNAUTHORIZED', 401);
     }
 
-    const products = await listProducts({ includeInactive: true });
+    const products = filterProductsForAdmin(access, await listProducts({ includeInactive: true }));
 
     return NextResponse.json(
       { products },
@@ -81,7 +91,8 @@ export async function POST(req: NextRequest) {
   try {
     console.log('POST /api/admin/products called');
 
-    try { await requireAdminApiAccess(req); } catch {
+    let access;
+    try { access = await requireAdminApiAccess(req); } catch {
       console.log('Unauthorized admin request');
       return errorResponse('Unauthorized', 'UNAUTHORIZED', 401);
     }
@@ -105,6 +116,11 @@ export async function POST(req: NextRequest) {
     if (!parsed.data.vendorId) {
       return errorResponse('Please select an active vendor before saving this product.', 'VENDOR_REQUIRED', 400);
     }
+
+    const existingProduct = await getProductByIdOrSlug(parsed.data.id, { includeInactive: true });
+    if (existingProduct && !canManageProduct(access, existingProduct)) return errorResponse('Forbidden for this product vendor.', 'FORBIDDEN', 403);
+    if (!canManageProduct(access, { vendorId: parsed.data.vendorId })) return errorResponse('Forbidden for this vendor.', 'FORBIDDEN', 403);
+    if (access.mode === 'vendor-admin' && existingProduct?.vendorId && existingProduct.vendorId !== parsed.data.vendorId) return errorResponse('Vendor admins cannot move products between vendors.', 'FORBIDDEN', 403);
 
     try {
       await getActiveVendorForProduct(parsed.data);
@@ -145,7 +161,8 @@ export async function POST(req: NextRequest) {
       return errorResponse('Failed to save product. Please try again or contact support if the problem continues.', 'SAVE_FAILED', 500);
     }
 
-    const products = await listProducts({ includeInactive: true });
+    await auditProduct(access, existingProduct ? 'VENDOR_ADMIN_PRODUCT_UPDATED' : 'VENDOR_ADMIN_PRODUCT_CREATED', productToSave.id, productToSave.vendorId);
+    const products = filterProductsForAdmin(access, await listProducts({ includeInactive: true }));
     console.log('listProducts succeeded');
 
     return NextResponse.json({ ok: true, products });
@@ -160,7 +177,8 @@ export async function DELETE(req: NextRequest) {
   try {
     console.log('DELETE /api/admin/products called');
 
-    try { await requireAdminApiAccess(req); } catch {
+    let access;
+    try { access = await requireAdminApiAccess(req); } catch {
       console.log('Unauthorized delete request');
       return errorResponse('Unauthorized', 'UNAUTHORIZED', 401);
     }
@@ -170,9 +188,17 @@ export async function DELETE(req: NextRequest) {
       return errorResponse('Missing id', 'VALIDATION_ERROR', 400);
     }
 
+    const existingProduct = await getProductByIdOrSlug(id, { includeInactive: true });
+    if (!existingProduct) return errorResponse('Product not found', 'VALIDATION_ERROR', 404);
+    if (!canManageProduct(access, existingProduct)) return errorResponse('Forbidden for this product vendor.', 'FORBIDDEN', 403);
     console.log('Deleting product id:', id);
-    await deleteProduct(id);
-    console.log('deleteProduct succeeded');
+    if (isSuperAdminContext(access)) {
+      await deleteProduct(id);
+    } else {
+      await upsertProduct({ ...existingProduct, status: 'inactive', updatedAt: new Date().toISOString() });
+      await auditProduct(access, 'VENDOR_ADMIN_PRODUCT_DEACTIVATED', id, existingProduct.vendorId);
+    }
+    console.log('deleteProduct/deactivate succeeded');
 
     return NextResponse.json({ ok: true });
   } catch (error) {
