@@ -1,4 +1,4 @@
-import { GetCommand, PutCommand, QueryCommand } from '@aws-sdk/lib-dynamodb';
+import { GetCommand, PutCommand, QueryCommand, ScanCommand } from '@aws-sdk/lib-dynamodb';
 import { db } from '@/lib/dynamodb';
 import { getEnv, isDynamoConfigured } from '@/lib/env';
 import { AppUser } from '@/lib/auth-types';
@@ -55,4 +55,24 @@ export async function upsertUserProfile(user: AppUser) {
     }
   }));
   return nextUser;
+}
+
+
+export async function listUsers(search?: string) {
+  const normalizedSearch = search ? normalizeEmail(search) : '';
+  let users: AppUser[];
+  if (!isDynamoConfigured()) {
+    users = [...memoryUsers.values()];
+  } else {
+    const response = await db.send(new ScanCommand({
+      TableName: getEnv().tableName,
+      FilterExpression: 'entityType = :entityType',
+      ExpressionAttributeValues: { ':entityType': 'USER' }
+    }));
+    users = (response.Items || []) as AppUser[];
+  }
+  const filtered = normalizedSearch
+    ? users.filter((user) => user.emailNormalized.includes(normalizedSearch) || (user.name || '').toLowerCase().includes(normalizedSearch))
+    : users;
+  return filtered.sort((a, b) => (b.lastLoginAt || b.updatedAt).localeCompare(a.lastLoginAt || a.updatedAt));
 }

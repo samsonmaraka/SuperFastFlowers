@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireAdminApiAccess } from '@/lib/admin-auth';
 import { getPesapalEnvPresence, getPesapalTokenResponse, PesapalError } from '@/lib/pesapal';
 
 export const runtime = 'nodejs';
 
-function isAuthorized(req: NextRequest) {
-  const adminToken = process.env.ADMIN_TOKEN || '';
-  return Boolean(adminToken) && req.headers.get('x-admin-token') === adminToken;
-}
 
 export async function GET(req: NextRequest) {
-  if (!isAuthorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try { await requireAdminApiAccess(req); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
 
   try {
     const response = await getPesapalTokenResponse();

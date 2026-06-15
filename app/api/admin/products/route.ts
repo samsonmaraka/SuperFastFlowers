@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAdminAuthorized } from '@/lib/admin-auth';
+import { requireAdminApiAccess } from '@/lib/admin-auth';
 import {
   deleteProduct,
   getActiveVendorForProduct,
@@ -57,7 +57,7 @@ export const runtime = 'nodejs';
 
 export async function GET(req: NextRequest) {
   try {
-    if (!isAdminAuthorized(req)) {
+    try { await requireAdminApiAccess(req); } catch {
       return errorResponse('Unauthorized', 'UNAUTHORIZED', 401);
     }
 
@@ -81,7 +81,7 @@ export async function POST(req: NextRequest) {
   try {
     console.log('POST /api/admin/products called');
 
-    if (!isAdminAuthorized(req)) {
+    try { await requireAdminApiAccess(req); } catch {
       console.log('Unauthorized admin request');
       return errorResponse('Unauthorized', 'UNAUTHORIZED', 401);
     }
@@ -160,7 +160,7 @@ export async function DELETE(req: NextRequest) {
   try {
     console.log('DELETE /api/admin/products called');
 
-    if (!isAdminAuthorized(req)) {
+    try { await requireAdminApiAccess(req); } catch {
       console.log('Unauthorized delete request');
       return errorResponse('Unauthorized', 'UNAUTHORIZED', 401);
     }

@@ -1,5 +1,6 @@
 import NextAuth from 'next-auth';
 import Google from 'next-auth/providers/google';
+import { ensureBootstrapSuperAdmin } from '@/lib/bootstrap-super-admin';
 import { upsertUserProfile, normalizeEmail } from '@/lib/users-repo';
 
 function getProfileString(profile: Record<string, unknown>, key: string) {
@@ -30,7 +31,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       if (!email || !googleSubject) return false;
 
       const now = new Date().toISOString();
-      await upsertUserProfile({
+      const user = await upsertUserProfile({
         userId: `google:${googleSubject}`,
         email,
         emailNormalized: normalizeEmail(email),
@@ -42,6 +43,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         updatedAt: now,
         lastLoginAt: now
       });
+
+      await ensureBootstrapSuperAdmin(user);
 
       return isVerifiedEmail || Boolean(email);
     },

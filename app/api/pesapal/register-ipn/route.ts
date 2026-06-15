@@ -5,7 +5,7 @@ import { registerPesapalIpn } from '@/lib/pesapal';
 export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
-  if (!isAdminAuthorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  if (!(await isAdminAuthorized(req))) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
   try {
     const response = await registerPesapalIpn();
