@@ -1,0 +1,4 @@
+import type { OrderStatus, ProductStatus, VendorFulfillmentStatus } from '@/lib/types';
+export function OrderStatusBadge({status}:{status:OrderStatus}){const closed=['completed','cancelled','PAID','PAYMENT_FAILED','PAYMENT_REVERSED','PAYMENT_INVALID'].includes(status);return <span className={`rounded-full px-2 py-1 text-xs font-semibold ${closed?'bg-green-100 text-green-800':'bg-orange-100 text-orange-800'}`}>{status}</span>}
+export function ProductStatusBadge({status}:{status?:ProductStatus}){const active=(status??'active')==='active';return <span className={`rounded-full px-2 py-1 text-xs font-semibold ${active?'bg-green-100 text-green-800':'bg-gray-200 text-gray-700'}`}>{active?'Active':'Inactive'}</span>}
+export function FulfillmentBadge({status}:{status?:VendorFulfillmentStatus}){return <span className="rounded-full bg-blue-100 px-2 py-1 text-xs font-semibold text-blue-800">{status||'new'}</span>}
