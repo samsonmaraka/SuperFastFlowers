@@ -1,3 +1,7 @@
+import type { AppUser, AuditLogEntry, UserRole, UserRoleAssignment, VendorAdminAssignment } from '@/lib/auth-types';
+
+export type { AppUser, AuditLogEntry, UserRole, UserRoleAssignment, VendorAdminAssignment };
+
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
 
 export type VendorStatus = 'active' | 'inactive';
@@ -63,6 +67,19 @@ export type OrderStatus =
   | 'PAYMENT_INVALID'
   | 'PAYMENT_PENDING';
 
+export type VendorFulfillmentStatus = 'pending' | 'processing' | 'fulfilled' | 'cancelled';
+
+export type OrderItem = {
+  productId: string;
+  vendorId?: string;
+  vendorName?: string;
+  quantity: number;
+  name?: string;
+  unitPrice?: number;
+  lineTotal?: number;
+  vendorFulfillmentStatus?: VendorFulfillmentStatus;
+};
+
 export type OrderRequest = {
   id: string;
   recipientName: string;
@@ -75,13 +92,7 @@ export type OrderRequest = {
   deliveryPinUrl?: string;
   email: string;
   note?: string;
-  items?: Array<{
-    productId: string;
-    quantity: number;
-    name?: string;
-    unitPrice?: number;
-    lineTotal?: number;
-  }>;
+  items?: OrderItem[];
   totalAmount?: number;
   deliveryFee?: number;
   totalWithDelivery?: number;

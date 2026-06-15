@@ -96,7 +96,7 @@ export const orderSchema = z.object({
   deliveryPinUrl: z.string().trim().optional(),
   email: z.string().email(),
   note: z.string().max(500).optional(),
-  items: z.array(z.object({ productId: z.string(), quantity: z.number().min(1), name: z.string().optional(), unitPrice: z.number().min(0).optional(), lineTotal: z.number().min(0).optional() })).min(1),
+  items: z.array(z.object({ productId: z.string().min(1), quantity: z.number().int().min(1), name: z.string().optional(), unitPrice: z.number().min(0).optional(), lineTotal: z.number().min(0).optional() })).min(1),
   totalAmount: z.number().min(0).optional(),
   deliveryFee: z.number().min(0).optional(),
   totalWithDelivery: z.number().min(0).optional()
