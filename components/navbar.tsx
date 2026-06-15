@@ -3,11 +3,13 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { readCart } from '@/lib/cart-storage';
+import { AccountMenu } from '@/components/account-menu';
 
 const customerLinks = [
   ['Shop', '/shop'],
   ['About', '/about'],
-  ['Contact', '/contact']
+  ['Contact', '/contact'],
+  ['Account', '/account']
 ] as const;
 
 function CartBadge({ count }: { count: number }) {
@@ -112,6 +114,9 @@ export function Navbar() {
                   <CartBadge count={cartCount} />
                 </Link>
               </li>
+              <li>
+                <AccountMenu />
+              </li>
             </ul>
 
             <div className="w-full md:max-w-xl">
@@ -134,6 +139,9 @@ export function Navbar() {
                 Cart
                 <CartBadge count={cartCount} />
               </Link>
+            </li>
+            <li className="rounded-xl bg-white/70 px-3 py-2">
+              <AccountMenu onNavigate={() => setIsMobileOpen(false)} />
             </li>
           </ul>
         ) : null}

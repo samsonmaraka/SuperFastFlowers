@@ -138,6 +138,29 @@ npm run dev
 
 If `DYNAMODB_TABLE` is not set, app uses seed data in memory for local MVP browsing.
 
+
+## Optional Google Sign-In (Auth.js / NextAuth)
+
+Phase 2 adds optional Google sign-in for customer accounts. It does not protect checkout, shop pages, product pages, cart pages, or the existing `ADMIN_TOKEN` admin flow.
+
+Required environment variables:
+
+- `AUTH_SECRET` (generate with `npx auth secret` or another secure random secret)
+- `AUTH_GOOGLE_ID`
+- `AUTH_GOOGLE_SECRET`
+- `AUTH_URL` (for example `http://localhost:3000` locally or `https://www.sendagift.ug` in production)
+- `NEXTAUTH_URL` may also be set for deployments that still expect the legacy name
+
+Google OAuth callback URLs to register:
+
+- Production: `https://www.sendagift.ug/api/auth/callback/google`
+- Amplify test domain, if you test that deployed branch: `https://main.d15cn4uvjtmkv7.amplifyapp.com/api/auth/callback/google`
+- Local developer fallback, not required for production-only testing: `http://localhost:3000/api/auth/callback/google`
+
+For production-only testing, set `AUTH_URL=https://www.sendagift.ug` in Amplify before redeploying.
+
+See `docs/auth-admin-phase-2.md` for the full Phase 2 setup and troubleshooting guide.
+
 ---
 
 ## AWS Deployment (Amplify – Recommended)
@@ -150,6 +173,11 @@ If `DYNAMODB_TABLE` is not set, app uses seed data in memory for local MVP brows
    - `DYNAMODB_TABLE`
    - `DYNAMODB_ORDER_TABLE`
    - `ADMIN_TOKEN` (store the real value only in Amplify, not in committed files)
+   - `AUTH_SECRET`
+   - `AUTH_GOOGLE_ID`
+   - `AUTH_GOOGLE_SECRET`
+   - `AUTH_URL`
+   - `NEXTAUTH_URL` (optional legacy compatibility)
    - `PESAPAL_BASE_URL`
    - `PESAPAL_CONSUMER_KEY`
    - `PESAPAL_CONSUMER_SECRET`
