@@ -10,7 +10,7 @@ type EnvCheckResponse = ReturnType<typeof getPesapalEnvPresence> & {
 
 
 export async function GET(req: NextRequest) {
-  try { await requireAdminApiAccess(req); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
+  try { const access = await requireAdminApiAccess(req); if (access.mode === 'vendor-admin') throw new Error('SUPER_ADMIN_REQUIRED'); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
 
   const response: EnvCheckResponse = {
     ...getPesapalEnvPresence(),

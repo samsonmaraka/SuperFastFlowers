@@ -67,7 +67,7 @@ export type OrderStatus =
   | 'PAYMENT_INVALID'
   | 'PAYMENT_PENDING';
 
-export type VendorFulfillmentStatus = 'pending' | 'processing' | 'fulfilled' | 'cancelled';
+export type VendorFulfillmentStatus = 'new' | 'accepted' | 'preparing' | 'ready' | 'out_for_delivery' | 'fulfilled' | 'cancelled' | 'pending' | 'processing';
 
 export type OrderItem = {
   productId: string;

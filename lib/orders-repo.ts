@@ -2,7 +2,7 @@ import { PutCommand, QueryCommand, ScanCommand, UpdateCommand } from '@aws-sdk/l
 import { db } from '@/lib/dynamodb';
 import { getEnv } from '@/lib/env';
 import { orderIdFromPesapalMerchantReference } from '@/lib/pesapal';
-import { OrderRequest, OrderStatus, PesapalOrderPayment } from '@/lib/types';
+import { OrderRequest, OrderStatus, PesapalOrderPayment, VendorFulfillmentStatus } from '@/lib/types';
 
 const memoryOrders: OrderRequest[] = [];
 
@@ -110,5 +110,31 @@ export async function updateOrderPayment(orderId: string, payment: PesapalOrderP
     ExpressionAttributeValues: expressionAttributeValues
   }));
 
+  return updatedOrder;
+}
+
+
+export async function updateOrderItemVendorFulfillmentStatus(orderId: string, productId: string, vendorId: string, vendorFulfillmentStatus: VendorFulfillmentStatus) {
+  const existing = await getOrderById(orderId);
+  if (!existing) return null;
+  let changed = false;
+  const updatedOrder = {
+    ...existing,
+    items: (existing.items || []).map((item) => {
+      if (item.productId === productId && item.vendorId === vendorId) {
+        changed = true;
+        return { ...item, vendorFulfillmentStatus };
+      }
+      return item;
+    }),
+    updatedAt: new Date().toISOString()
+  };
+  if (!changed) return null;
+  if (!getEnv().orderTableName) {
+    const idx = memoryOrders.findIndex((order) => order.id === orderId);
+    if (idx >= 0) memoryOrders[idx] = updatedOrder;
+    return idx >= 0 ? memoryOrders[idx] : null;
+  }
+  await db.send(new UpdateCommand({ TableName: getEnv().orderTableName, Key: { pk: `ORDER#${orderId}`, sk: existing.createdAt }, UpdateExpression: 'SET #items = :items, #updatedAt = :updatedAt', ExpressionAttributeNames: { '#items': 'items', '#updatedAt': 'updatedAt' }, ExpressionAttributeValues: { ':items': updatedOrder.items, ':updatedAt': updatedOrder.updatedAt } }));
   return updatedOrder;
 }
