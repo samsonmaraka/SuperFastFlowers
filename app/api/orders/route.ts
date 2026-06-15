@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createOrder } from '@/lib/orders-repo';
 import { orderSchema } from '@/lib/validators';
 import { sendOrderSuccessEmail } from '@/lib/send-order-email';
-import { listProducts } from '@/lib/products-repo';
-import { OrderStatus } from '@/lib/types';
+import { getProductByIdOrSlug, listProducts } from '@/lib/products-repo';
+import { OrderItem, OrderStatus } from '@/lib/types';
 import { getDateOnlyAtUtcMidnight, getMinimumDeliveryDate, getRequiredPreparationDays } from '@/lib/preparation-days';
 
 export async function POST(req: NextRequest) {
@@ -90,11 +90,32 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  const orderItems: OrderItem[] = [];
+  for (const item of parsed.data.items) {
+    const product = await getProductByIdOrSlug(item.productId);
+    if (!product) {
+      return NextResponse.json({ error: `Product ${item.productId} is no longer available.` }, { status: 400 });
+    }
+
+    const quantity = item.quantity;
+    orderItems.push({
+      productId: product.id,
+      vendorId: product.vendorId,
+      vendorName: product.vendorName,
+      quantity,
+      name: product.name,
+      unitPrice: product.price,
+      lineTotal: product.price * quantity,
+      vendorFulfillmentStatus: 'pending'
+    });
+  }
+
   // Delivery fees are now factored into product prices, so do not calculate or add a separate delivery charge.
-  const subtotal = parsed.data.totalAmount ?? parsed.data.items.reduce((sum, item) => sum + (item.lineTotal ?? (item.unitPrice ?? 0) * item.quantity), 0);
+  const subtotal = orderItems.reduce((sum, item) => sum + (item.lineTotal || 0), 0);
 
   const orderPayload = {
     ...parsed.data,
+    items: orderItems,
     totalAmount: subtotal,
     deliveryFee: undefined,
     totalWithDelivery: subtotal,
