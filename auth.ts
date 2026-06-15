@@ -8,6 +8,7 @@ function getProfileString(profile: Record<string, unknown>, key: string) {
 }
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
+  secret: process.env.AUTH_SECRET,
   trustHost: true,
   session: { strategy: 'jwt' },
   providers: [
