@@ -141,7 +141,7 @@ If `DYNAMODB_TABLE` is not set, app uses seed data in memory for local MVP brows
 
 ## Optional Google Sign-In (Auth.js / NextAuth)
 
-Phase 2 adds optional Google sign-in for customer accounts. It does not protect checkout, shop pages, product pages, cart pages, or the existing `ADMIN_TOKEN` admin flow.
+Phase 2 adds optional Google sign-in for customer accounts. Phase 3 adds role-aware admin access: Google-authenticated users are normal USER accounts by default, while active SUPER_ADMIN users can access the admin backend. Checkout, shop pages, product pages, and cart pages remain available to guests and normal customers. `ADMIN_TOKEN` remains as a temporary emergency fallback for admin APIs during this migration.
 
 Required environment variables:
 
@@ -150,6 +150,7 @@ Required environment variables:
 - `AUTH_GOOGLE_SECRET`
 - `AUTH_URL` (for example `http://localhost:3000` locally or `https://www.sendagift.ug` in production)
 - `NEXTAUTH_URL` may also be set for deployments that still expect the legacy name
+- `BOOTSTRAP_SUPER_ADMIN_EMAILS` comma-separated Google emails that should be idempotently granted SUPER_ADMIN on sign-in or admin role loading
 
 Google OAuth callback URLs to register:
 
@@ -159,7 +160,7 @@ Google OAuth callback URLs to register:
 
 For production-only testing, set `AUTH_URL=https://www.sendagift.ug` in Amplify before redeploying.
 
-See `docs/auth-admin-phase-2.md` for the full Phase 2 setup and troubleshooting guide.
+See `docs/auth-admin-phase-2.md` for the full Phase 2 setup and troubleshooting guide, and `docs/auth-admin-phase-3.md` for SUPER_ADMIN bootstrap, role management, and temporary ADMIN_TOKEN fallback details.
 
 ---
 
@@ -172,7 +173,8 @@ See `docs/auth-admin-phase-2.md` for the full Phase 2 setup and troubleshooting 
    - `AWS_REGION`
    - `DYNAMODB_TABLE`
    - `DYNAMODB_ORDER_TABLE`
-   - `ADMIN_TOKEN` (store the real value only in Amplify, not in committed files)
+   - `ADMIN_TOKEN` (temporary emergency fallback; store the real value only in Amplify, not in committed files)
+   - `BOOTSTRAP_SUPER_ADMIN_EMAILS` (comma-separated Google emails, for example `owner@example.com,ops@example.com`)
    - `AUTH_SECRET`
    - `AUTH_GOOGLE_ID`
    - `AUTH_GOOGLE_SECRET`
@@ -266,7 +268,7 @@ The current checkout creates an order request. To add payments later:
 
 ## Security Notes
 
-- Admin APIs use `x-admin-token` for MVP. Upgrade to Cognito/Amplify Auth for production admin login.
+- Admin APIs now prefer Google-authenticated `SUPER_ADMIN` access. The legacy `x-admin-token` / `ADMIN_TOKEN` path remains only as a temporary emergency fallback during the Phase 3 migration.
 - Validate/sanitize all admin payloads (already basic Zod validation).
 - Add rate limiting/WAF in front of production endpoints.
 

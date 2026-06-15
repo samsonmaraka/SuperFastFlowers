@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { isAdminAuthorized } from '@/lib/admin-auth';
+import { requireAdminApiAccess } from '@/lib/admin-auth';
 import { listOrders, updateOrderStatus } from '@/lib/orders-repo';
 import { orderStatusSchema } from '@/lib/validators';
 
 const active = new Set(['new', 'reviewed', 'processing']);
 
 export async function GET(req: NextRequest) {
-  if (!isAdminAuthorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try { await requireAdminApiAccess(req); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
   try {
     const statusGroup = req.nextUrl.searchParams.get('statusGroup');
     let orders = await listOrders();
@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  if (!isAdminAuthorized(req)) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+  try { await requireAdminApiAccess(req); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
   try {
     const body = await req.json() as { id?: string; status?: string };
     if (!body.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
