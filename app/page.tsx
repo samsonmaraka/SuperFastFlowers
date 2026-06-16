@@ -47,10 +47,6 @@ export default async function HomePage({
     <div className="mx-auto max-w-6xl px-4 py-8">
       <JsonLd data={[storeJsonLd, websiteJsonLd, itemListJsonLd(products)]} />
       <section>
-        <div className="mb-6 max-w-3xl space-y-2">
-          <h1 className="text-3xl font-semibold">Send gifts, cakes, flowers and hampers in Uganda</h1>
-          <p className="text-gray-700">Order thoughtful gifts online for delivery in Uganda, including Kampala where available. Explore cakes, flowers, cupcakes, hampers and celebration gifts for birthdays, baby showers, get well wishes, sympathy, love and everyday celebrations.</p>
-        </div>
         <nav className="mb-5">
           <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
             <Link
