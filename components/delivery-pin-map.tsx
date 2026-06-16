@@ -237,7 +237,7 @@ export function DeliveryPinMap() {
   return (
     <div className="space-y-2 rounded-xl border border-blush bg-pink-50/40 p-3 shadow-sm">
       <div>
-        <span className="text-sm font-medium text-gray-800">Delivery pin on map (optional)</span>
+        <span className="text-sm font-medium text-gray-800">Delivery pin on map</span>
         <p className="mt-1 text-sm text-gray-700">{helperText}</p>
       </div>
       {!mapUnavailable ? (
