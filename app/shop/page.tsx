@@ -5,10 +5,26 @@ import type { Metadata } from 'next';
 import { listProducts } from '@/lib/products-repo';
 import { itemListJsonLd, JsonLd } from '@/lib/seo';
 
+const shopTitle = 'Shop Gifts, Cakes, Flowers & Hampers in Uganda';
+const shopDescription = 'Shop cakes, flowers, cupcakes, hampers and thoughtful gifts in Uganda for birthdays, baby showers, get well, sympathy and celebrations.';
+const shopCanonicalUrl = '/shop';
+
 export const metadata: Metadata = {
-  title: 'Shop Gifts, Cakes, Flowers & Hampers in Uganda',
-  description: 'Shop cakes, flowers, cupcakes, hampers and thoughtful gifts in Uganda for birthdays, baby showers, get well, sympathy and celebrations.',
-  alternates: { canonical: '/shop' }
+  title: shopTitle,
+  description: shopDescription,
+  alternates: { canonical: shopCanonicalUrl },
+  openGraph: {
+    title: shopTitle,
+    description: shopDescription,
+    url: shopCanonicalUrl,
+    siteName: 'Sendagift UG',
+    type: 'website'
+  },
+  twitter: {
+    card: 'summary',
+    title: shopTitle,
+    description: shopDescription
+  }
 };
 
 export default async function ShopPage({
@@ -24,11 +40,6 @@ export default async function ShopPage({
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <JsonLd data={itemListJsonLd(products)} />
-      <div className="mb-6 max-w-3xl space-y-2">
-        <h1 className="text-3xl font-semibold">Shop gifts in Uganda</h1>
-        <p className="text-gray-700">Find cakes, flowers, cupcakes, hampers and gift ideas for birthdays, baby showers, get well wishes, sympathy and celebrations, with Kampala delivery where available.</p>
-      </div>
-
       <nav className="mb-5">
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
           <Link
