@@ -4,12 +4,12 @@ import { ChangeEvent, FormEvent, useCallback, useEffect, useMemo, useState } fro
 import Image from 'next/image';
 import { Product, ProductStatus, Vendor, OrderRequest, OrderStatus, UserRole, UserRoleAssignment, AppUser, VendorAdminAssignment, VendorFulfillmentStatus } from '@/lib/types';
 import { VendorLocationMap } from '@/components/vendor-location-map';
+import { buildProductSlug } from '@/lib/slug';
 
 const activeStatuses: OrderStatus[] = ['new', 'reviewed', 'processing'];
 const statusOptions: OrderStatus[] = ['new', 'processing', 'completed', 'cancelled'];
 const vendorFulfillmentStatuses: VendorFulfillmentStatus[] = ['new', 'accepted', 'preparing', 'ready', 'out_for_delivery', 'fulfilled', 'cancelled'];
 
-function slugify(value: string) { return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''); }
 
 function normalizeApiError(error: unknown) {
   if (typeof error === 'string') return error;
@@ -126,7 +126,7 @@ export function AdminProductsClient({ initial, accessMode, assignedVendorIds }: 
 
     const now=new Date().toISOString();
     const existing=products.find(p=>p.id===editingId);
-    const payload:Product={id:editingId||crypto.randomUUID(),name:form.name,slug:existing?.slug||`${slugify(form.name)}-${Date.now()}`,description:form.description,price:priceValue,preparationDays:preparationDaysValue,category:'General',categories:form.categories.split(',').map(s=>s.trim()).filter(Boolean),tags:form.tagsInput.split(',').map(s=>s.trim()).filter(Boolean),imageUrls:[form.imageUrl],stockStatus:'in_stock',featured:existing?.featured||false,vendorId:form.vendorId||undefined,vendorName:selectedVendor?.name||existing?.vendorName,vendorContactPerson:selectedVendor?.contactPerson||existing?.vendorContactPerson,vendorPhone:selectedVendor?.phone||existing?.vendorPhone,vendorEmail:selectedVendor?.email||existing?.vendorEmail,vendorLocation:selectedVendor?.location||existing?.vendorLocation,vendorLatitude:selectedVendor?.vendorLatitude ?? existing?.vendorLatitude,vendorLongitude:selectedVendor?.vendorLongitude ?? existing?.vendorLongitude,createdAt:existing?.createdAt||now,updatedAt:now,status:form.status};
+    const payload:Product={id:editingId||crypto.randomUUID(),name:form.name,slug:buildProductSlug(form.name),description:form.description,price:priceValue,preparationDays:preparationDaysValue,category:'General',categories:form.categories.split(',').map(s=>s.trim()).filter(Boolean),tags:form.tagsInput.split(',').map(s=>s.trim()).filter(Boolean),imageUrls:[form.imageUrl],stockStatus:'in_stock',featured:existing?.featured||false,vendorId:form.vendorId||undefined,vendorName:selectedVendor?.name||existing?.vendorName,vendorContactPerson:selectedVendor?.contactPerson||existing?.vendorContactPerson,vendorPhone:selectedVendor?.phone||existing?.vendorPhone,vendorEmail:selectedVendor?.email||existing?.vendorEmail,vendorLocation:selectedVendor?.location||existing?.vendorLocation,vendorLatitude:selectedVendor?.vendorLatitude ?? existing?.vendorLatitude,vendorLongitude:selectedVendor?.vendorLongitude ?? existing?.vendorLongitude,createdAt:existing?.createdAt||now,updatedAt:now,status:form.status};
 
     const res=await fetch('/api/admin/products',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(payload)});
     const d=await res.json();

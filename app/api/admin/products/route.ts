@@ -11,6 +11,7 @@ import {
 } from '@/lib/products-repo';
 import { uploadNewProductImagesToS3 } from '@/lib/product-image-storage';
 import { productSchema } from '@/lib/validators';
+import { buildProductSlug } from '@/lib/slug';
 import { writeAuditLog } from '@/lib/audit-repo';
 import { canManageProduct, filterProductsForAdmin, isSuperAdminContext } from '@/lib/vendor-permissions';
 
@@ -131,19 +132,15 @@ export async function POST(req: NextRequest) {
       throw error;
     }
 
-    const existingSlugProduct = await getProductBySlug(parsed.data.slug, { includeInactive: true });
-    if (existingSlugProduct && existingSlugProduct.id !== parsed.data.id) {
-      return errorResponse('Another product already uses this slug. Please rename the product or edit the existing item.', 'DUPLICATE_SLUG', 409, {
-        slug: parsed.data.slug,
-        existingProductId: existingSlugProduct.id
-      });
-    }
+    const cleanSlug = buildProductSlug(parsed.data.name);
+    const existingSlugProduct = await getProductBySlug(cleanSlug, { includeInactive: true });
+    const finalSlug = existingSlugProduct && existingSlugProduct.id !== parsed.data.id ? buildProductSlug(parsed.data.name, parsed.data.id.slice(0, 8)) : cleanSlug;
 
     console.log('Validation passed');
 
-    let productToSave = parsed.data;
+    let productToSave = { ...parsed.data, slug: finalSlug };
     try {
-      productToSave = await uploadNewProductImagesToS3(parsed.data);
+      productToSave = await uploadNewProductImagesToS3(productToSave);
     } catch (error) {
       logServerError('POST /api/admin/products image upload failed', error);
       return errorResponse('Product image upload failed. Please choose a valid image and try saving again.', 'IMAGE_UPLOAD_FAILED', 500);
