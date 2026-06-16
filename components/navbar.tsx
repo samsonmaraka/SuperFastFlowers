@@ -69,7 +69,7 @@ export function Navbar() {
         <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(420px,0.95fr)] md:items-start">
           <div className="flex items-center justify-between gap-3">
             <Link href="/" className="group" onClick={() => setIsMobileOpen(false)}>
-              <span className="block text-xs font-semibold uppercase tracking-[0.22em] text-pink-700">Sendagift UG</span>
+              <span className="block text-xs font-semibold uppercase tracking-[0.22em] text-pink-700">Sendagift UG 🇺🇬</span>
               <span className="mt-1 block text-2xl font-semibold leading-tight tracking-tight text-ink md:text-3xl">
                 Thoughtful gifts for life&apos;s meaningful moments.
               </span>
