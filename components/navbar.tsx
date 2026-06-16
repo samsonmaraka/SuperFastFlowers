@@ -69,7 +69,16 @@ export function Navbar() {
         <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(420px,0.95fr)] md:items-start">
           <div className="flex items-center justify-between gap-3">
             <Link href="/" className="group" onClick={() => setIsMobileOpen(false)}>
-              <span className="block text-xs font-semibold uppercase tracking-[0.22em] text-pink-700">Sendagift UG 🇺🇬</span>
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-pink-700">
+                <span>Sendagift UG</span>
+                <img
+                  src="/icons/uganda-flag.svg"
+                  alt="Uganda flag"
+                  width={18}
+                  height={18}
+                  className="inline-block h-4 w-4 rounded-full object-cover"
+                />
+              </span>
               <span className="mt-1 block text-2xl font-semibold leading-tight tracking-tight text-ink md:text-3xl">
                 Thoughtful gifts for life&apos;s meaningful moments.
               </span>
