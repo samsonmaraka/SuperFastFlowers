@@ -25,7 +25,7 @@ export function AccountMenu({ onNavigate }: { onNavigate?: () => void }) {
   useEffect(() => {
     if (!user) { setCanAdmin(false); return; }
     let cancelled = false;
-    fetch('/api/admin/users', { cache: 'no-store' }).then((res) => { if (!cancelled) setCanAdmin(res.ok); }).catch(() => { if (!cancelled) setCanAdmin(false); });
+    fetch('/api/admin/access', { cache: 'no-store' }).then((res) => { if (!cancelled) setCanAdmin(res.ok); }).catch(() => { if (!cancelled) setCanAdmin(false); });
     return () => { cancelled = true; };
   }, [user]);
 
@@ -105,10 +105,17 @@ export function AccountMenu({ onNavigate }: { onNavigate?: () => void }) {
                   {user.email ? <p className="truncate text-xs text-ink/60">{user.email}</p> : null}
                 </div>
               </div>
-              {canAdmin ? <Link href="/admin" className="rounded-xl px-3 py-2 font-semibold text-ink transition hover:bg-cream hover:text-pink-700" onClick={closeAndNavigate} role="menuitem">Admin</Link> : null}
               <Link href="/account" className="rounded-xl px-3 py-2 font-semibold text-ink transition hover:bg-cream hover:text-pink-700" onClick={closeAndNavigate} role="menuitem">
                 Account options
               </Link>
+              {canAdmin ? (
+                <>
+                  <div className="border-t border-blush/80 pt-2" role="separator" />
+                  <Link href="/admin" className="rounded-xl px-3 py-2 font-semibold text-ink transition hover:bg-cream hover:text-pink-700" onClick={closeAndNavigate} role="menuitem">
+                    Admin portal
+                  </Link>
+                </>
+              ) : null}
               <button
                 type="button"
                 className="rounded-xl px-3 py-2 text-left font-semibold text-ink transition hover:bg-cream hover:text-pink-700"
