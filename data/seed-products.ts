@@ -4,7 +4,7 @@ export const seedProducts: Product[] = [
   {
     id: 'p001',
     name: 'Luxury Tea & Truffle Box',
-    slug: 'luxury-tea-truffle-box',
+    slug: 'luxury-tea-and-truffle-box',
     description: 'Handpicked teas paired with artisan truffles in a keepsake box.',
     price: 59,
     category: 'Gourmet',

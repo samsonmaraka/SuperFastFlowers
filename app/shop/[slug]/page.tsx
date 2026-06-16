@@ -1,9 +1,35 @@
+import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { AddToCartButton } from '@/components/add-to-cart-button';
 import { SendThisGiftButton } from '@/components/send-this-gift-button';
 import { getProductByIdOrSlug } from '@/lib/products-repo';
 import { formatUgx } from '@/lib/format';
 import { getPrimaryProductImage } from '@/lib/product-images';
+import { JsonLd, productBreadcrumbJsonLd, productJsonLd, productUrl } from '@/lib/seo';
+
+export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
+  const product = await getProductByIdOrSlug(params.slug);
+
+  if (!product) {
+    return {};
+  }
+
+  const canonicalUrl = productUrl(product);
+  const image = getPrimaryProductImage(product);
+
+  return {
+    title: product.name,
+    description: product.description || `Order ${product.name} from Sendagift UG in Uganda.`,
+    alternates: { canonical: canonicalUrl },
+    openGraph: {
+      title: product.name,
+      description: product.description || `Order ${product.name} from Sendagift UG in Uganda.`,
+      url: canonicalUrl,
+      type: 'website',
+      images: [{ url: image, alt: product.name }]
+    }
+  };
+}
 
 export default async function ProductPage({ params }: { params: { slug: string } }) {
   const product = await getProductByIdOrSlug(params.slug);
@@ -16,6 +42,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
 
   return (
     <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 md:grid-cols-2">
+      <JsonLd data={[productJsonLd(product), productBreadcrumbJsonLd(product)]} />
       <img src={heroImage} alt={product.name} className="h-[32rem] w-full rounded-xl object-cover" />
 
       <div className="space-y-4">
