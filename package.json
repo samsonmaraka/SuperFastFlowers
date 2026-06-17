@@ -10,7 +10,8 @@
     "typecheck": "tsc --noEmit",
     "seed": "tsx scripts/seed.ts",
     "validate:product-images": "tsx scripts/validate-product-image-urls.ts",
-    "clean:product-slugs": "tsx scripts/clean-product-slugs.ts"
+    "clean:product-slugs": "tsx scripts/clean-product-slugs.ts",
+    "diagnose:product-slug": "tsx scripts/diagnose-product-slug.ts"
   },
   "dependencies": {
     "@aws-crypto/sha256-js": "^5.2.0",

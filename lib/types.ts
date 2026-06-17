@@ -27,6 +27,7 @@ export type Product = {
   id: string;
   name: string;
   slug: string;
+  legacySlugs?: string[];
   description: string;
   price: number;
   category: string;

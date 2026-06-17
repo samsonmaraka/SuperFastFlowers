@@ -1,16 +1,17 @@
 import type { Product } from '@/lib/types';
 import { getPrimaryProductImage } from '@/lib/product-images';
 import { buildSiteUrl } from '@/lib/site-url';
+import { getExpectedProductSlug } from '@/lib/slug';
 
 export const STORE_NAME = 'Sendagift UG';
 export const STORE_DESCRIPTION = 'Sendagift UG helps you send cakes, flowers, cupcakes, hampers, and thoughtful gifts in Uganda. Order online for birthdays, love, baby showers, get well, and special occasions.';
 export const STORE_LOGO_PATH = '/icon-192.png';
 
-export function productPath(product: Pick<Product, 'slug'>) {
-  return `/shop/${product.slug}`;
+export function productPath(product: Pick<Product, 'id' | 'name' | 'slug'>) {
+  return `/shop/${getExpectedProductSlug(product)}`;
 }
 
-export function productUrl(product: Pick<Product, 'slug'>) {
+export function productUrl(product: Pick<Product, 'id' | 'name' | 'slug'>) {
   return buildSiteUrl(productPath(product));
 }
 

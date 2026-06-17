@@ -8,7 +8,7 @@ import {
   ScanCommand
 } from '@aws-sdk/lib-dynamodb';
 import { Product, Vendor } from '@/lib/types';
-import { buildProductSlug } from '@/lib/slug';
+import { buildProductSlug, getExpectedProductSlug } from '@/lib/slug';
 import { normalizeProductForDisplay } from '@/lib/product-images';
 import { db } from '@/lib/dynamodb';
 import { getEnv, isDynamoConfigured } from '@/lib/env';
@@ -97,6 +97,7 @@ export function validateProductSlugCleanup(products: Product[]): ProductSlugVali
   });
 }
 
+
 function applyVendorSnapshot(product: Product, vendor: Vendor): Product {
   return {
     ...product,
@@ -181,7 +182,7 @@ export async function getProductBySlug(slug: string, options?: { includeInactive
       tableName: getEnv().tableName || '(empty)'
     });
     const localProducts = await loadLocalProducts();
-    const product = localProducts.find((p) => p.slug === slug) || null;
+    const product = localProducts.find((p) => p.slug === slug || getExpectedProductSlug(p) === slug || (p.legacySlugs ?? []).includes(slug)) || null;
     if (product && !includeInactive && (product.status ?? 'active') !== 'active') return null;
     return product ? normalizeProductForDisplay(product) : null;
   }
@@ -196,7 +197,20 @@ export async function getProductBySlug(slug: string, options?: { includeInactive
     })
   );
 
-  const product = ((bySlug.Items || [])[0] as Product | undefined) || null;
+  let product = ((bySlug.Items || [])[0] as Product | undefined) || null;
+
+  if (!product) {
+    const res = await db.send(
+      new ScanCommand({
+        TableName: getEnv().tableName,
+        FilterExpression: '#entity = :entity',
+        ExpressionAttributeNames: { '#entity': 'entityType' },
+        ExpressionAttributeValues: { ':entity': 'PRODUCT' }
+      })
+    );
+    product = (((res.Items || []) as Product[]).find((p) => getExpectedProductSlug(p) === slug || (p.legacySlugs ?? []).includes(slug)) as Product | undefined) || null;
+  }
+
   if (product && !includeInactive && (product.status ?? 'active') !== 'active') return null;
   return product ? normalizeProductForDisplay(product) : null;
 }
@@ -210,7 +224,7 @@ export async function getProductByIdOrSlug(idOrSlug: string, options?: { include
       tableName: getEnv().tableName || '(empty)'
     });
     const localProducts = await loadLocalProducts();
-    const product = localProducts.find((p) => p.id === idOrSlug || p.slug === idOrSlug) || null;
+    const product = localProducts.find((p) => p.id === idOrSlug || p.slug === idOrSlug || getExpectedProductSlug(p) === idOrSlug || (p.legacySlugs ?? []).includes(idOrSlug)) || null;
     if (product && !includeInactive && (product.status ?? 'active') !== 'active') return null;
     return product ? normalizeProductForDisplay(product) : null;
   }
@@ -285,14 +299,18 @@ export async function cleanProductSlugs() {
   }
 
   const products = await listProducts({ includeInactive: true });
+  const previousSlugsById = new Map(products.map((product) => [product.id, product.slug]));
   const cleanedProducts = buildUniqueProductSlugs(products);
 
   for (const product of cleanedProducts) {
+    const previousSlug = previousSlugsById.get(product.id);
+    const legacySlugs = Array.from(new Set([...(product.legacySlugs ?? []), previousSlug].filter((slug): slug is string => Boolean(slug && slug !== product.slug))));
     await db.send(
       new PutCommand({
         TableName: getEnv().tableName,
         Item: {
           ...product,
+          legacySlugs,
           entityType: 'PRODUCT',
           pk: `PRODUCT#${product.id}`,
           sk: 'META',
@@ -304,6 +322,23 @@ export async function cleanProductSlugs() {
   }
 
   return cleanedProducts;
+}
+
+
+export async function diagnoseProductSlugByName(name: string) {
+  ensureProductsStorageConfigured();
+  const source = isDynamoConfigured() ? 'DynamoDB' : 'local fallback';
+  const products = await listProducts({ includeInactive: true });
+  const product = products.find((p) => p.name.toLowerCase() === name.toLowerCase()) || null;
+
+  return {
+    source,
+    productId: product?.id ?? null,
+    productName: product?.name ?? name,
+    currentSlug: product?.slug ?? null,
+    expectedSlug: product ? getExpectedProductSlug(product) : buildProductSlug(name),
+    found: Boolean(product)
+  };
 }
 
 export async function deleteProduct(id: string) {
