@@ -14,6 +14,5 @@ export function buildProductSlug(name: string, uniqueSuffix?: string | number) {
 }
 
 export function slugMatchesProductName(slug: string, name: string) {
-  const base = slugifyProductName(name);
-  return slug === base || slug.startsWith(`${base}-`);
+  return slug === slugifyProductName(name);
 }

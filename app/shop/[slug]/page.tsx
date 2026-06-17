@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { notFound } from 'next/navigation';
+import { notFound, permanentRedirect } from 'next/navigation';
 import { AddToCartButton } from '@/components/add-to-cart-button';
 import { SendThisGiftButton } from '@/components/send-this-gift-button';
 import { getProductByIdOrSlug } from '@/lib/products-repo';
@@ -36,6 +36,10 @@ export default async function ProductPage({ params }: { params: { slug: string }
 
   if (!product) {
     notFound();
+  }
+
+  if (params.slug !== product.slug) {
+    permanentRedirect(`/shop/${product.slug}`);
   }
 
   const heroImage = getPrimaryProductImage(product);
