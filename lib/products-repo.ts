@@ -57,15 +57,43 @@ async function persistLocalProducts(products: Product[]) {
   await fs.writeFile(localProductsPath, JSON.stringify(products, null, 2), 'utf8');
 }
 
-function buildUniqueProductSlugs(products: Product[]) {
-  const usedSlugs = new Set<string>();
+export type ProductSlugValidation = {
+  id: string;
+  name: string;
+  currentSlug: string;
+  expectedSlug: string;
+  isClean: boolean;
+};
+
+export function buildUniqueProductSlugs(products: Product[]) {
+  const expectedSlugCounts = new Map<string, number>();
+
+  for (const product of products) {
+    const cleanSlug = buildProductSlug(product.name);
+    expectedSlugCounts.set(cleanSlug, (expectedSlugCounts.get(cleanSlug) ?? 0) + 1);
+  }
 
   return products.map((product) => {
     const cleanSlug = buildProductSlug(product.name);
-    const slug = usedSlugs.has(cleanSlug) ? buildProductSlug(product.name, product.id.slice(0, 8)) : cleanSlug;
-    usedSlugs.add(slug);
+    const slug = expectedSlugCounts.get(cleanSlug)! > 1 ? buildProductSlug(product.name, product.id.slice(0, 8)) : cleanSlug;
 
     return { ...product, slug };
+  });
+}
+
+export function validateProductSlugCleanup(products: Product[]): ProductSlugValidation[] {
+  const cleanedProductsById = new Map(buildUniqueProductSlugs(products).map((product) => [product.id, product]));
+
+  return products.map((product) => {
+    const expectedSlug = cleanedProductsById.get(product.id)?.slug ?? buildProductSlug(product.name);
+
+    return {
+      id: product.id,
+      name: product.name,
+      currentSlug: product.slug,
+      expectedSlug,
+      isClean: product.slug === expectedSlug
+    };
   });
 }
 
@@ -234,6 +262,12 @@ export async function upsertProduct(product: Product) {
   );
 
   return nextProduct;
+}
+
+export async function validateStoredProductSlugs() {
+  ensureProductsStorageConfigured();
+  const products = await listProducts({ includeInactive: true });
+  return validateProductSlugCleanup(products);
 }
 
 export async function cleanProductSlugs() {
