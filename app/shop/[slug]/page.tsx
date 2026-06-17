@@ -3,9 +3,13 @@ import { notFound, permanentRedirect } from 'next/navigation';
 import { AddToCartButton } from '@/components/add-to-cart-button';
 import { SendThisGiftButton } from '@/components/send-this-gift-button';
 import { getProductByIdOrSlug } from '@/lib/products-repo';
+import { getExpectedProductSlug } from '@/lib/slug';
 import { formatUgx } from '@/lib/format';
 import { getPrimaryProductImage } from '@/lib/product-images';
 import { JsonLd, productBreadcrumbJsonLd, productJsonLd, productUrl } from '@/lib/seo';
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 export async function generateMetadata({ params }: { params: { slug: string } }): Promise<Metadata> {
   const product = await getProductByIdOrSlug(params.slug);
@@ -14,7 +18,8 @@ export async function generateMetadata({ params }: { params: { slug: string } })
     return {};
   }
 
-  const canonicalUrl = productUrl(product);
+  const expectedSlug = getExpectedProductSlug(product);
+  const canonicalUrl = productUrl({ ...product, slug: expectedSlug });
   const image = getPrimaryProductImage(product);
 
   return {
@@ -38,15 +43,19 @@ export default async function ProductPage({ params }: { params: { slug: string }
     notFound();
   }
 
-  if (params.slug !== product.slug) {
-    permanentRedirect(`/shop/${product.slug}`);
+  const expectedSlug = getExpectedProductSlug(product);
+
+  if (params.slug !== expectedSlug) {
+    permanentRedirect(`/shop/${expectedSlug}`);
   }
+
+  const canonicalProduct = { ...product, slug: expectedSlug };
 
   const heroImage = getPrimaryProductImage(product);
 
   return (
     <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 md:grid-cols-2">
-      <JsonLd data={[productJsonLd(product), productBreadcrumbJsonLd(product)]} />
+      <JsonLd data={[productJsonLd(canonicalProduct), productBreadcrumbJsonLd(canonicalProduct)]} />
       <img src={heroImage} alt={product.name} className="h-[32rem] w-full rounded-xl object-cover" />
 
       <div className="space-y-4">

@@ -9,6 +9,9 @@ const shopTitle = 'Shop Gifts, Cakes, Flowers & Hampers in Uganda';
 const shopDescription = 'Shop cakes, flowers, cupcakes, hampers and thoughtful gifts in Uganda for birthdays, baby showers, get well, sympathy and celebrations.';
 const shopCanonicalUrl = '/shop';
 
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export const metadata: Metadata = {
   title: shopTitle,
   description: shopDescription,

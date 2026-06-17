@@ -16,3 +16,7 @@ export function buildProductSlug(name: string, uniqueSuffix?: string | number) {
 export function slugMatchesProductName(slug: string, name: string) {
   return slug === slugifyProductName(name);
 }
+
+export function getExpectedProductSlug(product: { name: string }) {
+  return buildProductSlug(product.name);
+}
