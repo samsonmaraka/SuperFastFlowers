@@ -8,6 +8,7 @@ import {
   ScanCommand
 } from '@aws-sdk/lib-dynamodb';
 import { Product, Vendor } from '@/lib/types';
+import { buildProductSlug } from '@/lib/slug';
 import { normalizeProductForDisplay } from '@/lib/product-images';
 import { db } from '@/lib/dynamodb';
 import { getEnv, isDynamoConfigured } from '@/lib/env';
@@ -54,6 +55,18 @@ function ensureProductsStorageConfigured() {
 
 async function persistLocalProducts(products: Product[]) {
   await fs.writeFile(localProductsPath, JSON.stringify(products, null, 2), 'utf8');
+}
+
+function buildUniqueProductSlugs(products: Product[]) {
+  const usedSlugs = new Set<string>();
+
+  return products.map((product) => {
+    const cleanSlug = buildProductSlug(product.name);
+    const slug = usedSlugs.has(cleanSlug) ? buildProductSlug(product.name, product.id.slice(0, 8)) : cleanSlug;
+    usedSlugs.add(slug);
+
+    return { ...product, slug };
+  });
 }
 
 function applyVendorSnapshot(product: Product, vendor: Vendor): Product {
@@ -221,6 +234,42 @@ export async function upsertProduct(product: Product) {
   );
 
   return nextProduct;
+}
+
+export async function cleanProductSlugs() {
+  ensureProductsStorageConfigured();
+
+  if (!isDynamoConfigured()) {
+    console.warn('[products-repo] DynamoDB disabled in cleanProductSlugs.', {
+      hasTableName: Boolean(getEnv().tableName),
+      tableName: getEnv().tableName || '(empty)'
+    });
+    const localProducts = await loadLocalProducts();
+    const cleanedProducts = buildUniqueProductSlugs(localProducts);
+    await persistLocalProducts(cleanedProducts);
+    return cleanedProducts;
+  }
+
+  const products = await listProducts({ includeInactive: true });
+  const cleanedProducts = buildUniqueProductSlugs(products);
+
+  for (const product of cleanedProducts) {
+    await db.send(
+      new PutCommand({
+        TableName: getEnv().tableName,
+        Item: {
+          ...product,
+          entityType: 'PRODUCT',
+          pk: `PRODUCT#${product.id}`,
+          sk: 'META',
+          gsi1pk: `SLUG#${product.slug}`,
+          gsi1sk: `PRODUCT#${product.id}`
+        }
+      })
+    );
+  }
+
+  return cleanedProducts;
 }
 
 export async function deleteProduct(id: string) {
