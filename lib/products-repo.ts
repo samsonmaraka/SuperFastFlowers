@@ -14,6 +14,7 @@ import { db } from '@/lib/dynamodb';
 import { getEnv, isDynamoConfigured } from '@/lib/env';
 import { seedProducts } from '@/data/seed-products';
 import { getVendor } from '@/lib/vendors-repo';
+import { normalizeCategorySlug } from '@/lib/categories';
 
 const localProductsPath = path.join(process.cwd(), 'data', '.local-products.json');
 
@@ -160,9 +161,11 @@ export async function listProducts(options?: { category?: string; q?: string; fe
 }
 
 function filterProducts(products: Product[], category?: string, q?: string, featured?: boolean, includeInactive = false) {
+  const requestedCategory = category ? normalizeCategorySlug(category) : '';
+
   return products.filter((p) => {
     const normalizedCategories = p.categories ?? [];
-    const matchesCategory = category ? normalizedCategories.some((slug) => slug.toLowerCase() === category.toLowerCase()) : true;
+    const matchesCategory = requestedCategory ? normalizedCategories.some((slug) => normalizeCategorySlug(slug) === requestedCategory) : true;
     const matchesQ = q
       ? [p.name, p.description, p.category, normalizedCategories.join(' '), (p.tags ?? []).join(' ')].join(' ').toLowerCase().includes(q.toLowerCase())
       : true;

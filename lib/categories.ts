@@ -19,6 +19,15 @@ export const giftCategories: GiftCategory[] = [
   { rank: 110, label: 'Christmas', slug: 'christmas' }
 ];
 
+export function normalizeCategorySlug(value: string) {
+  return value
+    .trim()
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 export function getSortedGiftCategories() {
   return [...giftCategories].sort((a, b) => a.rank - b.rank);
 }
