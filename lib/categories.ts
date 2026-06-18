@@ -6,14 +6,17 @@ export type GiftCategory = {
 };
 
 export const giftCategories: GiftCategory[] = [
-  { rank: 10, label: "Mother's Day", slug: 'mothers-day' },
-  { rank: 20, label: 'Birthday', slug: 'birthday' },
-  { rank: 30, label: 'Occasions', slug: 'occasions' },
-  { rank: 40, label: 'Sympathy', slug: 'sympathy' },
-  { rank: 50, label: 'Get Well', slug: 'get-well' },
-  { rank: 60, label: 'Flowers', slug: 'flowers' },
-  { rank: 70, label: 'Plants', slug: 'plants' },
-  { rank: 80, label: 'Gift Baskets and Food', slug: 'gift-baskets-food' }
+  { rank: 10, label: 'Cakes and Cupcakes', slug: 'cakes-and-cupcakes' },
+  { rank: 20, label: "Valentine's Day", slug: 'valentines-day' },
+  { rank: 30, label: 'Baby Shower', slug: 'baby-shower' },
+  { rank: 40, label: 'New Baby', slug: 'new-baby' },
+  { rank: 50, label: 'Congratulations', slug: 'congratulations' },
+  { rank: 60, label: 'Birthday', slug: 'birthday' },
+  { rank: 70, label: 'Thank You', slug: 'thank-you' },
+  { rank: 80, label: 'Gift Baskets and Food', slug: 'gift-baskets-and-food' },
+  { rank: 90, label: 'Flowers', slug: 'flowers' },
+  { rank: 100, label: 'Anniversary', slug: 'anniversary' },
+  { rank: 110, label: 'Christmas', slug: 'christmas' }
 ];
 
 export function getSortedGiftCategories() {
