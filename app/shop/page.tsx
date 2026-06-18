@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ProductCard } from '@/components/product-card';
-import { getSortedGiftCategories } from '@/lib/categories';
+import { getSortedGiftCategories, normalizeCategorySlug } from '@/lib/categories';
 import type { Metadata } from 'next';
 import { listProducts } from '@/lib/products-repo';
 import { itemListJsonLd, JsonLd } from '@/lib/seo';
@@ -37,7 +37,7 @@ export default async function ShopPage({
 }) {
   const products = await listProducts({ q: searchParams.q, category: searchParams.category });
   const categories = getSortedGiftCategories();
-  const activeCategory = searchParams.category || '';
+  const activeCategory = searchParams.category ? normalizeCategorySlug(searchParams.category) : '';
   const q = searchParams.q || '';
 
   return (
@@ -55,7 +55,7 @@ export default async function ShopPage({
           </Link>
           {categories.map((category) => {
             const href = q ? `/shop?category=${category.slug}&q=${encodeURIComponent(q)}` : `/shop?category=${category.slug}`;
-            const isActive = activeCategory === category.slug;
+            const isActive = activeCategory === normalizeCategorySlug(category.slug);
 
             return (
               <Link
