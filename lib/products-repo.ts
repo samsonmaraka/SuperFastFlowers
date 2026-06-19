@@ -160,14 +160,18 @@ export async function listProducts(options?: { category?: string; q?: string; fe
   return filterProducts(((res.Items || []) as Product[]).map(normalizeProductForDisplay), category, q, featured, includeInactive);
 }
 
+function getProductCategoryValues(product: Product) {
+  return [product.category, ...(product.categories ?? []), ...(product.tags ?? [])].filter((value): value is string => Boolean(value));
+}
+
 function filterProducts(products: Product[], category?: string, q?: string, featured?: boolean, includeInactive = false) {
   const requestedCategory = category ? normalizeCategorySlug(category) : '';
 
   return products.filter((p) => {
-    const normalizedCategories = p.categories ?? [];
-    const matchesCategory = requestedCategory ? normalizedCategories.some((slug) => normalizeCategorySlug(slug) === requestedCategory) : true;
+    const categoryValues = getProductCategoryValues(p);
+    const matchesCategory = requestedCategory ? categoryValues.some((value) => normalizeCategorySlug(value) === requestedCategory) : true;
     const matchesQ = q
-      ? [p.name, p.description, p.category, normalizedCategories.join(' '), (p.tags ?? []).join(' ')].join(' ').toLowerCase().includes(q.toLowerCase())
+      ? [p.name, p.description, ...categoryValues].join(' ').toLowerCase().includes(q.toLowerCase())
       : true;
     const matchesFeatured = featured !== undefined ? p.featured === featured : true;
     const matchesStatus = includeInactive ? true : (p.status ?? 'active') === 'active';
