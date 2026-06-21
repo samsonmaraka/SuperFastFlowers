@@ -4,7 +4,8 @@ import { SignInButton } from '@/components/sign-in-button';
 import { SignOutButton } from '@/components/sign-out-button';
 
 export const metadata = {
-  title: 'Account'
+  title: 'Account',
+  robots: { index: false, follow: false }
 };
 
 export default async function AccountPage() {

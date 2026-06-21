@@ -3,6 +3,11 @@ import { signIn } from '@/auth';
 import { AdminShell } from '@/components/admin/admin-shell';
 import { getCurrentUserWithRoles } from '@/lib/current-user';
 import { requireAnyAdminAccess } from '@/lib/admin-auth';
+
+export const metadata = {
+  title: 'Admin',
+  robots: { index: false, follow: false }
+};
 export const dynamic='force-dynamic'; export const revalidate=0;
 export default async function AdminLayout({children}:{children:React.ReactNode}){
  const current=await getCurrentUserWithRoles();

@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { ProductCard } from '@/components/product-card';
-import { getSortedGiftCategories, normalizeCategorySlug } from '@/lib/categories';
+import { categoryPath, getGiftCategoryBySlug, getSortedGiftCategories, normalizeCategorySlug } from '@/lib/categories';
 import type { Metadata } from 'next';
+import { permanentRedirect } from 'next/navigation';
 import { listProducts } from '@/lib/products-repo';
 import { itemListJsonLd, JsonLd } from '@/lib/seo';
 
@@ -12,29 +13,40 @@ const shopCanonicalUrl = '/shop';
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 
-export const metadata: Metadata = {
-  title: shopTitle,
-  description: shopDescription,
-  alternates: { canonical: shopCanonicalUrl },
-  openGraph: {
+export function generateMetadata({ searchParams }: { searchParams: { q?: string; category?: string } }): Metadata {
+  const hasSearchQuery = Boolean(searchParams.q);
+
+  return {
     title: shopTitle,
     description: shopDescription,
-    url: shopCanonicalUrl,
-    siteName: 'Sendagift UG',
-    type: 'website'
-  },
-  twitter: {
-    card: 'summary',
-    title: shopTitle,
-    description: shopDescription
-  }
-};
+    alternates: { canonical: shopCanonicalUrl },
+    robots: hasSearchQuery ? { index: false, follow: true } : undefined,
+    openGraph: {
+      title: shopTitle,
+      description: shopDescription,
+      url: shopCanonicalUrl,
+      siteName: 'Sendagift UG',
+      type: 'website'
+    },
+    twitter: {
+      card: 'summary',
+      title: shopTitle,
+      description: shopDescription
+    }
+  };
+}
 
 export default async function ShopPage({
   searchParams
 }: {
   searchParams: { q?: string; category?: string };
 }) {
+  const requestedCategory = searchParams.category ? getGiftCategoryBySlug(searchParams.category) : null;
+
+  if (requestedCategory && !searchParams.q) {
+    permanentRedirect(categoryPath(requestedCategory));
+  }
+
   const products = await listProducts({ q: searchParams.q, category: searchParams.category });
   const categories = getSortedGiftCategories();
   const activeCategory = searchParams.category ? normalizeCategorySlug(searchParams.category) : '';
@@ -54,7 +66,7 @@ export default async function ShopPage({
             All gifts
           </Link>
           {categories.map((category) => {
-            const href = q ? `/shop?category=${category.slug}&q=${encodeURIComponent(q)}` : `/shop?category=${category.slug}`;
+            const href = categoryPath(category);
             const isActive = activeCategory === normalizeCategorySlug(category.slug);
 
             return (

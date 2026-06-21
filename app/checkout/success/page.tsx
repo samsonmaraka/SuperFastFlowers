@@ -5,6 +5,10 @@ import { deliveryAreas } from '@/lib/delivery-areas';
 import { formatUgx } from '@/lib/format';
 import { getOrderById } from '@/lib/orders-repo';
 
+export const metadata = {
+  title: 'Order success',
+  robots: { index: false, follow: false }
+};
 type SuccessPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
 };

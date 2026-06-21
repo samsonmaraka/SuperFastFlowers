@@ -1,3 +1,5 @@
+import type { GiftCategory } from '@/lib/categories';
+import { categoryPath } from '@/lib/categories';
 import type { Product } from '@/lib/types';
 import { getPrimaryProductImage } from '@/lib/product-images';
 import { buildSiteUrl } from '@/lib/site-url';
@@ -13,6 +15,10 @@ export function productPath(product: Pick<Product, 'id' | 'name' | 'slug'>) {
 
 export function productUrl(product: Pick<Product, 'id' | 'name' | 'slug'>) {
   return buildSiteUrl(productPath(product));
+}
+
+export function categoryUrl(category: Pick<GiftCategory, 'slug'>) {
+  return buildSiteUrl(categoryPath(category));
 }
 
 export function itemListJsonLd(products: Product[]) {
@@ -54,6 +60,19 @@ export function productJsonLd(product: Product) {
         name: product.vendorName || STORE_NAME
       }
     }
+  };
+}
+
+
+export function categoryBreadcrumbJsonLd(category: Pick<GiftCategory, 'label' | 'slug'>) {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Home', item: buildSiteUrl('/') },
+      { '@type': 'ListItem', position: 2, name: 'Shop', item: buildSiteUrl('/shop') },
+      { '@type': 'ListItem', position: 3, name: category.label, item: categoryUrl(category) }
+    ]
   };
 }
 
