@@ -7,7 +7,7 @@ import { buildSiteUrl } from '@/lib/site-url';
 import { itemListJsonLd, JsonLd, STORE_DESCRIPTION, STORE_LOGO_PATH, STORE_NAME } from '@/lib/seo';
 
 export const metadata: Metadata = {
-  title: 'Sendagift UG | Send Gifts, Cakes, Flowers & Hampers in Uganda',
+  title: 'Sendagift UG | Send Gifts in Uganda',
   description: STORE_DESCRIPTION,
   alternates: { canonical: 'https://www.sendagift.ug' }
 };

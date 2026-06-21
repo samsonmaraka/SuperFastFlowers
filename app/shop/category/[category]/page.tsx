@@ -2,7 +2,7 @@ import Link from 'next/link';
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import { ProductCard } from '@/components/product-card';
-import { categoryPath, getGiftCategoryBySlug, getSortedGiftCategories } from '@/lib/categories';
+import { categoryPath, getGiftCategoryBySlug, getSortedGiftCategories, normalizeCategorySlug } from '@/lib/categories';
 import { listProducts } from '@/lib/products-repo';
 import { buildSiteUrl } from '@/lib/site-url';
 import { categoryBreadcrumbJsonLd, itemListJsonLd, JsonLd } from '@/lib/seo';
@@ -22,11 +22,14 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
   }
 
   const title = category.seoTitle || `${category.label} Gifts in Uganda | Sendagift UG`;
-  const description = category.seoDescription || category.description || `Shop ${category.label.toLowerCase()} gifts in Uganda with Sendagift UG.`;
+  const description =
+    category.seoDescription ||
+    category.description ||
+    `Sendagift UG helps you send ${category.label.toLowerCase()} gifts in Uganda for birthdays, celebrations, and special occasions.`;
   const url = buildSiteUrl(categoryPath(category));
 
   return {
-    title,
+    title: { absolute: title },
     description,
     alternates: { canonical: url },
     openGraph: {
@@ -53,35 +56,11 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
   const products = await listProducts({ category: category.slug, categoryMatch: 'assigned' });
   const categories = getSortedGiftCategories();
-  const relatedCategories = (category.relatedCategories || [])
-    .map((slug) => getGiftCategoryBySlug(slug))
-    .filter((relatedCategory): relatedCategory is NonNullable<typeof relatedCategory> => Boolean(relatedCategory));
+  const activeCategory = normalizeCategorySlug(category.slug);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <JsonLd data={[categoryBreadcrumbJsonLd(category), itemListJsonLd(products)]} />
-
-      <section className="mb-8 rounded-3xl border border-blush bg-white p-6 shadow-sm md:p-8">
-        <p className="text-sm font-semibold uppercase tracking-[0.22em] text-pink-700">Shop by occasion</p>
-        <h1 className="mt-3 text-3xl font-semibold tracking-tight text-ink md:text-4xl">{category.h1 || `${category.label} Gifts in Uganda`}</h1>
-        <p className="mt-4 max-w-3xl text-base leading-7 text-gray-700">
-          {category.intro || category.description || `Browse ${category.label.toLowerCase()} gifts available from Sendagift UG.`}
-        </p>
-        {relatedCategories.length > 0 ? (
-          <div className="mt-5 flex flex-wrap gap-2 text-sm">
-            <span className="py-2 font-semibold text-gray-700">Related:</span>
-            {relatedCategories.map((relatedCategory) => (
-              <Link
-                key={relatedCategory.slug}
-                href={categoryPath(relatedCategory)}
-                className="rounded-full border border-gray-300 bg-cream px-4 py-2 text-ink transition hover:border-ink/40"
-              >
-                {relatedCategory.label}
-              </Link>
-            ))}
-          </div>
-        ) : null}
-      </section>
 
       <nav className="mb-5" aria-label="Gift categories">
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
@@ -89,7 +68,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
             All gifts
           </Link>
           {categories.map((giftCategory) => {
-            const isActive = giftCategory.slug === category.slug;
+            const isActive = activeCategory === normalizeCategorySlug(giftCategory.slug);
 
             return (
               <Link
