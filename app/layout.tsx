@@ -9,16 +9,16 @@ export const metadata: Metadata = {
   metadataBase: new URL(getPublicSiteUrl()),
   applicationName: 'Sendagift UG',
   title: {
-    default: 'Sendagift UG | Send Gifts, Cakes, Flowers & Hampers in Uganda',
+    default: 'Sendagift UG | Send Gifts in Uganda',
     template: '%s | Sendagift UG'
   },
-  description: 'Sendagift UG helps you send cakes, flowers, cupcakes, hampers, and thoughtful gifts in Uganda. Order online for birthdays, love, baby showers, get well, and special occasions.',
+  description: 'Sendagift UG helps you send a gift in Uganda, including cakes, flowers, cupcakes, hampers, and thoughtful gifts for birthdays, baby showers, congratulations, and special occasions.',
   alternates: {
     canonical: '/'
   },
   openGraph: {
     title: 'Sendagift UG',
-    description: 'Send cakes, flowers, cupcakes, hampers, and thoughtful gifts in Uganda for birthdays, love, baby showers, get well, and special occasions.',
+    description: 'Sendagift UG helps you send a gift in Uganda, including cakes, flowers, cupcakes, hampers, and thoughtful gifts for birthdays, baby showers, congratulations, and special occasions.',
     url: '/',
     siteName: 'Sendagift UG',
     type: 'website'

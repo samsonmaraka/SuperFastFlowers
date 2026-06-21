@@ -6,7 +6,7 @@ import { buildSiteUrl } from '@/lib/site-url';
 import { getExpectedProductSlug } from '@/lib/slug';
 
 export const STORE_NAME = 'Sendagift UG';
-export const STORE_DESCRIPTION = 'Sendagift UG helps you send cakes, flowers, cupcakes, hampers, and thoughtful gifts in Uganda. Order online for birthdays, love, baby showers, get well, and special occasions.';
+export const STORE_DESCRIPTION = 'Sendagift UG helps you send a gift in Uganda, including cakes, flowers, cupcakes, hampers, and thoughtful gifts for birthdays, baby showers, congratulations, and special occasions.';
 export const STORE_LOGO_PATH = '/icon-192.png';
 
 export function productPath(product: Pick<Product, 'id' | 'name' | 'slug'>) {

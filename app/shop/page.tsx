@@ -6,8 +6,8 @@ import { permanentRedirect } from 'next/navigation';
 import { listProducts } from '@/lib/products-repo';
 import { itemListJsonLd, JsonLd } from '@/lib/seo';
 
-const shopTitle = 'Shop Gifts, Cakes, Flowers & Hampers in Uganda';
-const shopDescription = 'Shop cakes, flowers, cupcakes, hampers and thoughtful gifts in Uganda for birthdays, baby showers, get well, sympathy and celebrations.';
+const shopTitle = 'Sendagift UG | Shop Gifts in Uganda';
+const shopDescription = 'Sendagift UG helps you send gifts in Uganda, including cakes, flowers, cupcakes, hampers, and thoughtful gifts for birthdays, baby showers, congratulations, and special occasions.';
 const shopCanonicalUrl = '/shop';
 
 export const dynamic = 'force-dynamic';
@@ -17,7 +17,7 @@ export function generateMetadata({ searchParams }: { searchParams: { q?: string;
   const hasSearchQuery = Boolean(searchParams.q);
 
   return {
-    title: shopTitle,
+    title: { absolute: shopTitle },
     description: shopDescription,
     alternates: { canonical: shopCanonicalUrl },
     robots: hasSearchQuery ? { index: false, follow: true } : undefined,
