@@ -3,6 +3,10 @@ import { CheckoutClient } from '@/components/checkout-client';
 import { DeliveryPinMap } from '@/components/delivery-pin-map';
 import { getDateInputValue, getMinimumDeliveryDate } from '@/lib/preparation-days';
 
+export const metadata = {
+  title: 'Checkout',
+  robots: { index: false, follow: false }
+};
 function addDays(date: Date, days: number) {
   const nextDate = new Date(date);
   nextDate.setDate(nextDate.getDate() + days);

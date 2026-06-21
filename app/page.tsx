@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { ProductCard } from '@/components/product-card';
-import { getSortedGiftCategories, normalizeCategorySlug } from '@/lib/categories';
+import { categoryPath, getSortedGiftCategories, normalizeCategorySlug } from '@/lib/categories';
 import type { Metadata } from 'next';
 import { listProducts } from '@/lib/products-repo';
 import { buildSiteUrl } from '@/lib/site-url';
@@ -58,7 +58,7 @@ export default async function HomePage({
               All gifts
             </Link>
             {categories.map((category) => {
-              const href = q ? `/?category=${category.slug}&q=${encodeURIComponent(q)}` : `/?category=${category.slug}`;
+              const href = categoryPath(category);
               const isActive = activeCategory === normalizeCategorySlug(category.slug);
 
               return (

@@ -135,8 +135,8 @@ export async function getActiveVendorForProduct(product: Product) {
   return vendor;
 }
 
-export async function listProducts(options?: { category?: string; q?: string; featured?: boolean; includeInactive?: boolean }) {
-  const { category, q, featured, includeInactive = false } = options || {};
+export async function listProducts(options?: { category?: string; q?: string; featured?: boolean; includeInactive?: boolean; categoryMatch?: 'all' | 'assigned' }) {
+  const { category, q, featured, includeInactive = false, categoryMatch = 'all' } = options || {};
   ensureProductsStorageConfigured();
 
   if (!isDynamoConfigured()) {
@@ -145,7 +145,7 @@ export async function listProducts(options?: { category?: string; q?: string; fe
       tableName: getEnv().tableName || '(empty)'
     });
     const localProducts = await loadLocalProducts();
-    return filterProducts(localProducts.map(normalizeProductForDisplay), category, q, featured, includeInactive);
+    return filterProducts(localProducts.map(normalizeProductForDisplay), category, q, featured, includeInactive, categoryMatch);
   }
 
   const res = await db.send(
@@ -157,19 +157,24 @@ export async function listProducts(options?: { category?: string; q?: string; fe
     })
   );
 
-  return filterProducts(((res.Items || []) as Product[]).map(normalizeProductForDisplay), category, q, featured, includeInactive);
+  return filterProducts(((res.Items || []) as Product[]).map(normalizeProductForDisplay), category, q, featured, includeInactive, categoryMatch);
+}
+
+function getAssignedProductCategoryValues(product: Product) {
+  return [product.category, ...(product.categories ?? [])].filter((value): value is string => Boolean(value));
 }
 
 function getProductCategoryValues(product: Product) {
-  return [product.category, ...(product.categories ?? []), ...(product.tags ?? [])].filter((value): value is string => Boolean(value));
+  return [...getAssignedProductCategoryValues(product), ...(product.tags ?? [])].filter((value): value is string => Boolean(value));
 }
 
-function filterProducts(products: Product[], category?: string, q?: string, featured?: boolean, includeInactive = false) {
+function filterProducts(products: Product[], category?: string, q?: string, featured?: boolean, includeInactive = false, categoryMatch: 'all' | 'assigned' = 'all') {
   const requestedCategory = category ? normalizeCategorySlug(category) : '';
 
   return products.filter((p) => {
     const categoryValues = getProductCategoryValues(p);
-    const matchesCategory = requestedCategory ? categoryValues.some((value) => normalizeCategorySlug(value) === requestedCategory) : true;
+    const categoryMatchValues = categoryMatch === 'assigned' ? getAssignedProductCategoryValues(p) : categoryValues;
+    const matchesCategory = requestedCategory ? categoryMatchValues.some((value) => normalizeCategorySlug(value) === requestedCategory) : true;
     const matchesQ = q
       ? [p.name, p.description, ...categoryValues].join(' ').toLowerCase().includes(q.toLowerCase())
       : true;
