@@ -8,7 +8,7 @@ import { AccountMenu } from '@/components/account-menu';
 const customerLinks = [
   ['Shop', '/shop'],
   ['About', '/about'],
-  ['Contact', '/contact']
+  ['Need help importing a car?', '/contact']
 ] as const;
 
 function CartBadge({ count }: { count: number }) {
