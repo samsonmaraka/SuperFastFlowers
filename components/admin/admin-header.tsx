@@ -3,7 +3,7 @@ import type { AdminAccessContext } from '@/lib/vendor-permissions';
 
 export function AdminHeader({ access }: { access: AdminAccessContext }) {
   const user = access.current?.user;
-  const role = access.mode === 'vendor-admin' ? 'VENDOR_ADMIN' : 'SUPER_ADMIN';
+  const role = access.mode === 'user-orders' ? 'USER' : access.mode === 'vendor-admin' ? 'VENDOR_ADMIN' : 'SUPER_ADMIN';
   return <header className="border-b bg-white px-4 py-4 md:px-6">
     <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
       <div><p className="text-sm text-gray-500">Signed in as</p><h2 className="font-semibold text-ink">{user?.name || user?.email || 'Emergency admin token'}</h2><p className="text-xs text-gray-500">{user?.email || 'ADMIN_TOKEN fallback'}</p></div>

@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 import { getCurrentUserWithRoles } from '@/lib/current-user';
 import { getEnv } from '@/lib/env';
 import { writeAuditLog } from '@/lib/audit-repo';
-import { getAssignedVendorIdsForUser, hasActiveRole, type AdminAccessContext } from '@/lib/vendor-permissions';
+import { getAssignedVendorIdsForUser, hasActiveRole, type AdminAccessContext, type AdminOnlyAccessContext } from '@/lib/vendor-permissions';
 
 async function auditSafely(entry: Parameters<typeof writeAuditLog>[0]) {
   try { await writeAuditLog(entry); } catch (error) { console.error('[AUDIT_LOG_FAILED]', error); }
@@ -16,7 +16,7 @@ export async function requireSuperAdmin() {
   return current!;
 }
 
-export async function getAdminAccessContext(req?: NextRequest): Promise<AdminAccessContext> {
+export async function getAdminAccessContext(req?: NextRequest): Promise<AdminOnlyAccessContext> {
   const current = await getCurrentUserWithRoles();
   if (hasActiveRole(current, 'SUPER_ADMIN')) return { mode: 'super-admin', current, assignedVendorIds: [] };
 
@@ -35,6 +35,17 @@ export async function getAdminAccessContext(req?: NextRequest): Promise<AdminAcc
   if (req) await auditSafely({ auditId: crypto.randomUUID(), actorUserId: current?.user.userId, actorEmail: current?.user.email, action: 'UNAUTHORIZED_ADMIN_API_ACCESS', targetType: 'ADMIN_API', targetId: req.nextUrl.pathname, metadata: { method: req.method }, ipAddress: req.headers.get('x-forwarded-for') || undefined, userAgent: req.headers.get('user-agent') || undefined, createdAt: new Date().toISOString() });
   throw new Error('ADMIN_API_ACCESS_REQUIRED');
 }
+
+
+export async function getDashboardAccessContext(req?: NextRequest): Promise<AdminAccessContext> {
+  try { return await getAdminAccessContext(req); } catch (error) {
+    const current = await getCurrentUserWithRoles();
+    if (hasActiveRole(current, 'USER')) return { mode: 'user-orders', current: current!, assignedVendorIds: [] };
+    throw error;
+  }
+}
+
+export async function requireDashboardAccess(req?: NextRequest) { return getDashboardAccessContext(req); }
 
 export async function requireAnyAdminAccess(req?: NextRequest) { return getAdminAccessContext(req); }
 
