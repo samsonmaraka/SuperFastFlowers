@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAdminApiAccess } from '@/lib/admin-auth';
+import { requireAdminApiAccess, requireDashboardAccess } from '@/lib/admin-auth';
 import { writeAuditLog } from '@/lib/audit-repo';
 import { getOrderById, listOrders, updateOrderItemVendorFulfillmentStatus, updateOrderStatus } from '@/lib/orders-repo';
 import { filterOrdersForAdmin, isSuperAdminContext } from '@/lib/vendor-permissions';
@@ -11,7 +11,7 @@ const vendorStatuses = new Set(['new', 'accepted', 'preparing', 'ready', 'out_fo
 async function auditFulfillment(access: Awaited<ReturnType<typeof requireAdminApiAccess>>, orderId: string, vendorId?: string, productId?: string, status?: string) { if (access.mode !== 'vendor-admin') return; try { await writeAuditLog({ auditId: crypto.randomUUID(), actorUserId: access.current.user.userId, actorEmail: access.current.user.email, action: 'VENDOR_ADMIN_FULFILLMENT_STATUS_UPDATED', targetType: 'ORDER_ITEM', targetId: `${orderId}:${productId}`, vendorId, metadata: { status }, createdAt: new Date().toISOString() }); } catch (e) { console.error('[AUDIT_LOG_FAILED]', e); } }
 
 export async function GET(req: NextRequest) {
-  let access; try { access = await requireAdminApiAccess(req); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
+  let access; try { access = await requireDashboardAccess(req); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
   try {
     const statusGroup = req.nextUrl.searchParams.get('statusGroup');
     let orders = filterOrdersForAdmin(access, await listOrders());
@@ -22,8 +22,9 @@ export async function GET(req: NextRequest) {
 }
 
 export async function PATCH(req: NextRequest) {
-  let access; try { access = await requireAdminApiAccess(req); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
+  let access; try { access = await requireDashboardAccess(req); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
   try {
+    if (access.mode === 'user-orders') return NextResponse.json({ error: 'Order updates are not available for customer accounts.' }, { status: 403 });
     const body = await req.json() as { id?: string; status?: string; productId?: string; vendorId?: string; vendorFulfillmentStatus?: string };
     if (!body.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
     if (isSuperAdminContext(access)) {

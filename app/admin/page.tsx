@@ -1,2 +1,3 @@
 import { redirect } from 'next/navigation';
-export default function AdminIndex(){ redirect('/admin/dashboard'); }
+import { requireDashboardAccess } from '@/lib/admin-auth';
+export default async function AdminIndex(){ const access = await requireDashboardAccess(); redirect(access.mode === 'user-orders' ? '/admin/orders' : '/admin/dashboard'); }

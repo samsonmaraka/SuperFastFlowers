@@ -4,9 +4,13 @@ import type { CurrentUserWithRoles } from '@/lib/current-user';
 import type { OrderRequest, Product, Vendor } from '@/lib/types';
 import { getVendorAssignmentsForUser } from '@/lib/roles-repo';
 
-export type AdminAccessContext =
+export type AdminOnlyAccessContext =
   | { mode: 'super-admin' | 'admin-token'; current: CurrentUserWithRoles | null; assignedVendorIds: string[] }
   | { mode: 'vendor-admin'; current: CurrentUserWithRoles; assignedVendorIds: string[] };
+
+export type AdminAccessContext =
+  | AdminOnlyAccessContext
+  | { mode: 'user-orders'; current: CurrentUserWithRoles; assignedVendorIds: string[] };
 
 export function hasActiveRole(user: CurrentUserWithRoles | null | undefined, role: string) {
   return Boolean(user?.roles.some((assignment) => assignment.role === role && assignment.status === 'active'));
@@ -32,6 +36,7 @@ export function canManageProduct(access: AdminAccessContext, product: Pick<Produ
 
 export function canViewOrderForVendor(access: AdminAccessContext, order: OrderRequest) {
   if (isSuperAdminContext(access)) return true;
+  if (access.mode === 'user-orders') return order.email.toLowerCase() === access.current.user.email.toLowerCase();
   return (order.items || []).some((item) => item.vendorId && access.assignedVendorIds.includes(item.vendorId));
 }
 
@@ -51,7 +56,7 @@ export function filterOrdersForAdmin(access: AdminAccessContext, orders: OrderRe
 }
 
 export function sanitizeOrderForVendorAdmin(access: AdminAccessContext, order: OrderRequest): OrderRequest {
-  if (isSuperAdminContext(access)) return order;
+  if (isSuperAdminContext(access) || access.mode === 'user-orders') return order;
   const items = (order.items || []).filter((item) => item.vendorId && access.assignedVendorIds.includes(item.vendorId));
   const vendorSubtotal = items.reduce((sum, item) => sum + (item.lineTotal ?? (item.unitPrice ?? 0) * item.quantity), 0);
   return {

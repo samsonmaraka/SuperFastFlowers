@@ -17,15 +17,23 @@ function PersonIcon({ className = 'h-4 w-4' }: { className?: string }) {
 export function AccountMenu({ onNavigate }: { onNavigate?: () => void }) {
   const { data: session, status } = useSession();
   const [isOpen, setIsOpen] = useState(false);
-  const [canAdmin, setCanAdmin] = useState(false);
+  const [accessMode, setAccessMode] = useState<'loading' | 'admin' | 'user-orders' | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
   const user = session?.user;
   const displayName = user?.name || user?.email || 'Your account';
 
   useEffect(() => {
-    if (!user) { setCanAdmin(false); return; }
+    if (!user) { setAccessMode(null); return; }
+    setAccessMode('loading');
     let cancelled = false;
-    fetch('/api/admin/access', { cache: 'no-store' }).then((res) => { if (!cancelled) setCanAdmin(res.ok); }).catch(() => { if (!cancelled) setCanAdmin(false); });
+    fetch('/api/admin/access', { cache: 'no-store' })
+      .then(async (res) => {
+        if (cancelled) return;
+        if (!res.ok) { setAccessMode(null); return; }
+        const data = await res.json() as { mode?: string; canAccessAdmin?: boolean };
+        setAccessMode(data.mode === 'user-orders' ? 'user-orders' : data.canAccessAdmin ? 'admin' : null);
+      })
+      .catch(() => { if (!cancelled) setAccessMode(null); });
     return () => { cancelled = true; };
   }, [user]);
 
@@ -105,10 +113,18 @@ export function AccountMenu({ onNavigate }: { onNavigate?: () => void }) {
                   {user.email ? <p className="truncate text-xs text-ink/60">{user.email}</p> : null}
                 </div>
               </div>
-              <Link href="/account" className="rounded-xl px-3 py-2 font-semibold text-ink transition hover:bg-cream hover:text-pink-700" onClick={closeAndNavigate} role="menuitem">
-                Account options
-              </Link>
-              {canAdmin ? (
+              {accessMode === 'loading' ? (
+                <p className="px-3 py-2 font-semibold text-ink/60">Loading account...</p>
+              ) : accessMode === 'user-orders' ? (
+                <Link href="/admin/orders" className="rounded-xl px-3 py-2 font-semibold text-ink transition hover:bg-cream hover:text-pink-700" onClick={closeAndNavigate} role="menuitem">
+                  Orders
+                </Link>
+              ) : (
+                <Link href="/account" className="rounded-xl px-3 py-2 font-semibold text-ink transition hover:bg-cream hover:text-pink-700" onClick={closeAndNavigate} role="menuitem">
+                  Account options
+                </Link>
+              )}
+              {accessMode === 'admin' ? (
                 <>
                   <div className="border-t border-blush/80 pt-2" role="separator" />
                   <Link href="/admin" className="rounded-xl px-3 py-2 font-semibold text-ink transition hover:bg-cream hover:text-pink-700" onClick={closeAndNavigate} role="menuitem">
