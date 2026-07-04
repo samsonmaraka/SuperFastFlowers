@@ -4,12 +4,10 @@ import { listProducts } from '@/lib/products-repo';
 import { buildSiteUrl } from '@/lib/site-url';
 import { productPath } from '@/lib/seo';
 
-const indexedCategorySlugs = new Set(['cakes-and-cupcakes', 'valentines-day', 'baby-shower', 'new-baby', 'birthday', 'congratulations']);
-
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
   const products = await listProducts();
-  const categories = getSortedGiftCategories().filter((category) => indexedCategorySlugs.has(category.slug));
+  const categories = getSortedGiftCategories();
 
   return [
     {
