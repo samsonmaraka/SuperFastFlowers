@@ -177,6 +177,13 @@ export function ProductsTable({
       </section>
 
       <section className="rounded-xl border bg-white p-4">
+        <div className="mb-4 flex flex-col justify-between gap-3 md:flex-row md:items-center">
+          <div>
+            <h2 className="text-xl font-semibold">Catalogue</h2>
+            <p className="text-sm text-gray-600">Download the current product catalogue as a CSV for offline review and editing.</p>
+          </div>
+          <a className="rounded bg-ink px-4 py-2 text-center text-sm font-semibold text-white hover:bg-gray-800" href="/api/admin/catalogue/export">Download catalogue CSV</a>
+        </div>
         <div className="mb-3 grid gap-2 md:grid-cols-4">
           <input className="rounded border p-2" placeholder="Search products" value={filter.q} onChange={(e) => setFilter({ ...filter, q: e.target.value })} />
           {!isVendor && <select className="rounded border p-2" value={filter.vendor} onChange={(e) => setFilter({ ...filter, vendor: e.target.value })}><option value="">All vendors</option>{vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select>}
