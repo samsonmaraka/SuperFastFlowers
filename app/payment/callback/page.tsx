@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { getOrderByPesapalMerchantReference, updateOrderPayment } from '@/lib/orders-repo';
 import { getPesapalTransactionStatus, mapPesapalTransactionToOrderStatus, pesapalStatusToPayment } from '@/lib/pesapal';
+import { sendOrderSuccessEmailOnPaymentConfirmation } from '@/lib/payment-confirmation-email';
 
 export const dynamic = 'force-dynamic';
 
@@ -72,11 +73,18 @@ export default async function PaymentCallbackPage({ searchParams }: PaymentCallb
 
         if (order) {
           paidOrderId = order.id;
-          await updateOrderPayment(order.id, {
+          const updatedOrder = await updateOrderPayment(order.id, {
             ...pesapalStatusToPayment(transactionStatus),
             orderTrackingId,
             merchantReference
           }, orderStatus);
+
+          await sendOrderSuccessEmailOnPaymentConfirmation({
+            orderBeforePayment: order,
+            updatedOrder,
+            confirmedStatus: orderStatus,
+            source: 'pesapal-callback'
+          });
         }
 
         const copy = statusCopy[orderStatus as keyof typeof statusCopy] || statusCopy.PAYMENT_PENDING;
