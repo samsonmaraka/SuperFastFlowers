@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getEnv } from '@/lib/env';
 import { getOrderById, updateOrderPayment } from '@/lib/orders-repo';
+import { sendOrderSuccessEmailOnPaymentConfirmation } from '@/lib/payment-confirmation-email';
 
 export const runtime = 'nodejs';
 
@@ -17,7 +18,7 @@ export async function POST(req: NextRequest) {
   const orderTrackingId = order.pesapal?.orderTrackingId || `TEST-${crypto.randomUUID()}`;
   const amount = order.totalWithDelivery ?? order.totalAmount ?? 0;
 
-  await updateOrderPayment(order.id, {
+  const updatedOrder = await updateOrderPayment(order.id, {
     orderTrackingId,
     merchantReference,
     status: 'COMPLETED',
@@ -36,6 +37,13 @@ export async function POST(req: NextRequest) {
       currency: 'UGX'
     }
   }, 'PAID');
+
+  await sendOrderSuccessEmailOnPaymentConfirmation({
+    orderBeforePayment: order,
+    updatedOrder,
+    confirmedStatus: 'PAID',
+    source: 'pesapal-test-success'
+  });
 
   const { siteUrl } = getEnv();
   if (!siteUrl) {

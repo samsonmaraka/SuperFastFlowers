@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getOrderByPesapalMerchantReference, updateOrderPayment } from '@/lib/orders-repo';
 import { getPesapalTransactionStatus, mapPesapalTransactionToOrderStatus, pesapalStatusToPayment } from '@/lib/pesapal';
+import { sendOrderSuccessEmailOnPaymentConfirmation } from '@/lib/payment-confirmation-email';
 
 export const runtime = 'nodejs';
 
@@ -34,11 +35,18 @@ export async function POST(req: NextRequest) {
     }
 
     const orderStatus = mapPesapalTransactionToOrderStatus(transactionStatus);
-    await updateOrderPayment(order.id, {
+    const updatedOrder = await updateOrderPayment(order.id, {
       ...pesapalStatusToPayment(transactionStatus),
       orderTrackingId,
       merchantReference
     }, orderStatus);
+
+    await sendOrderSuccessEmailOnPaymentConfirmation({
+      orderBeforePayment: order,
+      updatedOrder,
+      confirmedStatus: orderStatus,
+      source: 'pesapal-ipn'
+    });
 
     return NextResponse.json({
       orderNotificationType: notificationType,

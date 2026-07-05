@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createOrder } from '@/lib/orders-repo';
 import { orderSchema } from '@/lib/validators';
-import { sendOrderSuccessEmail } from '@/lib/send-order-email';
 import { getProductByIdOrSlug, listProducts } from '@/lib/products-repo';
 import { OrderItem, OrderStatus } from '@/lib/types';
 import { getDateOnlyAtUtcMidnight, getMinimumDeliveryDate, getRequiredPreparationDays } from '@/lib/preparation-days';
@@ -135,26 +134,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Order creation failed', stage: 'save-order' }, { status: 500 });
   }
 
-
-  if (order.email) {
-    console.info('[ORDER_EMAIL_START]', {
-      orderId: order.id,
-      recipientEmail: order.email
-    });
-    try {
-      await sendOrderSuccessEmail(order);
-      console.info('[ORDER_EMAIL_SUCCESS]', { orderId: order.id, recipientEmail: order.email });
-    } catch (error) {
-      const emailError = error as { name?: string; message?: string; $metadata?: unknown };
-      console.error('[ORDER_EMAIL_FAILED]', {
-        orderId: order.id,
-        recipientEmail: order.email,
-        errorName: emailError?.name || 'UnknownError',
-        errorMessage: emailError?.message || 'Unknown error',
-        errorMetadata: emailError?.$metadata || null
-      });
-    }
-  }
 
   if (!isJsonRequest) {
     const forwardedProto = req.headers.get('x-forwarded-proto');
