@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { ClearCartOnSuccess } from '@/components/clear-cart-on-success';
 import { getOrderByPesapalMerchantReference, updateOrderPayment } from '@/lib/orders-repo';
 import { getPesapalTransactionStatus, mapPesapalTransactionToOrderStatus, pesapalStatusToPayment } from '@/lib/pesapal';
 import { sendOrderSuccessEmailOnPaymentConfirmation } from '@/lib/payment-confirmation-email';
@@ -50,6 +51,7 @@ export default async function PaymentCallbackPage({ searchParams }: PaymentCallb
   let message = 'We could not verify this payment because the callback was missing Pesapal payment identifiers.';
   let displayStatus = 'Missing payment details';
   let paidOrderId = '';
+  let shouldClearCart = false;
 
   if (orderTrackingId && merchantReference) {
     try {
@@ -58,6 +60,7 @@ export default async function PaymentCallbackPage({ searchParams }: PaymentCallb
 
         if (order?.status === 'PAID' && order.pesapal?.orderTrackingId === orderTrackingId) {
           paidOrderId = order.id;
+          shouldClearCart = true;
           title = statusCopy.PAID.title;
           message = `${statusCopy.PAID.message} This was registered by the test successful payment button.`;
           displayStatus = order.pesapal.status || 'COMPLETED';
@@ -88,6 +91,10 @@ export default async function PaymentCallbackPage({ searchParams }: PaymentCallb
         }
 
         const copy = statusCopy[orderStatus as keyof typeof statusCopy] || statusCopy.PAYMENT_PENDING;
+        if (orderStatus === 'PAID') {
+          shouldClearCart = true;
+        }
+
         title = copy.title;
         message = copy.message;
         displayStatus = String(transactionStatus.payment_status_description || orderStatus);
@@ -102,6 +109,7 @@ export default async function PaymentCallbackPage({ searchParams }: PaymentCallb
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
+      {shouldClearCart ? <ClearCartOnSuccess /> : null}
       <section className="rounded-xl border border-blush bg-white p-6 shadow-sm">
         <p className="text-sm font-semibold uppercase tracking-wide text-pink-700">Pesapal payment</p>
         <h1 className="mt-2 text-3xl font-semibold text-ink">{title}</h1>
