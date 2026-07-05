@@ -20,6 +20,16 @@ export function getDateOnlyAtUtcMidnight(value: string) {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+export function isBeforeSameDayDeliveryCutoff(now = new Date()) {
+  const gmtPlus3Time = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+  return gmtPlus3Time.getUTCHours() < 9;
+}
+
+export function getGmtPlus3DateOnlyAtUtcMidnight(now = new Date()) {
+  const gmtPlus3Time = new Date(now.getTime() + 3 * 60 * 60 * 1000);
+  return new Date(Date.UTC(gmtPlus3Time.getUTCFullYear(), gmtPlus3Time.getUTCMonth(), gmtPlus3Time.getUTCDate()));
+}
+
 export function getMinimumDeliveryDate(preparationDays: number, now = new Date()) {
   const min = new Date(now);
   min.setUTCDate(min.getUTCDate() + preparationDays);

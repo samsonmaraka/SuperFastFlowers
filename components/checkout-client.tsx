@@ -3,9 +3,10 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { FormEvent, ReactElement, ReactNode, cloneElement, isValidElement, useEffect, useMemo, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { CartItem, readCart } from '@/lib/cart-storage';
 import { formatUgx } from '@/lib/format';
-import { DEFAULT_PREPARATION_DAYS, formatDeliveryDateLabel, getDateInputValue, getMinimumDeliveryDate } from '@/lib/preparation-days';
+import { DEFAULT_PREPARATION_DAYS, formatDeliveryDateLabel, getDateInputValue, getGmtPlus3DateOnlyAtUtcMidnight, getMinimumDeliveryDate, isBeforeSameDayDeliveryCutoff } from '@/lib/preparation-days';
 
 type CheckoutResponse = {
   redirect_url?: string;
@@ -17,6 +18,8 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitMode, setSubmitMode] = useState<'pesapal' | 'test' | null>(null);
   const [checkoutError, setCheckoutError] = useState('');
+  const [sameDayWarningTarget, setSameDayWarningTarget] = useState<HTMLElement | null>(null);
+  const [now, setNow] = useState(() => new Date());
 
   useEffect(() => {
     const syncCart = () => setItems(readCart());
@@ -30,16 +33,39 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  useEffect(() => {
+    setSameDayWarningTarget(document.getElementById('same-day-delivery-warning'));
+
+    const timer = window.setInterval(() => setNow(new Date()), 60 * 1000);
+    return () => window.clearInterval(timer);
+  }, []);
+
   const subtotal = useMemo(() => items.reduce((sum, item) => sum + item.price * item.quantity, 0), [items]);
   const maxPreparationDays = useMemo(
     () => Math.max(0, ...items.map((item) => item.preparationDays ?? DEFAULT_PREPARATION_DAYS)),
     [items]
   );
+  const isSameDayEligibleCart = useMemo(
+    () => items.length === 1 && items[0]?.quantity === 1 && (items[0]?.preparationDays ?? DEFAULT_PREPARATION_DAYS) === 1,
+    [items]
+  );
+  const isBeforeCutoff = useMemo(() => isBeforeSameDayDeliveryCutoff(now), [now]);
   const minDeliveryDate = useMemo(
-    () => getDateInputValue(getMinimumDeliveryDate(maxPreparationDays)),
-    [maxPreparationDays]
+    () =>
+      getDateInputValue(
+        isSameDayEligibleCart && isBeforeCutoff
+          ? getGmtPlus3DateOnlyAtUtcMidnight(now)
+          : getMinimumDeliveryDate(maxPreparationDays, now)
+      ),
+    [isSameDayEligibleCart, isBeforeCutoff, maxPreparationDays, now]
   );
   const minDeliveryDateLabel = useMemo(() => formatDeliveryDateLabel(minDeliveryDate), [minDeliveryDate]);
+  const sameDayDeliveryWarning = isSameDayEligibleCart
+    ? isBeforeCutoff
+      ? 'Order before 9:00 am (GMT+3) to have your items delivered same day.'
+      : 'Earliest date is tomorrow, order by 9:00 am (GMT+3) to have this item delivered same day.'
+    : '';
+
   const serializedItems = useMemo(
     () =>
       items.map((item) => ({
@@ -114,6 +140,16 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
       setSubmitMode(null);
     }
   }
+
+  const sameDayDeliveryWarningElement =
+    sameDayDeliveryWarning && sameDayWarningTarget
+      ? createPortal(
+          <p className="rounded border border-amber-200 bg-amber-50 p-3 text-sm font-medium text-amber-900">
+            {sameDayDeliveryWarning}
+          </p>,
+          sameDayWarningTarget
+        )
+      : null;
 
   const enhancedChildren = isValidElement(children)
     ? cloneElement(children as ReactElement, { onSubmit: handleSubmit },
@@ -207,6 +243,7 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
           </div>
         </div>
       </section>
+      {sameDayDeliveryWarningElement}
       {enhancedChildren}
     </>
   );
