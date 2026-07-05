@@ -136,10 +136,16 @@ export async function sendOrderSuccessEmail(order: OrderRequest) {
   const totalWithDeliveryText = totalWithDelivery === undefined ? 'N/A' : `UGX ${formatUgx(totalWithDelivery)}`;
   const pinUrlHtml = order.deliveryPinUrl ? `<a href="${escapeHtml(order.deliveryPinUrl)}">View delivery pin</a>` : 'Not provided';
 
-  const textBody = `Order received successfully\n\nHello ${order.recipientName},\n\nA successful order has been received.\nOrder reference: ${order.id}\n\nOrdered items:\n${orderedItemsText}\n\nSubtotal: ${hasPriceData ? `UGX ${formatUgx(computedTotal)}` : 'N/A'}
-Total: ${totalWithDeliveryText}\n\nDelivery/contact details:\nRecipient name: ${order.recipientName}\nRecipient phone: ${order.recipientPhone}\nDelivery date: ${order.deliveryDate}\nRegion: ${order.region}\nPin URL: ${order.deliveryPinUrl || 'Not provided'}\nCoordinates: ${order.deliveryLatitude ?? 'N/A'}, ${order.deliveryLongitude ?? 'N/A'}\nCustomer email: ${order.email}\nNote: ${order.note || 'N/A'}\n\nVisit ${siteUrl}`;
+  const buildEmailBodies = (introText: string, introHtml: string, footerText?: string) => {
+    const footerTextBlock = footerText ? `\n\n${footerText}` : '';
+    const footerHtml = footerText ? `<p>${escapeHtml(footerText)}</p>` : '';
 
-  const htmlBody = `<div style="font-family:Arial,sans-serif;color:#231f20;"><h2>Order received successfully</h2><p>Hello ${escapeHtml(order.recipientName)},</p><p>A successful order has been received.</p><p><strong>Order reference:</strong> ${escapeHtml(order.id)}</p><h3>Ordered items</h3>${orderedItemsHtml}<p><strong>Subtotal:</strong> ${hasPriceData ? `UGX ${formatUgx(computedTotal)}` : 'N/A'}</p><p><strong>Total:</strong> ${totalWithDeliveryText}</p><h3>Delivery/contact details</h3><ul><li><strong>Recipient name:</strong> ${escapeHtml(order.recipientName)}</li><li><strong>Recipient phone:</strong> ${escapeHtml(order.recipientPhone)}</li><li><strong>Delivery date:</strong> ${escapeHtml(order.deliveryDate)}</li><li><strong>Region:</strong> ${escapeHtml(order.region)}</li><li><strong>Pin URL:</strong> ${pinUrlHtml}</li><li><strong>Coordinates:</strong> ${order.deliveryLatitude ?? 'N/A'}, ${order.deliveryLongitude ?? 'N/A'}</li><li><strong>Customer email:</strong> ${escapeHtml(order.email)}</li><li><strong>Note:</strong> ${escapeHtml(order.note || 'N/A')}</li></ul><p><a href="${escapeHtml(siteUrl)}">Return to SuperFastFlowers</a></p></div>`;
+    return {
+      textBody: `Order received successfully\n\n${introText}\nOrder reference: ${order.id}\n\nOrdered items:\n${orderedItemsText}\n\nSubtotal: ${hasPriceData ? `UGX ${formatUgx(computedTotal)}` : 'N/A'}
+Total: ${totalWithDeliveryText}\n\nDelivery/contact details:\nRecipient name: ${order.recipientName}\nRecipient phone: ${order.recipientPhone}\nDelivery date: ${order.deliveryDate}\nRegion: ${order.region}\nPin URL: ${order.deliveryPinUrl || 'Not provided'}\nCoordinates: ${order.deliveryLatitude ?? 'N/A'}, ${order.deliveryLongitude ?? 'N/A'}\nCustomer email: ${order.email}\nNote: ${order.note || 'N/A'}\n\nVisit ${siteUrl}${footerTextBlock}`,
+      htmlBody: `<div style="font-family:Arial,sans-serif;color:#231f20;"><h2>Order received successfully</h2>${introHtml}<p><strong>Order reference:</strong> ${escapeHtml(order.id)}</p><h3>Ordered items</h3>${orderedItemsHtml}<p><strong>Subtotal:</strong> ${hasPriceData ? `UGX ${formatUgx(computedTotal)}` : 'N/A'}</p><p><strong>Total:</strong> ${totalWithDeliveryText}</p><h3>Delivery/contact details</h3><ul><li><strong>Recipient name:</strong> ${escapeHtml(order.recipientName)}</li><li><strong>Recipient phone:</strong> ${escapeHtml(order.recipientPhone)}</li><li><strong>Delivery date:</strong> ${escapeHtml(order.deliveryDate)}</li><li><strong>Region:</strong> ${escapeHtml(order.region)}</li><li><strong>Pin URL:</strong> ${pinUrlHtml}</li><li><strong>Coordinates:</strong> ${order.deliveryLatitude ?? 'N/A'}, ${order.deliveryLongitude ?? 'N/A'}</li><li><strong>Customer email:</strong> ${escapeHtml(order.email)}</li><li><strong>Note:</strong> ${escapeHtml(order.note || 'N/A')}</li></ul><p><a href="${escapeHtml(siteUrl)}">Return to SuperFastFlowers</a></p>${footerHtml}</div>`
+    };
+  };
 
   console.info('[ORDER_EMAIL_START] SES send starting', {
     orderId: order.id,
@@ -151,27 +157,54 @@ Total: ${totalWithDeliveryText}\n\nDelivery/contact details:\nRecipient name: ${
   });
 
   if (order.email) {
+    const customerBodies = buildEmailBodies(
+      'Hello Customer\n\nYou have made a succesful order.',
+      '<p>Hello Customer</p><p>You have made a succesful order.</p>'
+    );
+
     await sendSingleOrderEmail({
       sesClient,
       fromEmail,
       toEmail: order.email,
       subject: 'Order received successfully',
-      textBody,
-      htmlBody,
+      textBody: customerBodies.textBody,
+      htmlBody: customerBodies.htmlBody,
       orderId: order.id
     });
   }
 
   const vendorEmails = Array.from(new Set(lines.map((line) => line.vendorEmail?.trim()).filter((email): email is string => Boolean(email))));
   for (const vendorEmail of vendorEmails) {
+    const vendorBodies = buildEmailBodies(
+      'Hello Vendor,\n\nA successful order has been received.',
+      '<p>Hello Vendor,</p><p>A successful order has been received.</p>',
+      'You have received this mail because you are a vendor of this product(s)'
+    );
+
     await sendSingleOrderEmail({
       sesClient,
       fromEmail,
       toEmail: vendorEmail,
       subject: `New successful order ${order.id}`,
-      textBody,
-      htmlBody,
+      textBody: vendorBodies.textBody,
+      htmlBody: vendorBodies.htmlBody,
       orderId: order.id
     });
   }
+
+  const ownerBodies = buildEmailBodies(
+    'Hello Platform Owner,\n\nA successful order has been received.',
+    '<p>Hello Platform Owner,</p><p>A successful order has been received.</p>',
+    'You have received this email as the owner of the platform'
+  );
+
+  await sendSingleOrderEmail({
+    sesClient,
+    fromEmail,
+    toEmail: 'maramson@gmail.com',
+    subject: `New platform order ${order.id}`,
+    textBody: ownerBodies.textBody,
+    htmlBody: ownerBodies.htmlBody,
+    orderId: order.id
+  });
 }
