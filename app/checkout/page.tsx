@@ -43,6 +43,7 @@ export default function CheckoutPage() {
             />
             <label className="block space-y-1">
               <span className="text-sm font-medium text-gray-800">Choose day of delivery</span>
+              <span id="same-day-delivery-warning" className="block" />
               <input
                 name="deliveryDate"
                 type="date"

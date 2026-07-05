@@ -3,7 +3,7 @@ import { createOrder } from '@/lib/orders-repo';
 import { orderSchema } from '@/lib/validators';
 import { getProductByIdOrSlug, listProducts } from '@/lib/products-repo';
 import { OrderItem, OrderStatus } from '@/lib/types';
-import { getDateOnlyAtUtcMidnight, getMinimumDeliveryDate, getRequiredPreparationDays } from '@/lib/preparation-days';
+import { getDateOnlyAtUtcMidnight, getGmtPlus3DateOnlyAtUtcMidnight, getMinimumDeliveryDate, getProductPreparationDays, getRequiredPreparationDays, isBeforeSameDayDeliveryCutoff } from '@/lib/preparation-days';
 
 export async function POST(req: NextRequest) {
   console.info('[ORDER_API_START] POST /api/orders reached', {
@@ -79,8 +79,19 @@ export async function POST(req: NextRequest) {
 
   const products = await listProducts();
   const requiredPreparationDays = getRequiredPreparationDays(parsed.data.items, products);
+  const singleRequestedItem = parsed.data.items.length === 1 ? parsed.data.items[0] : null;
+  const singleRequestedProduct = singleRequestedItem
+    ? products.find((product) => product.id === singleRequestedItem.productId)
+    : undefined;
+  const isSameDayEligibleOrder =
+    Boolean(singleRequestedItem) &&
+    singleRequestedItem?.quantity === 1 &&
+    getProductPreparationDays(singleRequestedProduct) === 1;
   const deliveryDate = getDateOnlyAtUtcMidnight(parsed.data.deliveryDate);
-  const minimumDeliveryDate = getMinimumDeliveryDate(requiredPreparationDays);
+  const minimumDeliveryDate =
+    isSameDayEligibleOrder && isBeforeSameDayDeliveryCutoff()
+      ? getGmtPlus3DateOnlyAtUtcMidnight()
+      : getMinimumDeliveryDate(requiredPreparationDays);
 
   if (!deliveryDate || deliveryDate < minimumDeliveryDate) {
     return NextResponse.json(
