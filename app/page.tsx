@@ -46,8 +46,35 @@ export default async function HomePage({
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
       <JsonLd data={[storeJsonLd, websiteJsonLd, itemListJsonLd(products)]} />
+
+      <section className="mb-10 rounded-2xl border border-blush/80 bg-gradient-to-r from-rose via-blush to-white px-6 py-10 md:px-10 md:py-12">
+        <h1 className="max-w-2xl text-3xl font-semibold leading-tight text-ink md:text-4xl">
+          Send Gifts in Uganda — Cakes, Flowers, Cupcakes and Hampers Delivered
+        </h1>
+        <p className="mt-4 max-w-2xl text-gray-700">
+          Sendagift UG makes it easy to send a gift anywhere in Uganda. Order online and surprise someone with cakes,
+          fresh flowers, cupcakes and gift hampers for birthdays, anniversaries, baby showers, congratulations and every
+          special occasion.
+        </p>
+        <div className="mt-6 flex flex-wrap gap-3">
+          <Link href="/shop" className="rounded-full bg-ink px-6 py-3 text-sm font-semibold text-white transition hover:bg-pink-700">
+            Browse all gifts
+          </Link>
+          {categories.slice(0, 2).map((category) => (
+            <Link
+              key={category.slug}
+              href={categoryPath(category)}
+              className="rounded-full border border-ink/20 bg-white/80 px-6 py-3 text-sm font-semibold text-ink transition hover:border-ink/40 hover:text-pink-700"
+            >
+              {category.label}
+            </Link>
+          ))}
+        </div>
+      </section>
+
       <section>
-        <nav className="mb-5">
+        <h2 className="mb-4 text-2xl font-semibold text-ink">Shop gifts by occasion</h2>
+        <nav className="mb-5" aria-label="Gift categories">
           <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
             <Link
               href={q ? `/?q=${encodeURIComponent(q)}` : '/'}
@@ -77,6 +104,9 @@ export default async function HomePage({
           </div>
         </nav>
 
+        <h2 className="mb-4 mt-8 text-2xl font-semibold text-ink">
+          {q ? `Gifts matching “${q}”` : 'Popular gifts to send today'}
+        </h2>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
           {products.map((product) => (
             <ProductCard key={product.id} product={product} />

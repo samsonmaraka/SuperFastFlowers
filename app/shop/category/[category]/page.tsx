@@ -57,10 +57,18 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   const products = await listProducts({ category: category.slug, categoryMatch: 'assigned' });
   const categories = getSortedGiftCategories();
   const activeCategory = normalizeCategorySlug(category.slug);
+  const relatedCategories = (category.relatedCategories || [])
+    .map((slug) => getGiftCategoryBySlug(slug))
+    .filter((related): related is NonNullable<typeof related> => related !== null);
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <JsonLd data={[categoryBreadcrumbJsonLd(category), itemListJsonLd(products)]} />
+
+      <header className="mb-6 max-w-3xl">
+        <h1 className="text-3xl font-semibold text-ink">{category.h1 || `${category.label} Gifts in Uganda`}</h1>
+        {category.intro ? <p className="mt-3 text-gray-700">{category.intro}</p> : null}
+      </header>
 
       <nav className="mb-5" aria-label="Gift categories">
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
@@ -101,6 +109,23 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
           </Link>
         </div>
       )}
+
+      {relatedCategories.length > 0 ? (
+        <section className="mt-12">
+          <h2 className="text-xl font-semibold text-ink">Explore related gift ideas</h2>
+          <div className="mt-4 flex flex-wrap gap-2">
+            {relatedCategories.map((related) => (
+              <Link
+                key={related.slug}
+                href={categoryPath(related)}
+                className="rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-ink transition hover:border-ink/40 hover:text-pink-700"
+              >
+                {related.h1 || `${related.label} Gifts in Uganda`}
+              </Link>
+            ))}
+          </div>
+        </section>
+      ) : null}
     </div>
   );
 }
