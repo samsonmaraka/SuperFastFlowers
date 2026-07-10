@@ -4,7 +4,7 @@ import { categoryPath, getSortedGiftCategories, normalizeCategorySlug } from '@/
 import type { Metadata } from 'next';
 import { listProducts } from '@/lib/products-repo';
 import { buildSiteUrl } from '@/lib/site-url';
-import { itemListJsonLd, JsonLd, STORE_DESCRIPTION, STORE_LOGO_PATH, STORE_NAME } from '@/lib/seo';
+import { itemListJsonLd, JsonLd, STORE_DESCRIPTION, STORE_NAME, storeJsonLd } from '@/lib/seo';
 
 export const metadata: Metadata = {
   title: 'Sendagift UG | Send Gifts in Uganda',
@@ -22,15 +22,6 @@ export default async function HomePage({
   const q = searchParams.q || '';
   const products = await listProducts({ q: searchParams.q, category: searchParams.category });
 
-  const storeJsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'OnlineStore',
-    name: STORE_NAME,
-    url: buildSiteUrl('/'),
-    logo: buildSiteUrl(STORE_LOGO_PATH),
-    description: STORE_DESCRIPTION,
-    areaServed: { '@type': 'Country', name: 'Uganda' }
-  };
   const websiteJsonLd = {
     '@context': 'https://schema.org',
     '@type': 'WebSite',
@@ -45,7 +36,7 @@ export default async function HomePage({
 
   return (
     <div className="mx-auto max-w-6xl px-4 py-8">
-      <JsonLd data={[storeJsonLd, websiteJsonLd, itemListJsonLd(products)]} />
+      <JsonLd data={[storeJsonLd(), websiteJsonLd, itemListJsonLd(products)]} />
 
       <section className="mb-10 rounded-2xl border border-blush/80 bg-gradient-to-r from-rose via-blush to-white px-6 py-10 md:px-10 md:py-12">
         <h1 className="max-w-2xl text-3xl font-semibold leading-tight text-ink md:text-4xl">
