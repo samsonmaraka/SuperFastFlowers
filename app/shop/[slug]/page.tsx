@@ -6,6 +6,7 @@ import { getProductByIdOrSlug } from '@/lib/products-repo';
 import { getExpectedProductSlug } from '@/lib/slug';
 import { formatUgx } from '@/lib/format';
 import { getPrimaryProductImage } from '@/lib/product-images';
+import { ProductImage } from '@/components/product-image';
 import { JsonLd, productBreadcrumbJsonLd, productJsonLd, productUrl } from '@/lib/seo';
 
 export const dynamic = 'force-dynamic';
@@ -56,7 +57,9 @@ export default async function ProductPage({ params }: { params: { slug: string }
   return (
     <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 md:grid-cols-2">
       <JsonLd data={[productJsonLd(canonicalProduct), productBreadcrumbJsonLd(canonicalProduct)]} />
-      <img src={heroImage} alt={product.name} className="h-[32rem] w-full rounded-xl object-cover" />
+      <div className="relative h-[32rem] w-full overflow-hidden rounded-xl">
+        <ProductImage src={heroImage} alt={product.name} sizes="(min-width: 768px) 50vw, 100vw" priority className="object-cover" />
+      </div>
 
       <div className="space-y-4">
         <h1 className="text-3xl font-semibold">{product.name}</h1>

@@ -76,35 +76,50 @@ export const giftCategories: GiftCategory[] = [
     label: 'Thank You',
     slug: 'thank-you',
     seoTitle: 'Thank You Gifts in Uganda | Sendagift UG',
-    seoDescription: 'Sendagift UG helps you send thank you gifts in Uganda, including cakes, flowers, hampers, cupcakes, and thoughtful appreciation gifts.'
+    seoDescription: 'Sendagift UG helps you send thank you gifts in Uganda, including cakes, flowers, hampers, cupcakes, and thoughtful appreciation gifts.',
+    h1: 'Thank You Gifts in Uganda',
+    intro: 'Show your appreciation with thank you gifts delivered across Uganda. Choose cakes, flowers, hampers and thoughtful treats to thank friends, family, colleagues and mentors.',
+    relatedCategories: ['flowers', 'gift-baskets-and-food', 'congratulations']
   },
   {
     rank: 80,
     label: 'Gift Baskets and Food',
     slug: 'gift-baskets-and-food',
     seoTitle: 'Gift Baskets and Food in Uganda | Sendagift UG',
-    seoDescription: 'Sendagift UG helps you send gift baskets and food gifts in Uganda, including hampers, treats, cakes, cupcakes, and thoughtful food gifts.'
+    seoDescription: 'Sendagift UG helps you send gift baskets and food gifts in Uganda, including hampers, treats, cakes, cupcakes, and thoughtful food gifts.',
+    h1: 'Gift Baskets and Food Gifts in Uganda',
+    intro: 'Send gift baskets and food gifts packed with treats for delivery in Uganda. Browse hampers, snacks, cakes and cupcakes for birthdays, holidays and every celebration in between.',
+    relatedCategories: ['thank-you', 'christmas', 'birthday']
   },
   {
     rank: 90,
     label: 'Flowers',
     slug: 'flowers',
     seoTitle: 'Flower Gifts in Uganda | Sendagift UG',
-    seoDescription: 'Sendagift UG helps you send flower gifts in Uganda, including bouquets, cakes, hampers, cupcakes, and thoughtful gifts for special occasions.'
+    seoDescription: 'Sendagift UG helps you send flower gifts in Uganda, including bouquets, cakes, hampers, cupcakes, and thoughtful gifts for special occasions.',
+    h1: 'Flower Delivery in Uganda',
+    intro: "Send fresh flowers in Uganda for romance, celebration and support. Browse bouquets and floral gifts for birthdays, anniversaries, Valentine's Day and heartfelt everyday moments.",
+    relatedCategories: ['valentines-day', 'anniversary', 'birthday']
   },
   {
     rank: 100,
     label: 'Anniversary',
     slug: 'anniversary',
     seoTitle: 'Anniversary Gifts in Uganda | Sendagift UG',
-    seoDescription: 'Sendagift UG helps you send anniversary gifts in Uganda, including flowers, cakes, cupcakes, hampers, and romantic thoughtful gifts.'
+    seoDescription: 'Sendagift UG helps you send anniversary gifts in Uganda, including flowers, cakes, cupcakes, hampers, and romantic thoughtful gifts.',
+    h1: 'Anniversary Gifts in Uganda',
+    intro: 'Celebrate another year of love with anniversary gifts delivered in Uganda. Shop romantic flowers, cakes, hampers and thoughtful surprises for husbands, wives and couples.',
+    relatedCategories: ['flowers', 'valentines-day', 'cakes-and-cupcakes']
   },
   {
     rank: 110,
     label: 'Christmas',
     slug: 'christmas',
     seoTitle: 'Christmas Gifts in Uganda | Sendagift UG',
-    seoDescription: 'Sendagift UG helps you send Christmas gifts in Uganda, including cakes, flowers, cupcakes, hampers, and thoughtful festive gifts.'
+    seoDescription: 'Sendagift UG helps you send Christmas gifts in Uganda, including cakes, flowers, cupcakes, hampers, and thoughtful festive gifts.',
+    h1: 'Christmas Gifts in Uganda',
+    intro: 'Spread festive cheer with Christmas gifts delivered in Uganda. Browse hampers, cakes, flowers and thoughtful presents for family, friends and colleagues this holiday season.',
+    relatedCategories: ['gift-baskets-and-food', 'cakes-and-cupcakes', 'thank-you']
   }
 ];
 
