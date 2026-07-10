@@ -8,6 +8,33 @@ import { getExpectedProductSlug } from '@/lib/slug';
 export const STORE_NAME = 'Sendagift UG';
 export const STORE_DESCRIPTION = 'Sendagift UG helps you send a gift in Uganda, including cakes, flowers, cupcakes, hampers, and thoughtful gifts for birthdays, baby showers, congratulations, and special occasions.';
 export const STORE_LOGO_PATH = '/icon-192.png';
+export const STORE_PHONE = '+256774924285';
+export const STORE_EMAIL = 'maramson@gmail.com';
+export const STORE_DELIVERY_AREAS = ['Kampala', 'Entebbe'];
+
+export function storeJsonLd() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'OnlineStore',
+    name: STORE_NAME,
+    url: buildSiteUrl('/'),
+    logo: buildSiteUrl(STORE_LOGO_PATH),
+    description: STORE_DESCRIPTION,
+    telephone: STORE_PHONE,
+    email: STORE_EMAIL,
+    areaServed: [
+      ...STORE_DELIVERY_AREAS.map((city) => ({ '@type': 'City', name: city })),
+      { '@type': 'Country', name: 'Uganda' }
+    ],
+    contactPoint: {
+      '@type': 'ContactPoint',
+      contactType: 'customer service',
+      telephone: STORE_PHONE,
+      email: STORE_EMAIL,
+      areaServed: 'UG'
+    }
+  };
+}
 
 export function productPath(product: Pick<Product, 'id' | 'name' | 'slug'>) {
   return `/shop/${getExpectedProductSlug(product)}`;
@@ -76,15 +103,18 @@ export function categoryBreadcrumbJsonLd(category: Pick<GiftCategory, 'label' | 
   };
 }
 
-export function productBreadcrumbJsonLd(product: Product) {
+export function productBreadcrumbJsonLd(product: Product, category?: Pick<GiftCategory, 'label' | 'slug'> | null) {
+  const crumbs = [
+    { name: 'Home', item: buildSiteUrl('/') },
+    { name: 'Shop', item: buildSiteUrl('/shop') },
+    ...(category ? [{ name: category.label, item: categoryUrl(category) }] : []),
+    { name: product.name, item: productUrl(product) }
+  ];
+
   return {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Home', item: buildSiteUrl('/') },
-      { '@type': 'ListItem', position: 2, name: 'Shop', item: buildSiteUrl('/shop') },
-      { '@type': 'ListItem', position: 3, name: product.name, item: productUrl(product) }
-    ]
+    itemListElement: crumbs.map((crumb, index) => ({ '@type': 'ListItem', position: index + 1, ...crumb }))
   };
 }
 
