@@ -65,8 +65,8 @@ export function Navbar() {
 
   return (
     <header className="bg-cream/90 px-4 py-3">
-      <div className="mx-auto max-w-6xl rounded-2xl border border-blush/80 bg-gradient-to-r from-rose via-blush to-white p-4 shadow-sm md:p-5">
-        <div className="grid gap-4 md:grid-cols-[minmax(0,1fr)_minmax(420px,0.95fr)] md:items-start">
+      <div className="mx-auto max-w-6xl rounded-2xl border border-blush/80 bg-gradient-to-r from-rose via-blush to-white p-3 shadow-sm md:px-5 md:py-3">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(420px,0.95fr)] md:items-center">
           <div className="flex items-center justify-between gap-3">
             <Link href="/" className="group" onClick={() => setIsMobileOpen(false)}>
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-pink-700">
@@ -79,7 +79,7 @@ export function Navbar() {
                   className="inline-block h-4 w-4 rounded-full object-cover"
                 />
               </span>
-              <span className="mt-1 block text-2xl font-semibold leading-tight tracking-tight text-ink md:text-3xl">
+              <span className="mt-0.5 block text-sm font-medium leading-snug text-gray-700">
                 Thoughtful gifts for life&apos;s meaningful moments.
               </span>
             </Link>
@@ -107,8 +107,8 @@ export function Navbar() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-3 md:items-end">
-            <ul className="hidden items-center gap-2 text-sm font-semibold md:flex">
+          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-end">
+            <ul className="hidden shrink-0 items-center gap-1 text-sm font-semibold md:flex">
               {customerLinks.map(([label, href]) => (
                 <li key={href}>
                   <Link href={href} className="rounded-full px-3 py-2 text-ink transition hover:bg-white/70 hover:text-pink-700">
@@ -127,7 +127,7 @@ export function Navbar() {
               </li>
             </ul>
 
-            <div className="w-full md:max-w-xl">
+            <div className="w-full md:min-w-0 md:flex-1 md:max-w-sm">
               <HeaderSearch />
             </div>
           </div>
