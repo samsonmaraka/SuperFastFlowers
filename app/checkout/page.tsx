@@ -69,8 +69,30 @@ export default function CheckoutPage() {
           </section>
 
           <section className="space-y-3 rounded-xl border bg-white p-6">
-            <h2 className="text-xl font-semibold text-ink">Your email (Notifications will be sent here)</h2>
-            <input name="email" type="email" required placeholder="Email" className="w-full rounded border p-2" />
+            <h2 className="text-xl font-semibold text-ink">Your details</h2>
+            <div className="grid gap-3 md:grid-cols-2">
+              <label className="block space-y-1">
+                <span className="text-sm font-medium text-gray-800">Email address</span>
+                <input name="email" type="email" required placeholder="Email" className="w-full rounded border p-2" />
+                <span className="text-xs text-gray-600">Notifications will be sent here.</span>
+              </label>
+              <label className="block space-y-1">
+                <span className="text-sm font-medium text-gray-800">
+                  Mobile number <span className="font-normal text-gray-500">(optional)</span>
+                </span>
+                <input
+                  name="customerPhone"
+                  type="tel"
+                  inputMode="numeric"
+                  pattern="[0-9]{10}"
+                  maxLength={10}
+                  placeholder="e.g. 0756924285"
+                  title="Mobile number must be 10 digits, e.g. 0756924285"
+                  className="w-full rounded border p-2"
+                />
+                <span className="text-xs text-gray-600">10 digits, e.g. 0756924285.</span>
+              </label>
+            </div>
           </section>
         </form>
       </CheckoutClient>

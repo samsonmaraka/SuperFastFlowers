@@ -92,6 +92,7 @@ export type OrderRequest = {
   deliveryLongitude?: number;
   deliveryPinUrl?: string;
   email: string;
+  customerPhone?: string;
   note?: string;
   items?: OrderItem[];
   totalAmount?: number;
