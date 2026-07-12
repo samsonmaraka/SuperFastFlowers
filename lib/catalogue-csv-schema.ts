@@ -85,3 +85,110 @@ export function catalogueCsvRowsToCsv(rows: CatalogueCsvRow[]) {
 export function productsToCatalogueCsv(products: Product[]) {
   return catalogueCsvRowsToCsv(products.map(mapProductToCatalogueCsvRow));
 }
+
+export type ParsedCatalogueCsvRow = {
+  line: number;
+  values: Partial<CatalogueCsvRow>;
+};
+
+export type ParsedCatalogueCsv = {
+  rows: ParsedCatalogueCsvRow[];
+  errors: string[];
+};
+
+function parseCsvText(text: string): string[][] {
+  const records: string[][] = [];
+  let field = '';
+  let record: string[] = [];
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i += 1) {
+    const char = text[i];
+
+    if (inQuotes) {
+      if (char === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i += 1;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += char;
+      }
+    } else if (char === '"') {
+      inQuotes = true;
+    } else if (char === CATALOGUE_CSV_DELIMITER) {
+      record.push(field);
+      field = '';
+    } else if (char === '\r' || char === '\n') {
+      if (char === '\r' && text[i + 1] === '\n') i += 1;
+      record.push(field);
+      records.push(record);
+      field = '';
+      record = [];
+    } else {
+      field += char;
+    }
+  }
+
+  if (field !== '' || record.length > 0) {
+    record.push(field);
+    records.push(record);
+  }
+
+  return records.filter((fields) => fields.some((value) => value.trim() !== ''));
+}
+
+export function parseCatalogueCsv(text: string): ParsedCatalogueCsv {
+  const records = parseCsvText(text.replace(/^\uFEFF/, ''));
+  if (records.length === 0) return { rows: [], errors: ['The CSV file is empty.'] };
+
+  const header = records[0].map((column) => column.trim().toLowerCase());
+  const columnIndexes = new Map<CatalogueCsvColumn, number>();
+  for (const column of catalogueCsvColumns) {
+    const index = header.indexOf(column);
+    if (index !== -1) columnIndexes.set(column, index);
+  }
+
+  if (!columnIndexes.has('product_id') && !columnIndexes.has('title')) {
+    return { rows: [], errors: ['Unrecognized CSV header. Expected catalogue columns such as product_id, title, price, categories.'] };
+  }
+
+  const rows: ParsedCatalogueCsvRow[] = [];
+  for (let i = 1; i < records.length; i += 1) {
+    const values: Partial<CatalogueCsvRow> = {};
+    for (const [column, index] of columnIndexes) {
+      values[column] = (records[i][index] ?? '').trim();
+    }
+    rows.push({ line: i + 1, values });
+  }
+
+  if (rows.length === 0) return { rows, errors: ['The CSV file has a header but no product rows.'] };
+  return { rows, errors: [] };
+}
+
+export function parseCatalogueListValue(value: string | undefined) {
+  if (!value) return [];
+  return value.split(CATALOGUE_CSV_LIST_SEPARATOR).map((item) => item.trim()).filter(Boolean);
+}
+
+export function parseCatalogueBoolean(value: string | undefined) {
+  if (value === undefined || value.trim() === '') return undefined;
+  const normalized = value.trim().toLowerCase();
+  if (['true', 'yes', '1'].includes(normalized)) return true;
+  if (['false', 'no', '0'].includes(normalized)) return false;
+  return undefined;
+}
+
+export function parseCatalogueStockStatus(value: string | undefined) {
+  const normalized = value?.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  return normalized === 'in_stock' || normalized === 'low_stock' || normalized === 'out_of_stock' ? normalized : undefined;
+}
+
+export function parsePreparationDaysFromDeliveryNotes(value: string | undefined) {
+  const match = value?.match(/(\d+)\s*preparation\s*day/i) || value?.trim().match(/^(\d+)$/);
+  if (!match) return undefined;
+  const days = Number(match[1]);
+  return Number.isInteger(days) && days >= 0 && days <= 30 ? days : undefined;
+}
