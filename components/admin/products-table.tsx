@@ -58,6 +58,8 @@ export function ProductsTable({
   };
   const [form, setForm] = useState(empty);
   const [editing, setEditing] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadMessage, setUploadMessage] = useState('');
   const activeVendors = vendors.filter((v) => v.status === 'active');
   const selected = activeVendors.find((v) => v.id === form.vendorId);
   const rows = useMemo(
@@ -89,6 +91,32 @@ export function ProductsTable({
     const r = await fetch('/api/admin/products', { cache: 'no-store' });
     const d = await r.json();
     if (r.ok) setProducts(d.products || []);
+  }
+
+  async function uploadCatalogue(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    setUploading(true);
+    setUploadMessage('Uploading catalogue CSV...');
+    try {
+      const body = new FormData();
+      body.append('file', file);
+      const r = await fetch('/api/admin/catalogue/import', { method: 'POST', body });
+      const d = await r.json();
+      if (!r.ok) {
+        setUploadMessage(`Catalogue upload failed: ${err(d.error)}`);
+        return;
+      }
+      if (d.products) setProducts(d.products);
+      const summary = `Catalogue upload finished: ${d.created} created, ${d.updated} updated${d.failed ? `, ${d.failed} failed` : ''}.`;
+      const details = (d.errors || []).slice(0, 5).map((x: { line: number; productId: string; error: string }) => `Row ${x.line} (${x.productId}): ${x.error}`).join(' ');
+      setUploadMessage(details ? `${summary} ${details}` : summary);
+    } catch {
+      setUploadMessage('Catalogue upload failed: network error. Please try again.');
+    } finally {
+      setUploading(false);
+    }
   }
 
   function image(e: ChangeEvent<HTMLInputElement>) {
@@ -180,10 +208,17 @@ export function ProductsTable({
         <div className="mb-4 flex flex-col justify-between gap-3 md:flex-row md:items-center">
           <div>
             <h2 className="text-xl font-semibold">Catalogue</h2>
-            <p className="text-sm text-gray-600">Download the current product catalogue as a CSV for offline review and editing.</p>
+            <p className="text-sm text-gray-600">Download the current product catalogue as a CSV for offline review and editing, or upload an edited CSV to update existing products and add new ones.</p>
           </div>
-          <a className="rounded bg-ink px-4 py-2 text-center text-sm font-semibold text-white hover:bg-gray-800" href="/api/admin/catalogue/export">Download catalogue CSV</a>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <a className="rounded bg-ink px-4 py-2 text-center text-sm font-semibold text-white hover:bg-gray-800" href="/api/admin/catalogue/export">Download catalogue CSV</a>
+            <label className={`rounded border border-ink px-4 py-2 text-center text-sm font-semibold ${uploading ? 'cursor-wait opacity-60' : 'cursor-pointer hover:bg-gray-100'}`}>
+              {uploading ? 'Uploading...' : 'Upload catalogue CSV'}
+              <input type="file" accept=".csv,text/csv" className="hidden" onChange={uploadCatalogue} disabled={uploading} />
+            </label>
+          </div>
         </div>
+        {uploadMessage && <p className="mb-3 text-sm font-medium">{uploadMessage}</p>}
         <div className="mb-3 grid gap-2 md:grid-cols-4">
           <input className="rounded border p-2" placeholder="Search products" value={filter.q} onChange={(e) => setFilter({ ...filter, q: e.target.value })} />
           {!isVendor && <select className="rounded border p-2" value={filter.vendor} onChange={(e) => setFilter({ ...filter, vendor: e.target.value })}><option value="">All vendors</option>{vendors.map((v) => <option key={v.id} value={v.id}>{v.name}</option>)}</select>}
