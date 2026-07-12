@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
       deliveryLongitude: form.get('deliveryLongitude'),
       deliveryPinUrl: String(form.get('deliveryPinUrl') || ''),
       email: String(form.get('email') || ''),
+      customerPhone: String(form.get('customerPhone') || ''),
       note: String(form.get('note') || ''),
       items: normalizedItems,
       totalAmount: computedTotal

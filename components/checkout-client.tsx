@@ -112,6 +112,7 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
           deliveryLongitude: formData.get('deliveryLongitude') || undefined,
           deliveryPinUrl: String(formData.get('deliveryPinUrl') || ''),
           email: String(formData.get('email') || ''),
+          customerPhone: String(formData.get('customerPhone') || ''),
           note: String(formData.get('note') || ''),
           items: serializedItems,
           totalAmount: subtotal

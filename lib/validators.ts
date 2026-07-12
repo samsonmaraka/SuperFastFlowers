@@ -95,6 +95,10 @@ export const orderSchema = z.object({
   deliveryLongitude: optionalCoordinate,
   deliveryPinUrl: z.string().trim().optional(),
   email: z.string().email(),
+  customerPhone: z.preprocess(
+    (value) => (typeof value === 'string' && value.trim() === '' ? undefined : value),
+    z.string().regex(/^[0-9]{10}$/, 'Mobile number must be 10 digits, e.g. 0756924285.').optional()
+  ),
   note: z.string().max(500).optional(),
   items: z.array(z.object({ productId: z.string().min(1), quantity: z.number().int().min(1), name: z.string().optional(), unitPrice: z.number().min(0).optional(), lineTotal: z.number().min(0).optional() })).min(1),
   totalAmount: z.number().min(0).optional(),
