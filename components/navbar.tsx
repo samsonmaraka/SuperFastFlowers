@@ -27,13 +27,25 @@ function HeaderSearch() {
       <label htmlFor="site-search" className="sr-only">
         Search gifts
       </label>
-      <div className="flex rounded-full border border-white/70 bg-white/90 p-1 shadow-sm ring-1 ring-pink-100 transition focus-within:ring-2 focus-within:ring-pink-700/30">
+      <div className="flex items-center rounded-full border border-white/70 bg-white/90 p-1 shadow-sm ring-1 ring-pink-100 transition focus-within:ring-2 focus-within:ring-pink-700/30">
+        <svg
+          aria-hidden="true"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth={2}
+          strokeLinecap="round"
+          className="ml-3 h-4 w-4 shrink-0 text-gray-400"
+        >
+          <circle cx={11} cy={11} r={7} />
+          <line x1={16.5} y1={16.5} x2={21} y2={21} />
+        </svg>
         <input
           id="site-search"
           name="q"
           type="search"
-          placeholder="I am looking for......"
-          className="min-w-0 flex-1 rounded-full bg-transparent px-4 py-2 text-sm text-ink outline-none placeholder:text-gray-500"
+          placeholder="I'm looking for......"
+          className="min-w-0 flex-1 rounded-full bg-transparent px-3 py-2 text-sm text-ink outline-none placeholder:text-gray-500"
         />
         <button type="submit" className="rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white transition hover:bg-pink-700">
           Search
@@ -66,7 +78,7 @@ export function Navbar() {
   return (
     <header className="bg-cream/90 px-4 py-3">
       <div className="mx-auto max-w-6xl rounded-2xl border border-blush/80 bg-gradient-to-r from-rose via-blush to-white p-3 shadow-sm md:px-5 md:py-3">
-        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_minmax(420px,0.95fr)] md:items-center">
+        <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_auto] md:items-center">
           <div className="flex items-center justify-between gap-3">
             <Link href="/" className="group" onClick={() => setIsMobileOpen(false)}>
               <span className="inline-flex items-center gap-1.5 text-xs font-semibold uppercase tracking-[0.22em] text-pink-700">
@@ -107,8 +119,8 @@ export function Navbar() {
             </div>
           </div>
 
-          <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-end">
-            <ul className="hidden shrink-0 items-center gap-1 text-sm font-semibold md:flex">
+          <div className="flex flex-col gap-2 md:w-fit md:justify-self-end">
+            <ul className="hidden shrink-0 items-center justify-end gap-1 text-sm font-semibold md:flex">
               {customerLinks.map(([label, href]) => (
                 <li key={href}>
                   <Link href={href} className="rounded-full px-3 py-2 text-ink transition hover:bg-white/70 hover:text-pink-700">
@@ -127,7 +139,7 @@ export function Navbar() {
               </li>
             </ul>
 
-            <div className="w-full md:min-w-0 md:flex-1 md:max-w-sm">
+            <div className="w-full">
               <HeaderSearch />
             </div>
           </div>
