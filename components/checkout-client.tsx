@@ -41,13 +41,15 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
   }, []);
 
   const subtotal = useMemo(() => items.reduce((sum, item) => sum + item.price * item.quantity, 0), [items]);
+  // Add-ons ride along with the main gift, so they don't affect preparation time or same-day eligibility.
+  const giftItems = useMemo(() => items.filter((item) => !item.isAddon), [items]);
   const maxPreparationDays = useMemo(
-    () => Math.max(0, ...items.map((item) => item.preparationDays ?? DEFAULT_PREPARATION_DAYS)),
-    [items]
+    () => Math.max(0, ...giftItems.map((item) => item.preparationDays ?? DEFAULT_PREPARATION_DAYS)),
+    [giftItems]
   );
   const isSameDayEligibleCart = useMemo(
-    () => items.length === 1 && items[0]?.quantity === 1 && (items[0]?.preparationDays ?? DEFAULT_PREPARATION_DAYS) === 1,
-    [items]
+    () => giftItems.length === 1 && giftItems[0]?.quantity === 1 && (giftItems[0]?.preparationDays ?? DEFAULT_PREPARATION_DAYS) === 1,
+    [giftItems]
   );
   const isBeforeCutoff = useMemo(() => isBeforeSameDayDeliveryCutoff(now), [now]);
   const minDeliveryDate = useMemo(
@@ -73,7 +75,8 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
         name: item.name,
         quantity: item.quantity,
         unitPrice: item.price,
-        lineTotal: item.price * item.quantity
+        lineTotal: item.price * item.quantity,
+        isAddon: item.isAddon || undefined
       })),
     [items]
   );
@@ -218,7 +221,12 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
             return (
               <div key={item.productId} className="flex items-start justify-between gap-4 border-b border-blush/70 pb-2 text-sm last:border-0">
                 <div>
-                  <p className="font-medium text-ink">{item.name}</p>
+                  <p className="font-medium text-ink">
+                    {item.name}
+                    {item.isAddon ? (
+                      <span className="ml-2 rounded-full bg-pink-100 px-2 py-0.5 text-xs font-semibold text-pink-700">Add-on</span>
+                    ) : null}
+                  </p>
                   <p className="text-gray-600">Qty: {item.quantity}</p>
                   <p className="text-gray-600">Unit price: UGX {formatUgx(item.price)}</p>
                 </div>

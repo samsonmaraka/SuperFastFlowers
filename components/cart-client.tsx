@@ -37,7 +37,7 @@ export function CartClient() {
     [items]
   );
   const maxPreparationDays = useMemo(
-    () => Math.max(0, ...items.map((item) => item.preparationDays ?? DEFAULT_PREPARATION_DAYS)),
+    () => Math.max(0, ...items.filter((item) => !item.isAddon).map((item) => item.preparationDays ?? DEFAULT_PREPARATION_DAYS)),
     [items]
   );
   const earliestDeliveryDateLabel = useMemo(
@@ -66,7 +66,12 @@ export function CartClient() {
       {items.map((item) => (
         <div key={item.productId} className="flex items-center justify-between rounded-lg border border-blush bg-white p-4">
           <div>
-            <p className="font-medium">{item.name}</p>
+            <p className="font-medium">
+              {item.name}
+              {item.isAddon ? (
+                <span className="ml-2 rounded-full bg-pink-100 px-2 py-0.5 text-xs font-semibold text-pink-700">Add-on</span>
+              ) : null}
+            </p>
             <p className="text-sm text-gray-600">UGX {formatUgx(item.price)} each</p>
           </div>
           <div className="flex items-center gap-3">

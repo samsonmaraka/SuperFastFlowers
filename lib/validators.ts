@@ -61,6 +61,27 @@ export const productSchema = z.object({
   updatedAt: z.string()
 });
 
+export const addonSchema = z.object({
+  id: z.string().min(2),
+  name: z.string().min(2),
+  description: z.string().optional(),
+  price: z.number().min(0),
+  imageUrl: z.preprocess(
+    (value) => (value === '' ? undefined : value),
+    z
+      .string()
+      .refine((value) => {
+        if (value.startsWith('/') || isDataImageUrl(value) || isProductImageStorageKey(value)) return true;
+        return z.string().url().safeParse(value).success;
+      }, 'Add-on image must be a hosted URL, a site path, or an uploaded image.')
+      .optional()
+  ),
+  status: z.enum(['active', 'inactive']).default('active'),
+  sortOrder: z.number().int().min(0).optional(),
+  createdAt: z.string(),
+  updatedAt: z.string()
+});
+
 export const orderStatusSchema = z.enum([
   'new',
   'processing',
@@ -100,7 +121,7 @@ export const orderSchema = z.object({
     z.string().regex(/^[0-9]{10}$/, 'Mobile number must be 10 digits, e.g. 0756924285.').optional()
   ),
   note: z.string().max(500).optional(),
-  items: z.array(z.object({ productId: z.string().min(1), quantity: z.number().int().min(1), name: z.string().optional(), unitPrice: z.number().min(0).optional(), lineTotal: z.number().min(0).optional() })).min(1),
+  items: z.array(z.object({ productId: z.string().min(1), quantity: z.number().int().min(1), name: z.string().optional(), unitPrice: z.number().min(0).optional(), lineTotal: z.number().min(0).optional(), isAddon: z.boolean().optional() })).min(1),
   totalAmount: z.number().min(0).optional(),
   deliveryFee: z.number().min(0).optional(),
   totalWithDelivery: z.number().min(0).optional()

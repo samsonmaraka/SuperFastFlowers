@@ -54,6 +54,20 @@ export type Product = {
   updatedAt: string;
 };
 
+export type AddonStatus = 'active' | 'inactive';
+
+export type Addon = {
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  imageUrl?: string;
+  status: AddonStatus;
+  sortOrder?: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type OrderStatus =
   | 'new'
   | 'processing'
@@ -78,6 +92,7 @@ export type OrderItem = {
   name?: string;
   unitPrice?: number;
   lineTotal?: number;
+  isAddon?: boolean;
   vendorFulfillmentStatus?: VendorFulfillmentStatus;
 };
 

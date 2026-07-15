@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 320" role="img" aria-label="J.P. Chenet ICE Edition Pink sparkling wine bottle">
+  <defs>
+    <linearGradient id="bottle" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f7b8c9"/>
+      <stop offset="0.45" stop-color="#fddce6"/>
+      <stop offset="0.7" stop-color="#f4a7bd"/>
+      <stop offset="1" stop-color="#e989a6"/>
+    </linearGradient>
+    <linearGradient id="foil" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#f2a0b8"/>
+      <stop offset="0.5" stop-color="#fbc9d8"/>
+      <stop offset="1" stop-color="#e58ba7"/>
+    </linearGradient>
+  </defs>
+  <rect width="200" height="320" fill="#fff5f8"/>
+  <!-- foil top -->
+  <rect x="86" y="18" width="28" height="46" rx="8" fill="url(#foil)"/>
+  <rect x="84" y="60" width="32" height="10" rx="4" fill="#e07998"/>
+  <!-- neck -->
+  <path d="M88 70 h24 v34 c0 6 2 10 6 16 l6 10 c4 7 6 12 6 20 v130 a14 14 0 0 1 -14 14 h-32 a14 14 0 0 1 -14 -14 v-130 c0 -8 2 -13 6 -20 l6 -10 c4 -6 6 -10 6 -16 z" fill="url(#bottle)"/>
+  <!-- medallion -->
+  <circle cx="100" cy="132" r="11" fill="#fff" opacity="0.85"/>
+  <circle cx="100" cy="132" r="11" fill="none" stroke="#d76e91" stroke-width="1.5"/>
+  <text x="100" y="136" text-anchor="middle" font-family="Georgia, serif" font-size="9" fill="#c25a7f">JP</text>
+  <!-- label -->
+  <rect x="72" y="216" width="56" height="42" rx="4" fill="#ffffff" opacity="0.92"/>
+  <text x="100" y="233" text-anchor="middle" font-family="Georgia, serif" font-size="10" letter-spacing="0.5" fill="#3c3c3c">J.P. CHENET</text>
+  <text x="100" y="246" text-anchor="middle" font-family="Georgia, serif" font-size="7" letter-spacing="1.5" fill="#c25a7f">ICE EDITION</text>
+  <text x="100" y="272" text-anchor="middle" font-family="Georgia, serif" font-size="7" letter-spacing="1" fill="#8a4d63">VIN MOUSSEUX · 750ml</text>
+  <!-- shine -->
+  <path d="M82 110 c-3 8 -4 14 -4 22 v120 a4 4 0 0 0 8 0 v-120 c0 -8 1 -14 3 -20 z" fill="#ffffff" opacity="0.35"/>
+</svg>
