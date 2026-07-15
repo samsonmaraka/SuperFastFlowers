@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useMemo, useState } from 'react';
+import { ChangeEvent, FormEvent, useMemo, useState } from 'react';
 import type { Addon } from '@/lib/types';
 import { formatUgx } from '@/lib/format';
 
@@ -67,6 +67,19 @@ export function AddonsClient({ initialAddons }: { initialAddons: Addon[] }) {
     setSaving(false);
   }
 
+  function onImageFileChange(event: ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : '';
+      setForm((prev) => ({ ...prev, imageUrl: result }));
+      setMsg('Image selected. It will be uploaded when you save the add-on.');
+    };
+    reader.onerror = () => setMsg('Failed reading selected image file.');
+    reader.readAsDataURL(file);
+  }
+
   async function remove(id: string) {
     if (!confirm('Delete this add-on? It will disappear from product pages immediately.')) return;
     const res = await fetch(`/api/admin/addons?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
@@ -115,12 +128,23 @@ export function AddonsClient({ initialAddons }: { initialAddons: Addon[] }) {
             onChange={(e) => setForm({ ...form, price: e.target.value === '' ? 0 : Number(e.target.value) })}
             required
           />
-          <input
-            className="rounded border p-2 md:col-span-2"
-            placeholder="Image URL (hosted URL or /images/… path)"
-            value={form.imageUrl || ''}
-            onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
-          />
+          <div className="space-y-2 md:col-span-2">
+            <input
+              className="w-full rounded border p-2"
+              placeholder="Image URL (hosted URL or /images/… path)"
+              value={form.imageUrl || ''}
+              onChange={(e) => setForm({ ...form, imageUrl: e.target.value })}
+            />
+            <input type="file" accept="image/*" onChange={onImageFileChange} className="w-full rounded border p-2" />
+            <p className="text-xs text-gray-600">
+              Paste a hosted image URL or choose an image file from your computer. Selected files are uploaded when you save the
+              add-on.
+            </p>
+            {form.imageUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={form.imageUrl} alt="Add-on image preview" className="h-24 w-16 rounded border object-contain" />
+            ) : null}
+          </div>
           <textarea
             className="rounded border p-2 md:col-span-2"
             placeholder="Short description shown to customers"

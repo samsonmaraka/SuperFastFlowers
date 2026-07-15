@@ -8,7 +8,7 @@ import {
   imageFieldContainsBase64,
   isDataImageUrl
 } from '@/lib/product-images';
-import { Product } from '@/lib/types';
+import { Addon, Product } from '@/lib/types';
 
 type DataImage = {
   buffer: Buffer;
@@ -141,6 +141,47 @@ async function uploadBufferToS3(params: { objectKey: string; body: Buffer; conte
     const errorText = await response.text().catch(() => '');
     throw new Error(`S3 upload failed with status ${response.status}${errorText ? `: ${errorText.slice(0, 300)}` : ''}`);
   }
+}
+
+export async function uploadNewAddonImageToS3(addon: Addon): Promise<Addon> {
+  const { bucket, region, prefix, publicBaseUrl } = getProductImageStorageConfig();
+  if (!addon.imageUrl || !isDataImageUrl(addon.imageUrl)) return addon;
+
+  const dataImage = parseDataImageUrl(addon.imageUrl);
+  if (!dataImage) {
+    throw new Error('Uploaded add-on image could not be decoded. Please choose a valid image and try again.');
+  }
+
+  const safeAddonId = addon.id.replace(/[^a-zA-Z0-9._-]/g, '-');
+  const objectKey = `${prefix}/addons/${safeAddonId}/${Date.now()}-${crypto.randomUUID()}.${dataImage.extension}`;
+  const finalImageUrl = buildProductImagePublicUrl(objectKey);
+
+  logImageDiagnostic('imageUploadStarted', {
+    bucket,
+    region,
+    objectKey,
+    addonId: addon.id,
+    contentType: dataImage.contentType,
+    byteLength: dataImage.buffer.length,
+    publicBaseUrl,
+    finalImageUrl
+  });
+
+  try {
+    await uploadBufferToS3({ objectKey, body: dataImage.buffer, contentType: dataImage.contentType });
+    logImageDiagnostic('imageUploadSucceeded', { bucket, region, objectKey, addonId: addon.id, finalImageUrl });
+  } catch (error) {
+    logImageDiagnostic('imageUploadFailed', {
+      bucket,
+      region,
+      objectKey,
+      addonId: addon.id,
+      error: error instanceof Error ? error.message : String(error)
+    });
+    throw error;
+  }
+
+  return { ...addon, imageUrl: finalImageUrl };
 }
 
 export async function uploadNewProductImagesToS3(product: Product): Promise<Product> {
