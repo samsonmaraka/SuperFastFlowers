@@ -2,6 +2,7 @@ import { PutCommand } from '@aws-sdk/lib-dynamodb';
 import { db } from '@/lib/dynamodb';
 import { getEnv } from '@/lib/env';
 import { seedProducts } from '@/data/seed-products';
+import { seedAddons } from '@/data/seed-addons';
 
 async function main() {
   if (!getEnv().tableName) {
@@ -24,7 +25,21 @@ async function main() {
     );
   }
 
-  console.log(`Seeded ${seedProducts.length} products into ${getEnv().tableName}`);
+  for (const addon of seedAddons) {
+    await db.send(
+      new PutCommand({
+        TableName: getEnv().tableName,
+        Item: {
+          ...addon,
+          entityType: 'ADDON',
+          pk: `ADDON#${addon.id}`,
+          sk: 'META'
+        }
+      })
+    );
+  }
+
+  console.log(`Seeded ${seedProducts.length} products and ${seedAddons.length} add-ons into ${getEnv().tableName}`);
 }
 
 main().catch((err) => {

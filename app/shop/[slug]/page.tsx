@@ -2,6 +2,8 @@ import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound, permanentRedirect } from 'next/navigation';
 import { AddToCartButton } from '@/components/add-to-cart-button';
+import { GiftAddons } from '@/components/gift-addons';
+import { listAddons } from '@/lib/addons-repo';
 import { ProductCard } from '@/components/product-card';
 import { SendThisGiftButton } from '@/components/send-this-gift-button';
 import { categoryPath, getGiftCategoryBySlug } from '@/lib/categories';
@@ -70,6 +72,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
   const heroImage = getPrimaryProductImage(product);
   const category = product.category ? getGiftCategoryBySlug(product.category) : null;
   const relatedProducts = await getRelatedProducts(product);
+  const addons = await listAddons();
 
   const breadcrumbs = [
     { label: 'Home', href: '/' },
@@ -112,6 +115,8 @@ export default async function ProductPage({ params }: { params: { slug: string }
               <AddToCartButton product={product} />
             </div>
           </div>
+
+          <GiftAddons addons={addons} />
 
           <section className="rounded-xl border border-blush bg-cream/60 p-5">
             <h2 className="text-lg font-semibold text-ink">Delivery information</h2>

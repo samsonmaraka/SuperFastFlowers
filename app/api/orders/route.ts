@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createOrder } from '@/lib/orders-repo';
 import { orderSchema } from '@/lib/validators';
 import { getProductByIdOrSlug, listProducts } from '@/lib/products-repo';
+import { getAddon } from '@/lib/addons-repo';
 import { OrderItem, OrderStatus } from '@/lib/types';
 import { getDateOnlyAtUtcMidnight, getGmtPlus3DateOnlyAtUtcMidnight, getMinimumDeliveryDate, getProductPreparationDays, getRequiredPreparationDays, isBeforeSameDayDeliveryCutoff } from '@/lib/preparation-days';
 
@@ -20,11 +21,11 @@ export async function POST(req: NextRequest) {
   } else {
     const form = await req.formData();
     const itemsJson = String(form.get('itemsJson') || '[]');
-    let parsedItems: Array<{ productId: string; quantity: number; name?: string; price?: number; unitPrice?: number }> = [];
+    let parsedItems: Array<{ productId: string; quantity: number; name?: string; price?: number; unitPrice?: number; isAddon?: boolean }> = [];
     try {
       const maybeItems = JSON.parse(itemsJson) as unknown;
       if (Array.isArray(maybeItems)) {
-        parsedItems = maybeItems as Array<{ productId: string; quantity: number; name?: string; price?: number; unitPrice?: number }>;
+        parsedItems = maybeItems as Array<{ productId: string; quantity: number; name?: string; price?: number; unitPrice?: number; isAddon?: boolean }>;
       }
     } catch {
       parsedItems = [];
@@ -38,7 +39,8 @@ export async function POST(req: NextRequest) {
         quantity,
         name: item.name,
         unitPrice,
-        lineTotal: unitPrice * quantity
+        lineTotal: unitPrice * quantity,
+        isAddon: item.isAddon === true ? true : undefined
       };
     });
 
@@ -79,8 +81,10 @@ export async function POST(req: NextRequest) {
   }
 
   const products = await listProducts();
-  const requiredPreparationDays = getRequiredPreparationDays(parsed.data.items, products);
-  const singleRequestedItem = parsed.data.items.length === 1 ? parsed.data.items[0] : null;
+  // Add-ons ride along with the main gift, so they never extend preparation time or break same-day eligibility.
+  const giftItems = parsed.data.items.filter((item) => !item.isAddon);
+  const requiredPreparationDays = getRequiredPreparationDays(giftItems, products);
+  const singleRequestedItem = giftItems.length === 1 ? giftItems[0] : null;
   const singleRequestedProduct = singleRequestedItem
     ? products.find((product) => product.id === singleRequestedItem.productId)
     : undefined;
@@ -103,6 +107,24 @@ export async function POST(req: NextRequest) {
 
   const orderItems: OrderItem[] = [];
   for (const item of parsed.data.items) {
+    if (item.isAddon) {
+      const addon = await getAddon(item.productId);
+      if (!addon || (addon.status ?? 'active') !== 'active') {
+        return NextResponse.json({ error: `Add-on ${item.name || item.productId} is no longer available.` }, { status: 400 });
+      }
+
+      orderItems.push({
+        productId: addon.id,
+        quantity: item.quantity,
+        name: addon.name,
+        unitPrice: addon.price,
+        lineTotal: addon.price * item.quantity,
+        isAddon: true,
+        vendorFulfillmentStatus: 'pending'
+      });
+      continue;
+    }
+
     const product = await getProductByIdOrSlug(item.productId);
     if (!product) {
       return NextResponse.json({ error: `Product ${item.productId} is no longer available.` }, { status: 400 });

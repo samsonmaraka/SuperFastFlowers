@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
 const superLinks = [
-  ['Dashboard','/admin/dashboard'],['Orders','/admin/orders'],['Products','/admin/products'],['Visual products','/admin/products/visual'],['Vendors','/admin/vendors'],['Users','/admin/users'],['Roles','/admin/roles'],['Vendor assignments','/admin/vendor-assignments'],['Settings','/admin/settings']
+  ['Dashboard','/admin/dashboard'],['Orders','/admin/orders'],['Products','/admin/products'],['Visual products','/admin/products/visual'],['Add-ons','/admin/addons'],['Vendors','/admin/vendors'],['Users','/admin/users'],['Roles','/admin/roles'],['Vendor assignments','/admin/vendor-assignments'],['Settings','/admin/settings']
 ] as const;
 const vendorLinks = [['Dashboard','/admin/dashboard'],['Orders','/admin/orders'],['Products','/admin/products'],['Visual products','/admin/products/visual'],['Vendor profile','/admin/vendors']] as const;
 const userLinks = [['Orders','/admin/orders']] as const;

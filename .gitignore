@@ -6,6 +6,7 @@ coverage
 .DS_Store
 
 data/.local-products.json
+data/.local-addons.json
 
 .env.local
 .env*.local
