@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createOrder } from '@/lib/orders-repo';
 import { orderSchema } from '@/lib/validators';
 import { getProductByIdOrSlug, listProducts } from '@/lib/products-repo';
+import { calculateVendorDeliveryFee } from '@/lib/delivery-fee';
 import { getAddon } from '@/lib/addons-repo';
 import { OrderItem, OrderStatus } from '@/lib/types';
 import { getDateOnlyAtUtcMidnight, getGmtPlus3DateOnlyAtUtcMidnight, getMinimumDeliveryDate, getProductPreparationDays, getRequiredPreparationDays, isBeforeSameDayDeliveryCutoff } from '@/lib/preparation-days';
@@ -143,15 +144,17 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Delivery fees are now factored into product prices, so do not calculate or add a separate delivery charge.
+  // Delivery is charged per distinct vendor fulfilling the order (UGX 5,000 each).
   const subtotal = orderItems.reduce((sum, item) => sum + (item.lineTotal || 0), 0);
+  const deliveryFee = calculateVendorDeliveryFee(orderItems);
+  const totalWithDelivery = subtotal + deliveryFee;
 
   const orderPayload = {
     ...parsed.data,
     items: orderItems,
     totalAmount: subtotal,
-    deliveryFee: undefined,
-    totalWithDelivery: subtotal,
+    deliveryFee,
+    totalWithDelivery,
     id: crypto.randomUUID(),
     status: (isJsonRequest ? 'PENDING_PAYMENT' : 'new') as OrderStatus,
     createdAt: new Date().toISOString()

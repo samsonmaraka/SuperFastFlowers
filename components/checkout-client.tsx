@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { FormEvent, ReactElement, ReactNode, cloneElement, isValidElement, useEffect, useMemo, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CartItem, readCart } from '@/lib/cart-storage';
+import { calculateVendorDeliveryFee } from '@/lib/delivery-fee';
 import { formatUgx } from '@/lib/format';
 import { DEFAULT_PREPARATION_DAYS, formatDeliveryDateLabel, getDateInputValue, getGmtPlus3DateOnlyAtUtcMidnight, getMinimumDeliveryDate, isBeforeSameDayDeliveryCutoff } from '@/lib/preparation-days';
 
@@ -41,6 +42,8 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
   }, []);
 
   const subtotal = useMemo(() => items.reduce((sum, item) => sum + item.price * item.quantity, 0), [items]);
+  const deliveryFee = useMemo(() => calculateVendorDeliveryFee(items), [items]);
+  const totalWithDelivery = useMemo(() => subtotal + deliveryFee, [subtotal, deliveryFee]);
   // Add-ons ride along with the main gift, so they don't affect preparation time or same-day eligibility.
   const giftItems = useMemo(() => items.filter((item) => !item.isAddon), [items]);
   const maxPreparationDays = useMemo(
@@ -182,6 +185,11 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
                 </span>
               </button>
               <span className="text-xs text-gray-600">Secure payment opens after your order details are saved.</span>
+              {deliveryFee > 0 ? (
+                <span className="text-sm font-medium text-gray-700">
+                  Delivery fees of UGX {formatUgx(deliveryFee)} will be added to this order.
+                </span>
+              ) : null}
             </div>
             {/* Test successful payment button disabled for production checkout.
             <button
@@ -240,15 +248,15 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
             <span>Subtotal</span>
             <span>UGX {formatUgx(subtotal)}</span>
           </div>
-          {/* Delivery fees are now factored into product prices.
-          <div className="flex items-center justify-between">
-            <span>Delivery fee</span>
-            <span>Calculated after delivery pin</span>
-          </div>
-          */}
+          {deliveryFee > 0 ? (
+            <div className="flex items-center justify-between">
+              <span>Delivery fee</span>
+              <span>UGX {formatUgx(deliveryFee)}</span>
+            </div>
+          ) : null}
           <div className="flex items-center justify-between text-base font-semibold">
             <span>Total</span>
-            <span>UGX {formatUgx(subtotal)}</span>
+            <span>UGX {formatUgx(totalWithDelivery)}</span>
           </div>
         </div>
       </section>

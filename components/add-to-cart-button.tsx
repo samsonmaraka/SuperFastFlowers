@@ -57,7 +57,8 @@ export function AddToCartButton({
               name: product.name,
               price: product.price,
               quantity: nextQuantity,
-              preparationDays: product.preparationDays
+              preparationDays: product.preparationDays,
+              vendorId: product.vendorId
             }
           ]
         : cart;

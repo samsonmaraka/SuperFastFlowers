@@ -3,6 +3,22 @@ import type { OrderRequest, Product } from '@/lib/types';
 export const DELIVERY_RATE_PER_KM = 1000;
 export const ROAD_DISTANCE_MULTIPLIER = 1.5;
 export const DELIVERY_FEE_ROUNDING_INCREMENT = 500;
+export const DELIVERY_FEE_PER_VENDOR = 5000;
+
+// Delivery is charged per distinct vendor fulfilling the order. Add-ons ride along
+// with the main gift and never carry their own vendor, so they are ignored here.
+export function countOrderVendors(items: Array<{ vendorId?: string; isAddon?: boolean }>) {
+  const vendorIds = new Set<string>();
+  for (const item of items) {
+    if (item.isAddon) continue;
+    if (typeof item.vendorId === 'string' && item.vendorId.trim()) vendorIds.add(item.vendorId);
+  }
+  return vendorIds.size;
+}
+
+export function calculateVendorDeliveryFee(items: Array<{ vendorId?: string; isAddon?: boolean }>) {
+  return countOrderVendors(items) * DELIVERY_FEE_PER_VENDOR;
+}
 
 export function haversineDistanceKm(lat1: number, lon1: number, lat2: number, lon2: number) {
   const toRadians = (degrees: number) => (degrees * Math.PI) / 180;
