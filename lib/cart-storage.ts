@@ -1,4 +1,4 @@
-export type CartItem = { productId: string; name: string; price: number; quantity: number; preparationDays?: number; isAddon?: boolean };
+export type CartItem = { productId: string; name: string; price: number; quantity: number; preparationDays?: number; isAddon?: boolean; vendorId?: string };
 
 type CartMeta = { lastUpdated: string };
 
@@ -33,7 +33,8 @@ function isCartItem(value: unknown): value is CartItem {
       (typeof candidate.preparationDays === 'number' &&
         Number.isFinite(candidate.preparationDays) &&
         candidate.preparationDays >= 0)) &&
-    (candidate.isAddon === undefined || typeof candidate.isAddon === 'boolean')
+    (candidate.isAddon === undefined || typeof candidate.isAddon === 'boolean') &&
+    (candidate.vendorId === undefined || typeof candidate.vendorId === 'string')
   );
 }
 

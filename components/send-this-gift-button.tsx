@@ -23,7 +23,8 @@ export function SendThisGiftButton({ product }: { product: Product }) {
           name: product.name,
           price: product.price,
           quantity: 1,
-          preparationDays: product.preparationDays
+          preparationDays: product.preparationDays,
+          vendorId: product.vendorId
         }
       ]);
       dispatchCartUpdate();
