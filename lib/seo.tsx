@@ -8,7 +8,7 @@ import { getExpectedProductSlug } from '@/lib/slug';
 export const STORE_NAME = 'Sendagift UG';
 export const STORE_DESCRIPTION = 'Sendagift UG helps you send a gift in Uganda, including cakes, flowers, cupcakes, hampers, and thoughtful gifts for birthdays, baby showers, congratulations, and special occasions.';
 export const STORE_LOGO_PATH = '/icon-192.png';
-export const STORE_PHONE = '+256774924285';
+export const STORE_PHONE = '+256703578111';
 export const STORE_EMAIL = 'maramson@gmail.com';
 export const STORE_DELIVERY_AREAS = ['Kampala', 'Entebbe'];
 
