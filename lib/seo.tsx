@@ -4,6 +4,8 @@ import type { Product } from '@/lib/types';
 import { getPrimaryProductImage } from '@/lib/product-images';
 import { buildSiteUrl } from '@/lib/site-url';
 import { getExpectedProductSlug } from '@/lib/slug';
+import { DELIVERY_FEE_PER_VENDOR } from '@/lib/delivery-fee';
+import { getProductPreparationDays } from '@/lib/preparation-days';
 
 export const STORE_NAME = 'Sendagift UG';
 export const STORE_DESCRIPTION = 'Sendagift UG helps you send a gift in Uganda, including cakes, flowers, cupcakes, hampers, and thoughtful gifts for birthdays, baby showers, congratulations, and special occasions.';
@@ -61,6 +63,49 @@ export function itemListJsonLd(products: Product[]) {
   };
 }
 
+// Delivery is charged per vendor (distance-based) with a flat per-vendor base fee.
+// We advertise that base fee as the representative shipping rate and derive the
+// handling window from the product's preparation days.
+function offerShippingDetails(product: Product) {
+  return {
+    '@type': 'OfferShippingDetails',
+    shippingRate: {
+      '@type': 'MonetaryAmount',
+      value: DELIVERY_FEE_PER_VENDOR,
+      currency: 'UGX'
+    },
+    shippingDestination: {
+      '@type': 'DefinedRegion',
+      addressCountry: 'UG'
+    },
+    deliveryTime: {
+      '@type': 'ShippingDeliveryTime',
+      handlingTime: {
+        '@type': 'QuantitativeValue',
+        minValue: 0,
+        maxValue: getProductPreparationDays(product),
+        unitCode: 'DAY'
+      },
+      transitTime: {
+        '@type': 'QuantitativeValue',
+        minValue: 0,
+        maxValue: 1,
+        unitCode: 'DAY'
+      }
+    }
+  };
+}
+
+// Flowers, cakes, and hampers are perishable, so returns are not accepted.
+// This is a valid, honest return policy that satisfies Google's recommendation.
+function merchantReturnPolicy() {
+  return {
+    '@type': 'MerchantReturnPolicy',
+    applicableCountry: 'UG',
+    returnPolicyCategory: 'https://schema.org/MerchantReturnNotPermitted'
+  };
+}
+
 export function productJsonLd(product: Product) {
   const url = productUrl(product);
   return {
@@ -71,6 +116,10 @@ export function productJsonLd(product: Product) {
     image: product.imageUrls?.length ? product.imageUrls : [getPrimaryProductImage(product)],
     sku: product.id,
     url,
+    brand: {
+      '@type': 'Brand',
+      name: STORE_NAME
+    },
     seller: {
       '@type': 'Organization',
       name: product.vendorName || STORE_NAME
@@ -85,7 +134,9 @@ export function productJsonLd(product: Product) {
       seller: {
         '@type': 'Organization',
         name: product.vendorName || STORE_NAME
-      }
+      },
+      shippingDetails: offerShippingDetails(product),
+      hasMerchantReturnPolicy: merchantReturnPolicy()
     }
   };
 }
