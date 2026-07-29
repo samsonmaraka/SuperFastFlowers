@@ -4,6 +4,17 @@ import { buildPesapalMerchantReference, getPesapalSafeDiagnostics, PesapalError,
 
 export const runtime = 'nodejs';
 
+function extractPesapalProviderError(source: unknown): string | undefined {
+  if (!source || typeof source !== 'object') return undefined;
+  const candidate = (source as { error?: unknown }).error ?? source;
+  if (!candidate || typeof candidate !== 'object') return undefined;
+  const { code, message } = candidate as { code?: unknown; message?: unknown };
+  const messageText = typeof message === 'string' ? message.trim() : '';
+  const codeText = typeof code === 'string' ? code.trim() : '';
+  if (!messageText && !codeText) return undefined;
+  return [messageText, codeText ? `(${codeText})` : ''].filter(Boolean).join(' ');
+}
+
 export async function POST(req: NextRequest) {
   let orderId = '';
   let merchantReference = '';
@@ -82,10 +93,14 @@ export async function POST(req: NextRequest) {
     const safeDiagnostics = pesapalError?.safeDiagnostics || getPesapalSafeDiagnostics({ debugCode: 'PESAPAL_CHECKOUT_EXCEPTION' });
     const fallbackMessage = error instanceof Error ? error.message : 'Payment could not be initialized.';
 
+    const providerError = extractPesapalProviderError(pesapalError?.details) || extractPesapalProviderError(safeDiagnostics.pesapalError);
+
     return NextResponse.json({
       error: pesapalError?.message === 'PESAPAL_IPN_ID is missing. Register IPN and configure the returned ipn_id.'
         ? pesapalError.message
-        : 'Pesapal order submission failed.',
+        : providerError
+          ? `Payment provider declined the transaction: ${providerError}`
+          : 'Pesapal order submission failed.',
       debugCode: pesapalError?.debugCode || safeDiagnostics.debugCode || 'PESAPAL_CHECKOUT_EXCEPTION',
       pesapalStatus: safeDiagnostics.pesapalStatus,
       pesapalMessage: safeDiagnostics.pesapalMessage || fallbackMessage,
