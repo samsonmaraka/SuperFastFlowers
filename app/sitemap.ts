@@ -45,6 +45,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       lastModified: now,
       changeFrequency: 'monthly',
       priority: 0.4
+    },
+    {
+      url: buildSiteUrl('/cancellation-refund-policy'),
+      lastModified: now,
+      changeFrequency: 'monthly',
+      priority: 0.3
     }
   ];
 }
