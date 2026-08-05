@@ -201,7 +201,7 @@ Total: ${totalWithDeliveryText}\n\nDelivery/contact details:\nRecipient name: ${
   await sendSingleOrderEmail({
     sesClient,
     fromEmail,
-    toEmail: 'maramson@gmail.com',
+    toEmail: 'support@sendagift.ug',
     subject: `New platform order ${order.id}`,
     textBody: ownerBodies.textBody,
     htmlBody: ownerBodies.htmlBody,
