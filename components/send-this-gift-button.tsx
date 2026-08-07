@@ -14,13 +14,15 @@ type SendThisGiftButtonProps = {
   flavour?: FlavourId | null;
   requiresFlavour?: boolean;
   onBlocked?: () => void;
+  describedBy?: string;
 };
 
 export function SendThisGiftButton({
   product,
   flavour = null,
   requiresFlavour = false,
-  onBlocked
+  onBlocked,
+  describedBy
 }: SendThisGiftButtonProps) {
   const router = useRouter();
   const isBlockedOnFlavour = requiresFlavour && !flavour;
@@ -60,6 +62,7 @@ export function SendThisGiftButton({
   return (
     <button
       onClick={onSendGift}
+      aria-describedby={describedBy}
       className={`inline-flex items-center justify-center rounded-md px-5 py-3 text-sm font-semibold text-white transition focus:outline-none focus:ring-2 focus:ring-pink-700/40 focus:ring-offset-2 ${
         isBlockedOnFlavour
           ? 'bg-gray-400 hover:bg-gray-500'

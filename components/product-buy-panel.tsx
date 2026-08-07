@@ -3,10 +3,11 @@
 import { useEffect, useRef, useState } from 'react';
 import { AddToCartButton } from '@/components/add-to-cart-button';
 import { FlavourPicker } from '@/components/flavour-picker';
-import { FlavourRequiredDialog } from '@/components/flavour-required-dialog';
 import { SendThisGiftButton } from '@/components/send-this-gift-button';
 import { resolveProductFlavours, type FlavourId } from '@/lib/flavours';
 import type { Product } from '@/lib/types';
+
+const HINT_ID = 'flavour-required-hint';
 
 // Holds the flavour selection so the picker and both buy controls agree on which
 // cart line they are acting on. Selecting a different flavour re-points the
@@ -15,29 +16,41 @@ export function ProductBuyPanel({ product }: { product: Product }) {
   const flavourOptions = resolveProductFlavours(product);
   const requiresFlavour = flavourOptions.length > 0;
   const [flavour, setFlavour] = useState<FlavourId | null>(null);
-  const [isFlavourDialogOpen, setIsFlavourDialogOpen] = useState(false);
+  const [wasBlocked, setWasBlocked] = useState(false);
   const [isPickerHighlighted, setIsPickerHighlighted] = useState(false);
   const pickerRef = useRef<HTMLDivElement | null>(null);
   const highlightTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  useEffect(() => () => {
-    if (highlightTimer.current) clearTimeout(highlightTimer.current);
-  }, []);
+  useEffect(
+    () => () => {
+      if (highlightTimer.current) clearTimeout(highlightTimer.current);
+    },
+    []
+  );
 
-  // Closing the dialog is only useful if it leaves the person next to the control
-  // it was pointing at, so scroll it into view, focus it and flash a ring.
-  const closeFlavourDialog = () => {
-    setIsFlavourDialogOpen(false);
+  // Sending without a flavour is a recoverable slip, not an error worth a modal:
+  // walk the person to the picker, focus it and flash a ring so the click has a
+  // visible result instead of doing nothing.
+  const onBlocked = () => {
+    setWasBlocked(true);
 
     const picker = pickerRef.current;
     if (!picker) return;
 
-    picker.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    // 'nearest' leaves the page alone when the picker is already on screen, which
+    // it usually is, and scrolls the minimum when it is not.
+    picker.scrollIntoView({ behavior: prefersReducedMotion ? 'auto' : 'smooth', block: 'nearest' });
     picker.querySelector<HTMLInputElement>('input[type="radio"]')?.focus({ preventScroll: true });
 
     setIsPickerHighlighted(true);
     if (highlightTimer.current) clearTimeout(highlightTimer.current);
     highlightTimer.current = setTimeout(() => setIsPickerHighlighted(false), 2000);
+  };
+
+  const onChangeFlavour = (next: FlavourId) => {
+    setFlavour(next);
+    setWasBlocked(false);
   };
 
   return (
@@ -47,7 +60,7 @@ export function ProductBuyPanel({ product }: { product: Product }) {
           ref={pickerRef}
           className={`rounded-xl transition ${isPickerHighlighted ? 'ring-2 ring-pink-700 ring-offset-2' : ''}`}
         >
-          <FlavourPicker options={flavourOptions} value={flavour} onChange={setFlavour} />
+          <FlavourPicker options={flavourOptions} value={flavour} onChange={onChangeFlavour} />
         </div>
       ) : null}
 
@@ -56,7 +69,8 @@ export function ProductBuyPanel({ product }: { product: Product }) {
           product={product}
           flavour={flavour}
           requiresFlavour={requiresFlavour}
-          onBlocked={() => setIsFlavourDialogOpen(true)}
+          onBlocked={onBlocked}
+          describedBy={requiresFlavour && !flavour ? HINT_ID : undefined}
         />
         <div className="sm:pt-0.5">
           <AddToCartButton product={product} flavour={flavour} requiresFlavour={requiresFlavour} />
@@ -64,17 +78,16 @@ export function ProductBuyPanel({ product }: { product: Product }) {
       </div>
 
       {requiresFlavour && !flavour ? (
-        <p className="text-sm text-gray-600" role="status">
-          Choose a flavour to add this gift to your cart.
+        <p
+          id={HINT_ID}
+          className={`text-sm ${wasBlocked ? 'font-medium text-pink-700' : 'text-gray-600'}`}
+          role="status"
+        >
+          {wasBlocked
+            ? 'Pick a flavour above first, then send your gift.'
+            : 'Choose a flavour to add this gift to your cart.'}
         </p>
       ) : null}
-
-      <FlavourRequiredDialog
-        open={isFlavourDialogOpen}
-        onClose={closeFlavourDialog}
-        options={flavourOptions}
-        productName={product.name}
-      />
     </div>
   );
 }
