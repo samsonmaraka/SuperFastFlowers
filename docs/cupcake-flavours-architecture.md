@@ -156,11 +156,12 @@ snapshot — and DynamoDB is happier with them.
 | Cart writes | `components/gift-addons.tsx` | Key on `lineId` (no behaviour change — add-ons have no flavour). |
 | Grid card | `components/product-card.tsx` | For flavoured products, swap the inline add control for a "Choose flavour" link to the product page. |
 | Cart UI | `components/cart-client.tsx` | Key on `lineId`; show the flavour under the name, beside the existing add-on badge at line 71. |
-| Checkout | `components/checkout-client.tsx` | Key on `lineId`; send `flavour` in the payload; show it in the summary at line 234. |
+| Checkout | `components/checkout-client.tsx` | Key on `lineId`; send `flavour` in the payload; show it in the summary at line 234; call the shared same-day predicate at line 53. |
 | Picker | `components/flavour-picker.tsx` | New client component. A single-select chip row with radio semantics — 12 chips, one active. |
 | Product page | `app/shop/[slug]/page.tsx` | Render the picker above `AddToCartButton` when `product.flavours?.length`. |
 | Validation | `lib/validators.ts` | `productSchema.flavours` as an optional enum array; `orderSchema.items[].flavour` optional enum. |
-| Order API | `app/api/orders/route.ts` | Revalidate as above; snapshot id + label onto the line. |
+| Order API | `app/api/orders/route.ts` | Revalidate as above; snapshot id + label onto the line; call the shared same-day predicate and drop the now-unused single-item locals. |
+| Same-day rule | `lib/preparation-days.ts` | New `isSameDayEligible(giftItemCount, requiredPreparationDays)` — one home for a rule currently duplicated in two files. |
 | Baker email | `lib/send-order-email.ts` | Flavour beside the line name (lines 55 and 132). This is the path the vendor actually reads. |
 | Admin order view | `components/admin/order-detail-drawer.tsx` | Show the flavour. |
 | Order PDF | `components/download-order-pdf-button.tsx` | Show the flavour. |
@@ -169,7 +170,7 @@ snapshot — and DynamoDB is happier with them.
 | SEO | `lib/seo.tsx` | List available flavours in the product JSON-LD. One canonical URL per product — see below. |
 | Shop filter | `lib/products-repo.ts` | Optional `flavour` filter reading `product.flavours`. |
 
-Twenty files: fourteen additive, six are the `productId` → `lineId` rekey.
+Twenty-one files: fifteen additive, six are the `productId` → `lineId` rekey.
 
 ## Customer journey
 
@@ -231,11 +232,10 @@ Unchanged apart from display. Flavour appears per line in the summary
 checkout actually collects — recipient, delivery date, pin, note — is per order, not per line, so
 none of it is affected.
 
-One real interaction to decide, not to discover in production: the same-day eligibility check
-(`app/api/orders/route.ts:88-95`) requires `giftItems.length === 1 && quantity === 1`. A customer
-who picks two flavours has two lines and silently loses same-day delivery — the earliest selectable
-date shifts and nothing explains why. Either the copy explains it, or the rule is relaxed to count
-boxes rather than lines. This needs a product decision before phase 1 ships.
+The one interaction that needed a decision has one: the same-day rule now counts boxes rather than
+lines, with no box limit, so a customer picking Chocolate and Vanilla keeps same-day delivery
+exactly as if they had ordered a single box. The date picker's earliest date no longer moves when a
+second flavour is added. See "The same-day delivery rule — decided" above.
 
 ### 5. Confirmation and fulfilment
 
@@ -253,15 +253,81 @@ vendor id, so the customer is still charged one UGX 5,000 fee. Worth a regressio
 "ordering a second flavour doubled my delivery fee" is the obvious way to get this wrong.
 
 **Preparation days do not change.** `getRequiredPreparationDays` (`lib/preparation-days.ts:11`)
-resolves by `productId`, which flavour does not affect. Note the knock-on: the same-day eligibility
-check at `app/api/orders/route.ts:88-95` requires `giftItems.length === 1 && quantity === 1`, so a
-customer ordering two flavours is two lines and loses same-day eligibility. That is arguably correct
-(two boxes is more work) but it is a behaviour change and should be a deliberate decision, not a
-side effect discovered in production.
+resolves by `productId`, which flavour does not affect. The same-day eligibility rule that sits on
+top of it does change — see the next section.
 
 **Slugs and canonical URLs do not change.** One product, one slug, one canonical URL. The
 `legacySlugs` machinery, the `SLUG#` GSI and the `permanentRedirect` in
 `app/shop/[slug]/page.tsx:68` are all untouched, because no flavour ever mints a URL.
+
+## The same-day delivery rule — decided
+
+Splitting a cupcake order across flavours creates extra cart lines, and the old eligibility rule
+was written in terms of lines. **Decision: the rule counts boxes, not lines, with no box limit.**
+An order qualifies for same-day when every gift item in it has a preparation time of one day or
+less. Quantity and line count no longer enter into it.
+
+### The rule today, and why it had to move
+
+```ts
+// app/api/orders/route.ts:92
+const isSameDayEligibleOrder =
+  Boolean(singleRequestedItem) &&
+  singleRequestedItem?.quantity === 1 &&
+  getProductPreparationDays(singleRequestedProduct) === 1;
+```
+
+`giftItems.length === 1 && quantity === 1` is exactly "the order is one box" — so the old rule was
+already box-shaped, it just expressed itself through line structure. That is what made it fragile:
+flavours split one box-order into two lines and eligibility would have changed as a side effect,
+without anyone editing the rule.
+
+### The rule as it should be
+
+The inputs both call sites already compute — a gift-item count and a required preparation time —
+are all the rule needs:
+
+```ts
+// lib/preparation-days.ts
+export function isSameDayEligible(giftItemCount: number, requiredPreparationDays: number) {
+  return giftItemCount > 0 && requiredPreparationDays <= 1;
+}
+```
+
+`requiredPreparationDays` is already the max across gift products (`getRequiredPreparationDays`), so
+`<= 1` is precisely "every gift item is a one-day item" — and it correctly admits zero-day items,
+which are easier to fulfil, not harder. Quantity never appears, so there is no box limit. Line
+count never appears beyond the emptiness guard, so no future line-splitting can move eligibility
+again.
+
+### This rule currently exists in two places
+
+`app/api/orders/route.ts:92` and `components/checkout-client.tsx:53` hold separate copies of the
+same condition, and they have to agree — if the client offers a date the server rejects, the
+customer gets a validation error on a date the UI told them was available. Both should call the
+shared predicate instead of restating it:
+
+```ts
+// components/checkout-client.tsx
+const isSameDayEligibleCart = isSameDayEligible(giftItems.length, maxPreparationDays);
+
+// app/api/orders/route.ts
+const isSameDayEligibleOrder = isSameDayEligible(giftItems.length, requiredPreparationDays);
+```
+
+The server keeps `singleRequestedItem` / `singleRequestedProduct` for nothing once this lands —
+both locals can go.
+
+### What this widens, deliberately
+
+This is not a cupcake-only change. Any order whose gift items are all one-day items now qualifies,
+whatever the quantity and however many vendors are involved — three one-day items from three
+vendors becomes a same-day order for three vendors at once. That is the accepted trade of removing
+the box limit, and it is the right shape for the flavour case (two flavours is two boxes and should
+not be punished for it), but it should ship with the operations team knowing, not as a surprise.
+
+If a ceiling is ever wanted, it belongs inside `isSameDayEligible` as a third input — a per-order or
+per-vendor box cap — so it stays in the one place both call sites already read.
 
 ## Three designs rejected, and why
 
@@ -290,8 +356,12 @@ vendor. A flavour is an attribute of the gift itself, and modelling it as an add
 ## Suggested phasing
 
 **Phase 1 — the spine.** Registry, `Product.flavours`, `lineId` cart migration, picker on the
-product page, server revalidation, flavour on the baker email and admin order view. No pricing
-change, no new admin editing UI — seed the first cupcake products' flavour arrays directly.
+product page, server revalidation, flavour on the baker email and admin order view, and the
+same-day rule moved into the shared `isSameDayEligible` predicate. No pricing change, no new admin
+editing UI — seed the first cupcake products' flavour arrays directly.
+
+The same-day change is worth landing as its own commit ahead of the flavour work: it stands alone,
+it is testable on its own, and it deduplicates a rule that is already duplicated today.
 
 **Phase 2 — administration.** Flavour checkboxes in the admin item form, CSV column, so the
 catalogue team owns flavours without a deploy.
