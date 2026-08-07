@@ -10,6 +10,7 @@ import { getProductByIdOrSlug, listProducts } from '@/lib/products-repo';
 import { getExpectedProductSlug } from '@/lib/slug';
 import { formatUgx } from '@/lib/format';
 import { getPrimaryProductImage } from '@/lib/product-images';
+import { productFlavourSentence, resolveProductFlavours } from '@/lib/flavours';
 import { ProductImage } from '@/components/product-image';
 import { JsonLd, productBreadcrumbJsonLd, productJsonLd, productUrl, STORE_DELIVERY_AREAS } from '@/lib/seo';
 import type { Product } from '@/lib/types';
@@ -28,13 +29,21 @@ export async function generateMetadata({ params }: { params: { slug: string } })
   const canonicalUrl = productUrl({ ...product, slug: expectedSlug });
   const image = getPrimaryProductImage(product);
 
+  const baseDescription = product.description || `Order ${product.name} from Sendagift UG in Uganda.`;
+  const flavourCount = resolveProductFlavours(product).length;
+  // Search snippets are truncated around 160 characters, so name the count here and
+  // leave the full flavour list to the page body where it can be read in full.
+  const description = flavourCount
+    ? `${baseDescription} Choose from ${flavourCount} flavours, including chocolate, red velvet and vanilla.`
+    : baseDescription;
+
   return {
     title: product.name,
-    description: product.description || `Order ${product.name} from Sendagift UG in Uganda.`,
+    description,
     alternates: { canonical: canonicalUrl },
     openGraph: {
       title: product.name,
-      description: product.description || `Order ${product.name} from Sendagift UG in Uganda.`,
+      description,
       url: canonicalUrl,
       type: 'website',
       images: [{ url: image, alt: product.name }]
@@ -72,6 +81,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
   const category = product.category ? getGiftCategoryBySlug(product.category) : null;
   const relatedProducts = await getRelatedProducts(product);
   const addons = await listAddons();
+  const flavourSentence = productFlavourSentence(product);
 
   const breadcrumbs = [
     { label: 'Home', href: '/' },
@@ -107,6 +117,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
         <div className="space-y-4">
           <h1 className="text-3xl font-semibold">{product.name}</h1>
           <p className="text-gray-700">{product.description || 'No description available yet.'}</p>
+          {flavourSentence ? <p className="text-gray-700">{flavourSentence}</p> : null}
           <p className="text-2xl font-semibold">UGX {formatUgx(product.price)}</p>
           <ProductBuyPanel product={product} />
 

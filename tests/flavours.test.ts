@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {
   FLAVOUR_IDS,
+  formatFlavourList,
+  productFlavourSentence,
   getFlavourLabel,
   isFlavourId,
   normalizeFlavourId,
@@ -80,5 +82,25 @@ assert.ok(isSameDayEligible(1, 0), 'zero-day items are easier to fulfil, not har
 assert.ok(!isSameDayEligible(1, 2), 'a two-day item never qualifies');
 assert.ok(!isSameDayEligible(2, 2), 'one slow item disqualifies the order, since the rule reads the max');
 assert.ok(!isSameDayEligible(0, 1), 'an order with no gift items never qualifies');
+
+// ---------------------------------------------------------------- SEO copy
+// The flavour names have to exist as readable prose, not only as picker labels.
+assert.equal(formatFlavourList([]), '');
+assert.equal(formatFlavourList(['vanilla']), 'Vanilla');
+assert.equal(formatFlavourList(['vanilla', 'chocolate']), 'Vanilla and Chocolate');
+assert.equal(formatFlavourList(['vanilla', 'chocolate', 'lemon']), 'Vanilla, Chocolate and Lemon');
+
+assert.equal(productFlavourSentence({}), '', 'an unflavoured product gets no sentence at all');
+assert.equal(productFlavourSentence({ flavours: [] }), '');
+assert.equal(productFlavourSentence({ flavours: ['vanilla'] }), 'Available in 1 flavour: Vanilla.');
+assert.equal(
+  productFlavourSentence({ flavours: ['chocolate', 'vanilla'] }),
+  'Available in 2 flavours: Vanilla and Chocolate.',
+  'listed in registry order, not the order stored on the product'
+);
+assert.ok(
+  productFlavourSentence({ flavours: [...FLAVOUR_IDS] }).startsWith('Available in 12 flavours: Vanilla, Coconut'),
+  'a fully stocked product names all twelve'
+);
 
 console.log('flavours tests passed');
