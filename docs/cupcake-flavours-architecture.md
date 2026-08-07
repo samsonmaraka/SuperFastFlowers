@@ -152,7 +152,9 @@ snapshot — and DynamoDB is happier with them.
 | Types | `lib/types.ts` | `FlavourId`; `Product.flavours?`; `OrderItem.flavourId?` / `flavourLabel?`. |
 | Cart | `lib/cart-storage.ts` | `lineId` + `flavour` on `CartItem`, validated in `isCartItem`, backfilled on read. |
 | Cart writes | `components/add-to-cart-button.tsx` | Key on `lineId`; take the selected flavour; block add until one is chosen. |
+| Cart writes | `components/send-this-gift-button.tsx` | Key on `lineId`; carry the chosen flavour; disabled until one is chosen. |
 | Cart writes | `components/gift-addons.tsx` | Key on `lineId` (no behaviour change — add-ons have no flavour). |
+| Grid card | `components/product-card.tsx` | For flavoured products, swap the inline add control for a "Choose flavour" link to the product page. |
 | Cart UI | `components/cart-client.tsx` | Key on `lineId`; show the flavour under the name, beside the existing add-on badge at line 71. |
 | Checkout | `components/checkout-client.tsx` | Key on `lineId`; send `flavour` in the payload; show it in the summary at line 234. |
 | Picker | `components/flavour-picker.tsx` | New client component. A single-select chip row with radio semantics — 12 chips, one active. |
@@ -167,7 +169,81 @@ snapshot — and DynamoDB is happier with them.
 | SEO | `lib/seo.tsx` | List available flavours in the product JSON-LD. One canonical URL per product — see below. |
 | Shop filter | `lib/products-repo.ts` | Optional `flavour` filter reading `product.flavours`. |
 
-Eighteen files: thirteen additive, five are the `productId` → `lineId` rekey.
+Twenty files: fourteen additive, six are the `productId` → `lineId` rekey.
+
+## Customer journey
+
+### 1. Discovery — `/shop`, `/shop/category/cakes-and-cupcakes`
+
+`ProductCard` currently embeds `AddToCartButton` (`components/product-card.tsx:28`), so a cupcake
+box can be added to the cart from the grid without ever opening the product page. With a required
+flavour that is now a hole, and it is the first thing the journey has to close.
+
+**For flavoured products, the card's add control becomes a "Choose flavour" link to the product
+page.** Unflavoured products keep the inline add button exactly as it is today.
+
+The two alternatives were considered and rejected:
+
+- *An inline flavour dropdown on the card.* The card is a full-bleed `<Link>` overlay at z-10 with
+  the button escaping at z-20 (`product-card.tsx:27,32`); nesting a second interactive control in
+  that stack is an accessibility trap, it duplicates picker state, and twelve options do not fit a
+  three-across grid tile.
+- *Add with a default flavour, change it later.* For a gift, a silently defaulted flavour is a
+  wrong order that nobody notices until it is delivered. This is also why the picker has no
+  pre-selected default.
+
+The cost is one extra click for a flavoured product, and the benefit is that the picker exists in
+exactly one place in the codebase.
+
+### 2. Choosing — `/shop/[slug]`
+
+The picker sits directly above the buy controls: twelve chips, radio semantics, nothing selected
+initially. Both `SendThisGiftButton` and `AddToCartButton` are disabled until a flavour is chosen,
+with the disabled state naming the reason ("Choose a flavour first") rather than being inert.
+
+The picker selection drives which cart line the buy controls are bound to, which falls out of the
+`lineId` design for free:
+
+- Select Chocolate → the control reflects the Chocolate line. If none exists it reads "Add to
+  cart"; if one exists it shows the existing quantity stepper.
+- Step up → a second Chocolate box.
+- Switch the picker to Vanilla → the control re-reads as "Add to cart", because that is a different
+  line.
+
+So ordering two flavours is: pick, add, pick again, add. No modal, no repeat-visit to the grid, and
+one component handles both states.
+
+### 3. Cart — `/cart`
+
+Each line reads `Chocolate · 12 cupcakes` under the product name, in the slot where the add-on
+badge already renders (`components/cart-client.tsx:71`). The `· 12 cupcakes` half matters: quantity
+counts **boxes**, and "Qty 2" against a cupcake product is otherwise ambiguous.
+
+Flavour is not editable in the cart in phase 1 — the customer removes the line and re-adds. Editing
+in place means handling the merge case (changing Vanilla to Chocolate when a Chocolate line already
+exists must combine quantities, not create a duplicate `lineId`), which is real work for a rare
+action. It is a known rough edge, listed in phase 3.
+
+### 4. Checkout — `/checkout`
+
+Unchanged apart from display. Flavour appears per line in the summary
+(`components/checkout-client.tsx:234`) and rides along in the submitted payload. Everything
+checkout actually collects — recipient, delivery date, pin, note — is per order, not per line, so
+none of it is affected.
+
+One real interaction to decide, not to discover in production: the same-day eligibility check
+(`app/api/orders/route.ts:88-95`) requires `giftItems.length === 1 && quantity === 1`. A customer
+who picks two flavours has two lines and silently loses same-day delivery — the earliest selectable
+date shifts and nothing explains why. Either the copy explains it, or the rule is relaxed to count
+boxes rather than lines. This needs a product decision before phase 1 ships.
+
+### 5. Confirmation and fulfilment
+
+The flavour is on the order line by then, so it flows to the customer confirmation
+(`lib/send-order-email.ts`), the vendor email the baker actually works from, the admin order drawer
+and the order PDF, without further decisions. The label is snapshotted at order time, so a reprint
+is stable even if the registry changes later.
+
 
 ## Things this design deliberately protects
 
