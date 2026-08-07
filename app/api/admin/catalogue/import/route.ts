@@ -3,6 +3,7 @@ import { requireAdminApiAccess } from '@/lib/admin-auth';
 import {
   parseCatalogueBoolean,
   parseCatalogueCsv,
+  parseCatalogueFlavours,
   parseCatalogueListValue,
   parseCatalogueStockStatus,
   parsePreparationDaysFromDeliveryNotes,
@@ -71,6 +72,7 @@ export async function POST(req: NextRequest) {
       const price = priceText ? Number(priceText.replace(/[,\s]/g, '')) : existing?.price;
       const categories = values.categories ? parseCatalogueListValue(values.categories) : existing?.categories || [];
       const tags = values.tags ? parseCatalogueListValue(values.tags) : existing?.tags || [];
+      const flavours = values.flavours !== undefined ? parseCatalogueFlavours(values.flavours) : existing?.flavours || [];
       const imageUrls = values.image_urls ? parseCatalogueListValue(values.image_urls) : existing?.imageUrls || [];
       const isActive = parseCatalogueBoolean(values.is_active);
       const isFeatured = parseCatalogueBoolean(values.is_featured);
@@ -119,6 +121,7 @@ export async function POST(req: NextRequest) {
         category: categories[0] || existing?.category || 'General',
         categories,
         tags,
+        flavours: flavours.length ? flavours : undefined,
         imageUrls,
         stockStatus,
         featured: isFeatured ?? existing?.featured ?? false,

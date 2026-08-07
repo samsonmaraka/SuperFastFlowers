@@ -15,6 +15,15 @@ export function getRequiredPreparationDays(items: Array<{ productId: string }>, 
   );
 }
 
+// Same-day eligibility counts boxes, not cart lines: an order qualifies when every
+// gift item in it is a one-day item, whatever the quantity or how the lines are
+// split. Expressing it this way means flavour splitting can never move eligibility.
+// Called by both the order API and the checkout client so the two cannot disagree —
+// if they did, the date picker would offer a date the server rejects.
+export function isSameDayEligible(giftItemCount: number, requiredPreparationDays: number) {
+  return giftItemCount > 0 && requiredPreparationDays <= 1;
+}
+
 export function getDateOnlyAtUtcMidnight(value: string) {
   const date = new Date(`${value}T00:00:00.000Z`);
   return Number.isNaN(date.getTime()) ? null : date;

@@ -2,11 +2,12 @@
 
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { readCart, writeCart } from '@/lib/cart-storage';
+import { buildCartLineId, readCart, writeCart } from '@/lib/cart-storage';
+import type { FlavourId } from '@/lib/flavours';
 import { Product } from '@/lib/types';
 
-function getProductQuantity(productId: string) {
-  return readCart().find((item) => item.productId === productId)?.quantity ?? 0;
+function getLineQuantity(lineId: string) {
+  return readCart().find((item) => item.lineId === lineId)?.quantity ?? 0;
 }
 
 function dispatchCartUpdate() {
@@ -17,17 +18,24 @@ type AddToCartButtonProps = {
   product: Product;
   showCheckoutShortcut?: boolean;
   checkoutShortcutLabel?: string;
+  flavour?: FlavourId | null;
+  requiresFlavour?: boolean;
 };
 
 export function AddToCartButton({
   product,
   showCheckoutShortcut = false,
-  checkoutShortcutLabel = 'Send gift now'
+  checkoutShortcutLabel = 'Send gift now',
+  flavour = null,
+  requiresFlavour = false
 }: AddToCartButtonProps) {
   const [quantityInCart, setQuantityInCart] = useState(0);
+  const isBlockedOnFlavour = requiresFlavour && !flavour;
+  const lineId = buildCartLineId(product.id, flavour);
+  const lineLabel = flavour ? `${product.name} (${flavour})` : product.name;
 
   useEffect(() => {
-    const syncQuantity = () => setQuantityInCart(getProductQuantity(product.id));
+    const syncQuantity = () => setQuantityInCart(getLineQuantity(lineId));
 
     syncQuantity();
     window.addEventListener('giftora-cart-updated', syncQuantity);
@@ -37,23 +45,25 @@ export function AddToCartButton({
       window.removeEventListener('giftora-cart-updated', syncQuantity);
       window.removeEventListener('storage', syncQuantity);
     };
-  }, [product.id]);
+  }, [lineId]);
 
   const updateQuantity = (nextQuantity: number) => {
+    if (isBlockedOnFlavour) return;
+
     const cart = readCart();
-    const existingItem = cart.find((item) => item.productId === product.id);
+    const existingItem = cart.find((item) => item.lineId === lineId);
 
     const nextCart = existingItem
       ? nextQuantity > 0
-        ? cart.map((item) =>
-            item.productId === product.id ? { ...item, quantity: nextQuantity } : item
-          )
-        : cart.filter((item) => item.productId !== product.id)
+        ? cart.map((item) => (item.lineId === lineId ? { ...item, quantity: nextQuantity } : item))
+        : cart.filter((item) => item.lineId !== lineId)
       : nextQuantity > 0
         ? [
             ...cart,
             {
+              lineId,
               productId: product.id,
+              ...(flavour ? { flavour } : {}),
               name: product.name,
               price: product.price,
               quantity: nextQuantity,
@@ -77,13 +87,13 @@ export function AddToCartButton({
         <div
           className="inline-flex items-center justify-center gap-4"
           role="group"
-          aria-label={`${product.name} quantity in cart`}
+          aria-label={`${lineLabel} quantity in cart`}
         >
           <button
             onClick={onRemove}
             className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-ink text-lg leading-none text-white shadow-lg shadow-ink/20 transition hover:-translate-y-0.5 hover:bg-pink-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-pink-700/40 focus:ring-offset-2"
             type="button"
-            aria-label={`Remove one ${product.name} from cart`}
+            aria-label={`Remove one ${lineLabel} from cart`}
           >
             −
           </button>
@@ -94,7 +104,7 @@ export function AddToCartButton({
             onClick={onAdd}
             className="inline-flex h-9 w-9 items-center justify-center rounded-md bg-ink text-lg leading-none text-white shadow-lg shadow-ink/20 transition hover:-translate-y-0.5 hover:bg-pink-700 hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-pink-700/40 focus:ring-offset-2"
             type="button"
-            aria-label={`Add one more ${product.name} to cart`}
+            aria-label={`Add one more ${lineLabel} to cart`}
           >
             +
           </button>
@@ -115,9 +125,11 @@ export function AddToCartButton({
   return (
     <button
       onClick={onAdd}
-      className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-white hover:bg-black"
+      disabled={isBlockedOnFlavour}
+      className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:bg-gray-400"
       type="button"
-      aria-label={`Add ${product.name} to cart`}
+      aria-label={isBlockedOnFlavour ? `Choose a flavour before adding ${product.name} to cart` : `Add ${lineLabel} to cart`}
+      title={isBlockedOnFlavour ? 'Choose a flavour first' : undefined}
     >
       Add to cart
     </button>

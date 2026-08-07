@@ -5,7 +5,8 @@ import { getProductByIdOrSlug, listProducts } from '@/lib/products-repo';
 import { calculateVendorDeliveryFee } from '@/lib/delivery-fee';
 import { getAddon } from '@/lib/addons-repo';
 import { OrderItem, OrderStatus } from '@/lib/types';
-import { getDateOnlyAtUtcMidnight, getGmtPlus3DateOnlyAtUtcMidnight, getMinimumDeliveryDate, getProductPreparationDays, getRequiredPreparationDays, isBeforeSameDayDeliveryCutoff } from '@/lib/preparation-days';
+import { getDateOnlyAtUtcMidnight, getGmtPlus3DateOnlyAtUtcMidnight, getMinimumDeliveryDate, getRequiredPreparationDays, isBeforeSameDayDeliveryCutoff, isSameDayEligible } from '@/lib/preparation-days';
+import { getFlavour, resolveProductFlavours } from '@/lib/flavours';
 
 export async function POST(req: NextRequest) {
   console.info('[ORDER_API_START] POST /api/orders reached', {
@@ -22,11 +23,11 @@ export async function POST(req: NextRequest) {
   } else {
     const form = await req.formData();
     const itemsJson = String(form.get('itemsJson') || '[]');
-    let parsedItems: Array<{ productId: string; quantity: number; name?: string; price?: number; unitPrice?: number; isAddon?: boolean }> = [];
+    let parsedItems: Array<{ productId: string; quantity: number; name?: string; price?: number; unitPrice?: number; isAddon?: boolean; flavour?: string }> = [];
     try {
       const maybeItems = JSON.parse(itemsJson) as unknown;
       if (Array.isArray(maybeItems)) {
-        parsedItems = maybeItems as Array<{ productId: string; quantity: number; name?: string; price?: number; unitPrice?: number; isAddon?: boolean }>;
+        parsedItems = maybeItems as Array<{ productId: string; quantity: number; name?: string; price?: number; unitPrice?: number; isAddon?: boolean; flavour?: string }>;
       }
     } catch {
       parsedItems = [];
@@ -41,7 +42,8 @@ export async function POST(req: NextRequest) {
         name: item.name,
         unitPrice,
         lineTotal: unitPrice * quantity,
-        isAddon: item.isAddon === true ? true : undefined
+        isAddon: item.isAddon === true ? true : undefined,
+        flavour: item.flavour || undefined
       };
     });
 
@@ -85,14 +87,8 @@ export async function POST(req: NextRequest) {
   // Add-ons ride along with the main gift, so they never extend preparation time or break same-day eligibility.
   const giftItems = parsed.data.items.filter((item) => !item.isAddon);
   const requiredPreparationDays = getRequiredPreparationDays(giftItems, products);
-  const singleRequestedItem = giftItems.length === 1 ? giftItems[0] : null;
-  const singleRequestedProduct = singleRequestedItem
-    ? products.find((product) => product.id === singleRequestedItem.productId)
-    : undefined;
-  const isSameDayEligibleOrder =
-    Boolean(singleRequestedItem) &&
-    singleRequestedItem?.quantity === 1 &&
-    getProductPreparationDays(singleRequestedProduct) === 1;
+  // Counts boxes, not cart lines: splitting an order across flavours must not move eligibility.
+  const isSameDayEligibleOrder = isSameDayEligible(giftItems.length, requiredPreparationDays);
   const deliveryDate = getDateOnlyAtUtcMidnight(parsed.data.deliveryDate);
   const minimumDeliveryDate =
     isSameDayEligibleOrder && isBeforeSameDayDeliveryCutoff()
@@ -131,6 +127,24 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `Product ${item.productId} is no longer available.` }, { status: 400 });
     }
 
+    // The client is never trusted for flavour any more than it is for price: the
+    // product's own allow-list decides what is orderable, and the label is snapshotted.
+    const allowedFlavours = resolveProductFlavours(product);
+    const requestedFlavour = item.flavour;
+
+    if (!allowedFlavours.length && requestedFlavour) {
+      return NextResponse.json({ error: `${product.name} does not come in different flavours.` }, { status: 400 });
+    }
+
+    if (allowedFlavours.length && !requestedFlavour) {
+      return NextResponse.json({ error: `Please choose a flavour for ${product.name}.` }, { status: 400 });
+    }
+
+    if (requestedFlavour && !allowedFlavours.some((flavour) => flavour.id === requestedFlavour)) {
+      const label = getFlavour(requestedFlavour)?.label || requestedFlavour;
+      return NextResponse.json({ error: `${label} is not available for ${product.name}. Please choose another flavour.` }, { status: 400 });
+    }
+
     const quantity = item.quantity;
     orderItems.push({
       productId: product.id,
@@ -140,6 +154,9 @@ export async function POST(req: NextRequest) {
       name: product.name,
       unitPrice: product.price,
       lineTotal: product.price * quantity,
+      ...(requestedFlavour
+        ? { flavourId: requestedFlavour, flavourLabel: getFlavour(requestedFlavour)?.label || requestedFlavour }
+        : {}),
       vendorFulfillmentStatus: 'pending'
     });
   }

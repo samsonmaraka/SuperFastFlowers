@@ -3,6 +3,7 @@ import {
   catalogueCsvColumns,
   mapProductToCatalogueCsvRow,
   parseCatalogueBoolean,
+  parseCatalogueFlavours,
   parseCatalogueCsv,
   parseCatalogueListValue,
   parseCatalogueStockStatus,
@@ -42,6 +43,7 @@ assert.deepEqual(catalogueCsvColumns, [
   'currency',
   'categories',
   'tags',
+  'flavours',
   'image_urls',
   'is_active',
   'is_featured',
@@ -61,7 +63,7 @@ assert.equal(row.price, '125000');
 assert.equal(row.updated_at, '2026-02-03T04:05:06.000Z');
 
 const csv = productsToCatalogueCsv([product]);
-assert.match(csv, /^product_id,slug,vendor_id,vendor_name,title,description,price,currency,categories,tags,image_urls,is_active,is_featured,stock_status,delivery_notes,updated_at\r\n/);
+assert.match(csv, /^product_id,slug,vendor_id,vendor_name,title,description,price,currency,categories,tags,flavours,image_urls,is_active,is_featured,stock_status,delivery_notes,updated_at\r\n/);
 assert.match(csv, /"A lovely bouquet, with ""premium"" roses\nand lilies\."/);
 assert.match(csv, /Flowers\|Birthday\|Valentine's Day/);
 assert.match(csv, /https:\/\/example\.com\/rose\.jpg\|https:\/\/example\.com\/lily\.jpg/);
@@ -106,3 +108,13 @@ assert.equal(parsePreparationDaysFromDeliveryNotes('3'), 3);
 assert.equal(parsePreparationDaysFromDeliveryNotes('same day'), undefined);
 
 console.log('catalogue-csv-schema tests passed');
+
+// Flavours round-trip through the CSV, and loose spellings normalize to registry ids.
+const flavouredProduct: Product = { ...product, flavours: ['chocolate', 'vanilla'] };
+assert.equal(mapProductToCatalogueCsvRow(flavouredProduct).flavours, 'chocolate|vanilla');
+assert.equal(mapProductToCatalogueCsvRow(product).flavours, '');
+assert.deepEqual(parseCatalogueFlavours('chocolate|vanilla'), ['vanilla', 'chocolate']);
+assert.deepEqual(parseCatalogueFlavours('Red Velvet | MINT CHOCOLATE'), ['red-velvet', 'mint-chocolate']);
+assert.deepEqual(parseCatalogueFlavours('chocolate|not-a-flavour|chocolate'), ['chocolate']);
+assert.deepEqual(parseCatalogueFlavours(''), []);
+assert.deepEqual(parseCatalogueFlavours(undefined), []);

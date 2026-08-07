@@ -11,7 +11,7 @@ function dispatchCartUpdate() {
 
 function getAddonQuantities(addons: Addon[]) {
   const cart = readCart();
-  return Object.fromEntries(addons.map((addon) => [addon.id, cart.find((item) => item.productId === addon.id)?.quantity ?? 0]));
+  return Object.fromEntries(addons.map((addon) => [addon.id, cart.find((item) => item.lineId === addon.id)?.quantity ?? 0]));
 }
 
 export function GiftAddons({ addons }: { addons: Addon[] }) {
@@ -34,16 +34,18 @@ export function GiftAddons({ addons }: { addons: Addon[] }) {
 
   const updateQuantity = (addon: Addon, nextQuantity: number) => {
     const cart = readCart();
-    const existing = cart.find((item) => item.productId === addon.id);
+    const existing = cart.find((item) => item.lineId === addon.id);
 
     const nextCart = existing
       ? nextQuantity > 0
-        ? cart.map((item) => (item.productId === addon.id ? { ...item, quantity: nextQuantity } : item))
-        : cart.filter((item) => item.productId !== addon.id)
+        ? cart.map((item) => (item.lineId === addon.id ? { ...item, quantity: nextQuantity } : item))
+        : cart.filter((item) => item.lineId !== addon.id)
       : nextQuantity > 0
         ? [
             ...cart,
             {
+              // Add-ons carry no flavour, so their line id is just the addon id.
+              lineId: addon.id,
               productId: addon.id,
               name: addon.name,
               price: addon.price,

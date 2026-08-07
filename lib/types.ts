@@ -1,6 +1,8 @@
 import type { AppUser, AuditLogEntry, UserRole, UserRoleAssignment, VendorAdminAssignment } from '@/lib/auth-types';
+import type { FlavourId } from '@/lib/flavours';
 
 export type { AppUser, AuditLogEntry, UserRole, UserRoleAssignment, VendorAdminAssignment };
+export type { FlavourId };
 
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
 
@@ -50,6 +52,9 @@ export type Product = {
   vendorContactName2?: string;
   vendorContact2?: string;
   preparationDays?: number;
+  // The flavours this product offers. Absent or empty means it has no flavour
+  // choice; a non-empty list makes exactly one flavour required per cart line.
+  flavours?: FlavourId[];
   createdAt: string;
   updatedAt: string;
 };
@@ -93,6 +98,10 @@ export type OrderItem = {
   unitPrice?: number;
   lineTotal?: number;
   isAddon?: boolean;
+  // Snapshotted at order time, like the vendor fields above, so a reprint stays
+  // stable even if the flavour registry is later renamed.
+  flavourId?: string;
+  flavourLabel?: string;
   vendorFulfillmentStatus?: VendorFulfillmentStatus;
 };
 

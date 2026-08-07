@@ -68,9 +68,13 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
             <p className="mb-2 text-sm text-gray-700">Order details:</p>
             <div className="space-y-2">
               {orderItems.map((item) => (
-                <div key={item.productId} className="flex items-start justify-between gap-4 border-b border-blush/70 pb-2 text-sm last:border-0">
+                <div
+                  key={`${item.productId}-${item.flavourId ?? ''}`}
+                  className="flex items-start justify-between gap-4 border-b border-blush/70 pb-2 text-sm last:border-0"
+                >
                   <div>
                     <p className="font-medium text-ink">{item.name}</p>
+                    {item.flavourLabel ? <p className="font-semibold text-pink-700">{item.flavourLabel}</p> : null}
                     <p className="text-gray-600">Qty: {item.quantity}</p>
                     <p className="text-gray-600">Unit price: UGX {formatUgx(item.unitPrice)}</p>
                   </div>

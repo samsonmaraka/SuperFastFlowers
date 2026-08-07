@@ -13,7 +13,8 @@
     "clean:product-slugs": "tsx scripts/clean-product-slugs.ts",
     "diagnose:product-slug": "tsx scripts/diagnose-product-slug.ts",
     "test:categories": "tsx tests/categories-order.test.ts",
-    "test:catalogue-csv": "tsx tests/catalogue-csv-schema.test.ts"
+    "test:catalogue-csv": "tsx tests/catalogue-csv-schema.test.ts",
+    "test:flavours": "tsx tests/flavours.test.ts"
   },
   "dependencies": {
     "@aws-crypto/sha256-js": "^5.2.0",
