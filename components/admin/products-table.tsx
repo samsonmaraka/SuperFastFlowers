@@ -4,6 +4,7 @@ import { ChangeEvent, FormEvent, useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import type { Product, ProductStatus, Vendor } from '@/lib/types';
 import { buildProductSlug } from '@/lib/slug';
+import { flavours as flavourRegistry, FLAVOUR_IDS, normalizeFlavourIds, type FlavourId } from '@/lib/flavours';
 import { ProductStatusBadge } from './status-badges';
 import { ProductImagePreview } from './product-image-preview';
 
@@ -26,7 +27,8 @@ function buildFormFromProduct(product: Product) {
     categories: (product.categories || []).join(', '),
     tagsInput: (product.tags || []).join(', '),
     status: product.status ?? 'active',
-    featured: product.featured
+    featured: product.featured,
+    flavours: normalizeFlavourIds(product.flavours)
   };
 }
 
@@ -54,7 +56,8 @@ export function ProductsTable({
     categories: '',
     tagsInput: '',
     status: 'active' as ProductStatus,
-    featured: false
+    featured: false,
+    flavours: [] as FlavourId[]
   };
   const [form, setForm] = useState(empty);
   const [editing, setEditing] = useState<string | null>(null);
@@ -150,6 +153,9 @@ export function ProductsTable({
       category: (form.categories.split(',')[0] || 'General').trim(),
       categories: form.categories.split(',').map((s) => s.trim()).filter(Boolean),
       tags: form.tagsInput.split(',').map((s) => s.trim()).filter(Boolean),
+      // Must be sent on every save: this payload replaces the stored product, so
+      // omitting flavours here would silently wipe them on any unrelated edit.
+      flavours: form.flavours.length ? form.flavours : undefined,
       imageUrls: [form.imageUrl],
       stockStatus: 'in_stock',
       featured: !isVendor && form.featured,
@@ -193,6 +199,37 @@ export function ProductsTable({
             <option value="inactive">Inactive - hidden</option>
           </select>
           {!isVendor && <label className="flex items-center gap-2 text-sm"><input type="checkbox" checked={form.featured} onChange={(e) => setForm({ ...form, featured: e.target.checked })} /> Featured</label>}
+          <fieldset className="rounded border p-3 md:col-span-2">
+            <legend className="px-1 text-sm font-medium">Flavours</legend>
+            <p className="text-xs text-gray-600">
+              Tick the flavours this product is offered in. Leave every box unticked for products with no flavour choice. When any
+              are ticked, the product page shows a flavour picker and customers must choose one before they can add it to the cart.
+            </p>
+            <div className="mt-2 flex gap-2">
+              <button type="button" className="rounded border px-2 py-1 text-xs" onClick={() => setForm({ ...form, flavours: [...FLAVOUR_IDS] })}>Select all</button>
+              <button type="button" className="rounded border px-2 py-1 text-xs" onClick={() => setForm({ ...form, flavours: [] })}>Clear</button>
+            </div>
+            <div className="mt-2 grid gap-1 sm:grid-cols-3">
+              {flavourRegistry.map((f) => (
+                <label key={f.id} className="flex items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    checked={form.flavours.includes(f.id)}
+                    onChange={(e) =>
+                      setForm({
+                        ...form,
+                        flavours: e.target.checked
+                          ? normalizeFlavourIds([...form.flavours, f.id])
+                          : form.flavours.filter((x) => x !== f.id)
+                      })
+                    }
+                  />
+                  <span className="inline-block h-3 w-3 shrink-0 rounded-full border border-black/10" style={{ backgroundColor: f.swatch }} aria-hidden="true" />
+                  {f.label}
+                </label>
+              ))}
+            </div>
+          </fieldset>
           <input className="rounded border p-2 md:col-span-2" placeholder="Hosted HTTPS image URL *" value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} />
           <input className="rounded border p-2" type="file" accept="image/*" onChange={image} />
           <ProductImagePreview src={form.imageUrl} />
@@ -231,7 +268,7 @@ export function ProductsTable({
               <tbody>
                 {rows.map((p) => (
                   <tr key={p.id} className="border-t">
-                    <td className="py-3 font-semibold">{p.name}<p className="text-xs font-normal text-gray-500">{p.vendorName || vendors.find((v) => v.id === p.vendorId)?.name || 'No vendor'}</p></td>
+                    <td className="py-3 font-semibold">{p.name}<p className="text-xs font-normal text-gray-500">{p.vendorName || vendors.find((v) => v.id === p.vendorId)?.name || 'No vendor'}</p>{(p.flavours || []).length ? <p className="text-xs font-normal text-pink-700">{(p.flavours || []).length} flavours</p> : null}</td>
                     <td>UGX {p.price.toLocaleString()}</td>
                     <td><ProductStatusBadge status={p.status} /></td>
                     <td className="text-right">
