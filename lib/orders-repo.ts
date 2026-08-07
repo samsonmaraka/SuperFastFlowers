@@ -114,14 +114,16 @@ export async function updateOrderPayment(orderId: string, payment: PesapalOrderP
 }
 
 
-export async function updateOrderItemVendorFulfillmentStatus(orderId: string, productId: string, vendorId: string, vendorFulfillmentStatus: VendorFulfillmentStatus) {
+export async function updateOrderItemVendorFulfillmentStatus(orderId: string, productId: string, vendorId: string, vendorFulfillmentStatus: VendorFulfillmentStatus, flavourId?: string) {
   const existing = await getOrderById(orderId);
   if (!existing) return null;
   let changed = false;
   const updatedOrder = {
     ...existing,
     items: (existing.items || []).map((item) => {
-      if (item.productId === productId && item.vendorId === vendorId) {
+      // Flavour is part of the line's identity: two flavours of one product from one
+      // vendor are two lines, and marking one fulfilled must not mark the other.
+      if (item.productId === productId && item.vendorId === vendorId && (item.flavourId || undefined) === (flavourId || undefined)) {
         changed = true;
         return { ...item, vendorFulfillmentStatus };
       }

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import { formatUgx } from '@/lib/format';
 import { CartItem, readCart, writeCart } from '@/lib/cart-storage';
+import { getFlavourLabel } from '@/lib/flavours';
 import { DEFAULT_PREPARATION_DAYS, formatDeliveryDateLabel, getMinimumDeliveryDate } from '@/lib/preparation-days';
 
 const TEMPLATE_PRODUCT_NAME = 'Celebration Bloom Vase';
@@ -45,15 +46,15 @@ export function CartClient() {
     [maxPreparationDays]
   );
 
-  const updateQty = (productId: string, quantity: number) => {
-    const next = items.map((i) => (i.productId === productId ? { ...i, quantity: Math.max(1, quantity) } : i));
+  const updateQty = (lineId: string, quantity: number) => {
+    const next = items.map((i) => (i.lineId === lineId ? { ...i, quantity: Math.max(1, quantity) } : i));
     setItems(next);
     writeCart(next);
     window.dispatchEvent(new Event('giftora-cart-updated'));
   };
 
-  const removeItem = (productId: string) => {
-    const next = items.filter((i) => i.productId !== productId);
+  const removeItem = (lineId: string) => {
+    const next = items.filter((i) => i.lineId !== lineId);
     setItems(next);
     writeCart(next);
     window.dispatchEvent(new Event('giftora-cart-updated'));
@@ -64,7 +65,7 @@ export function CartClient() {
   return (
     <div className="space-y-4">
       {items.map((item) => (
-        <div key={item.productId} className="flex items-center justify-between rounded-lg border border-blush bg-white p-4">
+        <div key={item.lineId} className="flex items-center justify-between rounded-lg border border-blush bg-white p-4">
           <div>
             <p className="font-medium">
               {item.name}
@@ -72,6 +73,9 @@ export function CartClient() {
                 <span className="ml-2 rounded-full bg-pink-100 px-2 py-0.5 text-xs font-semibold text-pink-700">Add-on</span>
               ) : null}
             </p>
+            {item.flavour ? (
+              <p className="text-sm font-semibold text-pink-700">{getFlavourLabel(item.flavour)}</p>
+            ) : null}
             <p className="text-sm text-gray-600">UGX {formatUgx(item.price)} each</p>
           </div>
           <div className="flex items-center gap-3">
@@ -79,12 +83,12 @@ export function CartClient() {
               type="number"
               value={item.quantity}
               min={1}
-              onChange={(e) => updateQty(item.productId, Number(e.target.value))}
+              onChange={(e) => updateQty(item.lineId, Number(e.target.value))}
               className="w-16 rounded border p-1"
             />
             <button
               type="button"
-              onClick={() => removeItem(item.productId)}
+              onClick={() => removeItem(item.lineId)}
               className="rounded border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-100"
             >
               Remove

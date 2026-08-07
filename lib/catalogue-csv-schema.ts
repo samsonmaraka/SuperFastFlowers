@@ -1,4 +1,5 @@
 import type { Product } from '@/lib/types';
+import { normalizeFlavourIds } from '@/lib/flavours';
 
 export const CATALOGUE_CSV_DELIMITER = ',';
 export const CATALOGUE_CSV_LIST_SEPARATOR = '|';
@@ -15,6 +16,7 @@ export const catalogueCsvColumns = [
   'currency',
   'categories',
   'tags',
+  'flavours',
   'image_urls',
   'is_active',
   'is_featured',
@@ -58,6 +60,7 @@ export function mapProductToCatalogueCsvRow(product: Product): CatalogueCsvRow {
     currency: CATALOGUE_CSV_CURRENCY,
     categories: listValue(categories),
     tags: listValue(product.tags || []),
+    flavours: listValue(product.flavours || []),
     image_urls: listValue(product.imageUrls || []),
     is_active: formatBoolean((product.status ?? 'active') === 'active'),
     is_featured: formatBoolean(Boolean(product.featured)),
@@ -166,6 +169,10 @@ export function parseCatalogueCsv(text: string): ParsedCatalogueCsv {
 
   if (rows.length === 0) return { rows, errors: ['The CSV file has a header but no product rows.'] };
   return { rows, errors: [] };
+}
+
+export function parseCatalogueFlavours(value: string | undefined) {
+  return normalizeFlavourIds(parseCatalogueListValue(value));
 }
 
 export function parseCatalogueListValue(value: string | undefined) {

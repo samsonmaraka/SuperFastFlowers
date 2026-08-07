@@ -7,7 +7,8 @@ import { createPortal } from 'react-dom';
 import { CartItem, readCart } from '@/lib/cart-storage';
 import { calculateVendorDeliveryFee } from '@/lib/delivery-fee';
 import { formatUgx } from '@/lib/format';
-import { DEFAULT_PREPARATION_DAYS, formatDeliveryDateLabel, getDateInputValue, getGmtPlus3DateOnlyAtUtcMidnight, getMinimumDeliveryDate, isBeforeSameDayDeliveryCutoff } from '@/lib/preparation-days';
+import { DEFAULT_PREPARATION_DAYS, formatDeliveryDateLabel, getDateInputValue, getGmtPlus3DateOnlyAtUtcMidnight, getMinimumDeliveryDate, isBeforeSameDayDeliveryCutoff, isSameDayEligible } from '@/lib/preparation-days';
+import { getFlavourLabel } from '@/lib/flavours';
 
 type CheckoutResponse = {
   redirect_url?: string;
@@ -51,8 +52,8 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
     [giftItems]
   );
   const isSameDayEligibleCart = useMemo(
-    () => giftItems.length === 1 && giftItems[0]?.quantity === 1 && (giftItems[0]?.preparationDays ?? DEFAULT_PREPARATION_DAYS) === 1,
-    [giftItems]
+    () => isSameDayEligible(giftItems.length, maxPreparationDays),
+    [giftItems.length, maxPreparationDays]
   );
   const isBeforeCutoff = useMemo(() => isBeforeSameDayDeliveryCutoff(now), [now]);
   const minDeliveryDate = useMemo(
@@ -79,7 +80,8 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
         quantity: item.quantity,
         unitPrice: item.price,
         lineTotal: item.price * item.quantity,
-        isAddon: item.isAddon || undefined
+        isAddon: item.isAddon || undefined,
+        flavour: item.flavour || undefined
       })),
     [items]
   );
@@ -227,7 +229,7 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
           {items.map((item) => {
             const lineTotal = item.price * item.quantity;
             return (
-              <div key={item.productId} className="flex items-start justify-between gap-4 border-b border-blush/70 pb-2 text-sm last:border-0">
+              <div key={item.lineId} className="flex items-start justify-between gap-4 border-b border-blush/70 pb-2 text-sm last:border-0">
                 <div>
                   <p className="font-medium text-ink">
                     {item.name}
@@ -235,6 +237,7 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
                       <span className="ml-2 rounded-full bg-pink-100 px-2 py-0.5 text-xs font-semibold text-pink-700">Add-on</span>
                     ) : null}
                   </p>
+                  {item.flavour ? <p className="font-semibold text-pink-700">{getFlavourLabel(item.flavour)}</p> : null}
                   <p className="text-gray-600">Qty: {item.quantity}</p>
                   <p className="text-gray-600">Unit price: UGX {formatUgx(item.price)}</p>
                 </div>
