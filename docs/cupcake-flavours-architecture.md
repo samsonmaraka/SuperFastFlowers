@@ -1,0 +1,374 @@
+# Cupcake Flavours — Architecture Design
+
+Design proposal only. No behaviour in this document has been implemented yet.
+
+## Domain rules this design is built on
+
+- Cupcakes are sold as a box of 12. The box is the product; there is no per-cupcake purchase.
+- **A box is a single flavour.** There are no mixed boxes.
+- A customer wanting two flavours orders two boxes.
+
+That second rule is what keeps this design small. Because the choice is exactly one value per box,
+a flavour is a plain attribute of a cart line, not a configuration sub-document.
+
+## The problem in one sentence
+
+A cupcake box is not one sellable thing — it is a product plus a single customer choice, and the
+current catalogue has no concept of a customer choice anywhere between the product page and the
+baker's email.
+
+## Available flavours
+
+`vanilla`, `coconut`, `strawberry`, `lemon`, `chocolate`, `mocha`, `red-velvet`, `blueberry`,
+`bubble-gum`, `banana`, `orange`, `mint-chocolate`.
+
+## Recommended design
+
+Three pieces, in dependency order.
+
+### 1. A flavour registry (static, typed, closed)
+
+A new `lib/flavours.ts` in the same shape as the existing `lib/categories.ts` and
+`lib/delivery-areas.ts`: an exported const array, a lookup by id, a slug normaliser.
+
+```ts
+export type FlavourId =
+  | 'vanilla' | 'coconut' | 'strawberry' | 'lemon'
+  | 'chocolate' | 'mocha' | 'red-velvet' | 'blueberry'
+  | 'bubble-gum' | 'banana' | 'orange' | 'mint-chocolate';
+
+export type Flavour = {
+  id: FlavourId;
+  label: string;        // 'Mint Chocolate'
+  rank: number;         // display order, same convention as giftCategories
+  swatch: string;       // hex, for the picker chips
+  status: 'active' | 'inactive';
+  notes?: string;       // allergen / description text for the product page
+};
+
+export const FLAVOUR_IDS: FlavourId[];   // convenience for "this product offers all of them"
+```
+
+Static rather than a DynamoDB entity because the list is small, stable, and wanted at build time
+for filters and SEO. It also makes `FlavourId` a real union type, so every downstream consumer is
+checked by the compiler instead of by hope. If admins later need to add flavours without a deploy,
+promote it to a repo using the existing `lib/addons-repo.ts` pattern — the shape above is already
+the record shape, so that promotion is additive.
+
+`status: 'inactive'` is the retirement path: a flavour that stops being offered is deactivated,
+never deleted, so historical orders still resolve their label.
+
+### 2. One field on `Product`
+
+```ts
+flavours?: FlavourId[];   // the flavours this product offers.
+                          // absent or empty === this product has no flavour choice
+```
+
+That is the entire catalogue change. A product with a non-empty `flavours` array **requires**
+exactly one flavour per cart line; a product without one takes none. Most cupcake products will be
+seeded as `flavours: FLAVOUR_IDS`, but the array is per-product so a vendor who cannot do
+`bubble-gum` simply omits it.
+
+Optional and absent-by-default is deliberate: every existing flower, hamper and gift basket stays
+byte-identical in DynamoDB, and no migration or backfill job is needed.
+
+Note what is *not* here: no count, no "picks", no mixed-box rules, no duplicate policy. The box
+size is already expressed by the product's name and price, and the one-flavour-per-box rule is a
+domain invariant rather than a per-product setting, so neither needs a field.
+
+### 3. Flavour-aware cart line identity (the one true architectural change)
+
+This is the change that everything else depends on, and the only one that touches existing working
+code rather than adding to it.
+
+Today a cart line **is** a product. `components/add-to-cart-button.tsx:44`,
+`components/cart-client.tsx:49`, `components/cart-client.tsx:56`,
+`components/gift-addons.tsx:14` and `components/gift-addons.tsx:37` all locate a line with
+`item.productId === x`. Under that assumption, "one vanilla box and one chocolate box" is
+unrepresentable — the second add collapses into the first and silently becomes two vanilla boxes.
+
+So the line key stops being the product id and becomes a derived line id:
+
+```ts
+export type CartItem = {
+  lineId: string;        // productId, or `${productId}#${flavour}`
+  productId: string;
+  flavour?: FlavourId;
+  // ...unchanged fields
+};
+
+export function buildCartLineId(productId: string, flavour?: FlavourId) {
+  return flavour ? `${productId}#${flavour}` : productId;
+}
+```
+
+Adding vanilla twice merges into one line of quantity 2 (two vanilla boxes), which is correct.
+Adding vanilla then chocolate produces two lines, which is also correct.
+
+Non-flavoured products and add-ons get `lineId === productId`, so their behaviour is unchanged by
+construction. Every `find`/`filter`/`map` in the five call sites above switches from `productId` to
+`lineId`.
+
+Migration of live carts is free: `isCartItem` in `lib/cart-storage.ts:20` already sanitises on read,
+so a stored pre-flavour cart is backfilled with `lineId = productId` on the next read, and a flavour
+that is no longer active in the registry is dropped there rather than reaching checkout. Nobody
+loses a cart.
+
+Quantity keeps meaning **boxes**, not cupcakes. The cart and checkout line should say so
+(`Chocolate · 12 cupcakes`), because "Qty 2" against a cupcake product is otherwise ambiguous.
+
+## Server-side revalidation
+
+`app/api/orders/route.ts:128-143` already refuses to trust the client — it reloads each product and
+recomputes name, price and vendor. Flavour must join that discipline, not bypass it. In the same
+loop, for each non-add-on line:
+
+- if the product has no `flavours`, reject a line that carries one;
+- if the product has `flavours`, reject a line with no flavour (it is required, not optional);
+- reject a flavour outside the product's array, or one that is `inactive` in the registry.
+
+Same error style as the existing `Product ${id} is no longer available.` responses.
+
+The resolved result is then **snapshotted onto the order line**, the way `applyVendorSnapshot`
+(`lib/products-repo.ts:102`) already snapshots vendor details:
+
+```ts
+export type OrderItem = {
+  // ...unchanged
+  flavourId?: string;
+  flavourLabel?: string;   // snapshot, so a reprint next year still reads 'Red Velvet'
+};
+```
+
+Two flat fields rather than a nested object, matching how `OrderItem` already carries its vendor
+snapshot — and DynamoDB is happier with them.
+
+## Full list of touch points
+
+| Area | File | Change |
+| --- | --- | --- |
+| Registry | `lib/flavours.ts` | New. The 12 flavours, lookup, `FLAVOUR_IDS`. |
+| Types | `lib/types.ts` | `FlavourId`; `Product.flavours?`; `OrderItem.flavourId?` / `flavourLabel?`. |
+| Cart | `lib/cart-storage.ts` | `lineId` + `flavour` on `CartItem`, validated in `isCartItem`, backfilled on read. |
+| Cart writes | `components/add-to-cart-button.tsx` | Key on `lineId`; take the selected flavour; block add until one is chosen. |
+| Cart writes | `components/send-this-gift-button.tsx` | Key on `lineId`; carry the chosen flavour; disabled until one is chosen. |
+| Cart writes | `components/gift-addons.tsx` | Key on `lineId` (no behaviour change — add-ons have no flavour). |
+| Grid card | `components/product-card.tsx` | For flavoured products, swap the inline add control for a "Choose flavour" link to the product page. |
+| Cart UI | `components/cart-client.tsx` | Key on `lineId`; show the flavour under the name, beside the existing add-on badge at line 71. |
+| Checkout | `components/checkout-client.tsx` | Key on `lineId`; send `flavour` in the payload; show it in the summary at line 234; call the shared same-day predicate at line 53. |
+| Picker | `components/flavour-picker.tsx` | New client component. A single-select chip row with radio semantics — 12 chips, one active. |
+| Product page | `app/shop/[slug]/page.tsx` | Render the picker above `AddToCartButton` when `product.flavours?.length`. |
+| Validation | `lib/validators.ts` | `productSchema.flavours` as an optional enum array; `orderSchema.items[].flavour` optional enum. |
+| Order API | `app/api/orders/route.ts` | Revalidate as above; snapshot id + label onto the line; call the shared same-day predicate and drop the now-unused single-item locals. |
+| Same-day rule | `lib/preparation-days.ts` | New `isSameDayEligible(giftItemCount, requiredPreparationDays)` — one home for a rule currently duplicated in two files. |
+| Baker email | `lib/send-order-email.ts` | Flavour beside the line name (lines 55 and 132). This is the path the vendor actually reads. |
+| Admin order view | `components/admin/order-detail-drawer.tsx` | Show the flavour. |
+| Order PDF | `components/download-order-pdf-button.tsx` | Show the flavour. |
+| Admin editor | `components/admin-products-client.tsx` | Flavour checkbox row in the item form, with a "select all" for the common case. |
+| CSV | `lib/catalogue-csv-schema.ts` | One additive `flavours` column using the existing `\|` list separator. |
+| SEO | `lib/seo.tsx` | List available flavours in the product JSON-LD. One canonical URL per product — see below. |
+| Shop filter | `lib/products-repo.ts` | Optional `flavour` filter reading `product.flavours`. |
+
+Twenty-one files: fifteen additive, six are the `productId` → `lineId` rekey.
+
+## Customer journey
+
+### 1. Discovery — `/shop`, `/shop/category/cakes-and-cupcakes`
+
+`ProductCard` currently embeds `AddToCartButton` (`components/product-card.tsx:28`), so a cupcake
+box can be added to the cart from the grid without ever opening the product page. With a required
+flavour that is now a hole, and it is the first thing the journey has to close.
+
+**For flavoured products, the card's add control becomes a "Choose flavour" link to the product
+page.** Unflavoured products keep the inline add button exactly as it is today.
+
+The two alternatives were considered and rejected:
+
+- *An inline flavour dropdown on the card.* The card is a full-bleed `<Link>` overlay at z-10 with
+  the button escaping at z-20 (`product-card.tsx:27,32`); nesting a second interactive control in
+  that stack is an accessibility trap, it duplicates picker state, and twelve options do not fit a
+  three-across grid tile.
+- *Add with a default flavour, change it later.* For a gift, a silently defaulted flavour is a
+  wrong order that nobody notices until it is delivered. This is also why the picker has no
+  pre-selected default.
+
+The cost is one extra click for a flavoured product, and the benefit is that the picker exists in
+exactly one place in the codebase.
+
+### 2. Choosing — `/shop/[slug]`
+
+The picker sits directly above the buy controls: twelve chips, radio semantics, nothing selected
+initially. Both `SendThisGiftButton` and `AddToCartButton` are disabled until a flavour is chosen,
+with the disabled state naming the reason ("Choose a flavour first") rather than being inert.
+
+The picker selection drives which cart line the buy controls are bound to, which falls out of the
+`lineId` design for free:
+
+- Select Chocolate → the control reflects the Chocolate line. If none exists it reads "Add to
+  cart"; if one exists it shows the existing quantity stepper.
+- Step up → a second Chocolate box.
+- Switch the picker to Vanilla → the control re-reads as "Add to cart", because that is a different
+  line.
+
+So ordering two flavours is: pick, add, pick again, add. No modal, no repeat-visit to the grid, and
+one component handles both states.
+
+### 3. Cart — `/cart`
+
+Each line reads `Chocolate · 12 cupcakes` under the product name, in the slot where the add-on
+badge already renders (`components/cart-client.tsx:71`). The `· 12 cupcakes` half matters: quantity
+counts **boxes**, and "Qty 2" against a cupcake product is otherwise ambiguous.
+
+Flavour is not editable in the cart in phase 1 — the customer removes the line and re-adds. Editing
+in place means handling the merge case (changing Vanilla to Chocolate when a Chocolate line already
+exists must combine quantities, not create a duplicate `lineId`), which is real work for a rare
+action. It is a known rough edge, listed in phase 3.
+
+### 4. Checkout — `/checkout`
+
+Unchanged apart from display. Flavour appears per line in the summary
+(`components/checkout-client.tsx:234`) and rides along in the submitted payload. Everything
+checkout actually collects — recipient, delivery date, pin, note — is per order, not per line, so
+none of it is affected.
+
+The one interaction that needed a decision has one: the same-day rule now counts boxes rather than
+lines, with no box limit, so a customer picking Chocolate and Vanilla keeps same-day delivery
+exactly as if they had ordered a single box. The date picker's earliest date no longer moves when a
+second flavour is added. See "The same-day delivery rule — decided" above.
+
+### 5. Confirmation and fulfilment
+
+The flavour is on the order line by then, so it flows to the customer confirmation
+(`lib/send-order-email.ts`), the vendor email the baker actually works from, the admin order drawer
+and the order PDF, without further decisions. The label is snapshotted at order time, so a reprint
+is stable even if the registry changes later.
+
+
+## Things this design deliberately protects
+
+**Delivery fee does not change.** `countOrderVendors` (`lib/delivery-fee.ts:10`) counts a `Set` of
+vendor ids, not lines. A vanilla box and a chocolate box from the same bakery are two lines with one
+vendor id, so the customer is still charged one UGX 5,000 fee. Worth a regression test, because
+"ordering a second flavour doubled my delivery fee" is the obvious way to get this wrong.
+
+**Preparation days do not change.** `getRequiredPreparationDays` (`lib/preparation-days.ts:11`)
+resolves by `productId`, which flavour does not affect. The same-day eligibility rule that sits on
+top of it does change — see the next section.
+
+**Slugs and canonical URLs do not change.** One product, one slug, one canonical URL. The
+`legacySlugs` machinery, the `SLUG#` GSI and the `permanentRedirect` in
+`app/shop/[slug]/page.tsx:68` are all untouched, because no flavour ever mints a URL.
+
+## The same-day delivery rule — decided
+
+Splitting a cupcake order across flavours creates extra cart lines, and the old eligibility rule
+was written in terms of lines. **Decision: the rule counts boxes, not lines, with no box limit.**
+An order qualifies for same-day when every gift item in it has a preparation time of one day or
+less. Quantity and line count no longer enter into it.
+
+### The rule today, and why it had to move
+
+```ts
+// app/api/orders/route.ts:92
+const isSameDayEligibleOrder =
+  Boolean(singleRequestedItem) &&
+  singleRequestedItem?.quantity === 1 &&
+  getProductPreparationDays(singleRequestedProduct) === 1;
+```
+
+`giftItems.length === 1 && quantity === 1` is exactly "the order is one box" — so the old rule was
+already box-shaped, it just expressed itself through line structure. That is what made it fragile:
+flavours split one box-order into two lines and eligibility would have changed as a side effect,
+without anyone editing the rule.
+
+### The rule as it should be
+
+The inputs both call sites already compute — a gift-item count and a required preparation time —
+are all the rule needs:
+
+```ts
+// lib/preparation-days.ts
+export function isSameDayEligible(giftItemCount: number, requiredPreparationDays: number) {
+  return giftItemCount > 0 && requiredPreparationDays <= 1;
+}
+```
+
+`requiredPreparationDays` is already the max across gift products (`getRequiredPreparationDays`), so
+`<= 1` is precisely "every gift item is a one-day item" — and it correctly admits zero-day items,
+which are easier to fulfil, not harder. Quantity never appears, so there is no box limit. Line
+count never appears beyond the emptiness guard, so no future line-splitting can move eligibility
+again.
+
+### This rule currently exists in two places
+
+`app/api/orders/route.ts:92` and `components/checkout-client.tsx:53` hold separate copies of the
+same condition, and they have to agree — if the client offers a date the server rejects, the
+customer gets a validation error on a date the UI told them was available. Both should call the
+shared predicate instead of restating it:
+
+```ts
+// components/checkout-client.tsx
+const isSameDayEligibleCart = isSameDayEligible(giftItems.length, maxPreparationDays);
+
+// app/api/orders/route.ts
+const isSameDayEligibleOrder = isSameDayEligible(giftItems.length, requiredPreparationDays);
+```
+
+The server keeps `singleRequestedItem` / `singleRequestedProduct` for nothing once this lands —
+both locals can go.
+
+### What this widens, deliberately
+
+This is not a cupcake-only change. Any order whose gift items are all one-day items now qualifies,
+whatever the quantity and however many vendors are involved — three one-day items from three
+vendors becomes a same-day order for three vendors at once. That is the accepted trade of removing
+the box limit, and it is the right shape for the flavour case (two flavours is two boxes and should
+not be punished for it), but it should ship with the operations team knowing, not as a surprise.
+
+If a ceiling is ever wanted, it belongs inside `isSameDayEligible` as a third input — a per-order or
+per-vendor box cap — so it stays in the one place both call sites already read.
+
+## Three designs rejected, and why
+
+**Flavour as a tag.** Zero schema change, and tempting. But `filterProducts`
+(`lib/products-repo.ts:168`) folds `tags` into category matching, so a `chocolate` tag would start
+matching category queries and quietly pollute the occasion taxonomy. It is also unenforceable —
+nothing stops a customer ordering a flavour the baker does not make, because tags are free text and
+the order API has nothing to validate against.
+
+**Flavour as a separate product.** Twelve products per cupcake box, twelve slugs, twelve image
+uploads, twelve rows in every admin list, near-duplicate descriptions competing for the same search
+terms, and `getRelatedProducts` (`app/shop/[slug]/page.tsx:46`) returning three colours of the same
+box as "You may also like". The catalogue becomes unmaintainable at roughly the third product.
+
+This one deserves a fair hearing, because one-flavour-per-box makes it *almost* work — a product
+genuinely is a single flavour of a single box. It still fails on catalogue weight and on SEO
+cannibalisation, and it puts the flavour list in the hands of whoever last copy-pasted a product
+rather than in one validated place.
+
+**Flavour as an add-on.** The `Addon` entity already exists and is close in shape, so this looks
+like reuse. It is not: add-ons are separately priced things that ride along with a gift, are
+explicitly excluded from vendor delivery-fee counting and from preparation-day maths, and carry no
+vendor. A flavour is an attribute of the gift itself, and modelling it as an add-on would put
+"vanilla" on the invoice as a line item with its own price.
+
+## Suggested phasing
+
+**Phase 1 — the spine.** Registry, `Product.flavours`, `lineId` cart migration, picker on the
+product page, server revalidation, flavour on the baker email and admin order view, and the
+same-day rule moved into the shared `isSameDayEligible` predicate. No pricing change, no new admin
+editing UI — seed the first cupcake products' flavour arrays directly.
+
+The same-day change is worth landing as its own commit ahead of the flavour work: it stands alone,
+it is testable on its own, and it deduplicates a rule that is already duplicated today.
+
+**Phase 2 — administration.** Flavour checkboxes in the admin item form, CSV column, so the
+catalogue team owns flavours without a deploy.
+
+**Phase 3 — merchandising.** `?flavour=` filter on the shop, flavours in JSON-LD, optional
+per-flavour surcharge (a `flavourSurcharges?: Partial<Record<FlavourId, number>>` on `Product`,
+applied in the server re-price loop — the only correct place for it), optional per-flavour
+availability so a baker can mark `bubble-gum` unavailable without pulling the product.
+
+Phase 1 holds the only irreversible decision — the cart line key. Phases 2 and 3 are additive.
