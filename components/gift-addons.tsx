@@ -1,9 +1,14 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { readCart, writeCart } from '@/lib/cart-storage';
 import { formatUgx } from '@/lib/format';
 import type { Addon } from '@/lib/types';
+
+// Keep the list from dominating the product page: taller lists become a scroll
+// area sized to exactly this many rows.
+const VISIBLE_ADDONS = 4;
+const ROW_GAP_PX = 12; // Matches the `space-y-3` between list items.
 
 function dispatchCartUpdate() {
   window.dispatchEvent(new Event('giftora-cart-updated'));
@@ -16,6 +21,44 @@ function getAddonQuantities(addons: Addon[]) {
 
 export function GiftAddons({ addons }: { addons: Addon[] }) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [maxHeight, setMaxHeight] = useState<number | null>(null);
+  const [isAtEnd, setIsAtEnd] = useState(false);
+  const listRef = useRef<HTMLUListElement | null>(null);
+  const isScrollable = addons.length > VISIBLE_ADDONS;
+
+  // Rows vary in height with the add-on description, so measure the real rows
+  // rather than guessing a pixel cap.
+  useEffect(() => {
+    const list = listRef.current;
+    if (!list || !isScrollable) {
+      setMaxHeight(null);
+      return;
+    }
+
+    const measure = () => {
+      const items = list.children;
+      const first = items[0] as HTMLElement | undefined;
+      const cutoff = items[VISIBLE_ADDONS] as HTMLElement | undefined;
+      if (!first || !cutoff) return;
+
+      setMaxHeight(cutoff.offsetTop - first.offsetTop - ROW_GAP_PX);
+    };
+
+    measure();
+
+    const observer = new ResizeObserver(measure);
+    observer.observe(list);
+    Array.from(list.children).forEach((child) => observer.observe(child));
+
+    return () => observer.disconnect();
+  }, [addons, isScrollable]);
+
+  const onScroll = useCallback(() => {
+    const list = listRef.current;
+    if (!list) return;
+
+    setIsAtEnd(list.scrollTop + list.clientHeight >= list.scrollHeight - 1);
+  }, []);
 
   useEffect(() => {
     const sync = () => setQuantities(getAddonQuantities(addons));
@@ -65,7 +108,15 @@ export function GiftAddons({ addons }: { addons: Addon[] }) {
     <section className="rounded-xl border border-blush bg-white p-5">
       <h2 className="text-lg font-semibold text-ink">Make it extra special</h2>
       <p className="mt-1 text-sm text-gray-600">Add an optional extra to be delivered together with this gift.</p>
-      <ul className="mt-4 space-y-3">
+
+      <ul
+        ref={listRef}
+        onScroll={isScrollable ? onScroll : undefined}
+        className={`mt-4 space-y-3 ${isScrollable ? 'overflow-y-auto pr-2' : ''}`}
+        style={isScrollable && maxHeight ? { maxHeight } : undefined}
+        tabIndex={isScrollable ? 0 : undefined}
+        aria-label={isScrollable ? `Optional extras, ${addons.length} available` : undefined}
+      >
         {addons.map((addon) => {
           const quantity = quantities[addon.id] ?? 0;
           return (
@@ -123,6 +174,14 @@ export function GiftAddons({ addons }: { addons: Addon[] }) {
           );
         })}
       </ul>
+
+      {isScrollable ? (
+        <p className="mt-3 text-xs text-gray-500">
+          {isAtEnd
+            ? `Showing all ${addons.length} extras.`
+            : `Showing ${VISIBLE_ADDONS} of ${addons.length} — scroll the list for more.`}
+        </p>
+      ) : null}
     </section>
   );
 }
