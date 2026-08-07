@@ -104,3 +104,21 @@ export function resolveProductFlavours(product: { flavours?: string[] | null } |
 export function productRequiresFlavour(product: { flavours?: string[] | null } | null | undefined) {
   return resolveProductFlavours(product).length > 0;
 }
+
+// "Vanilla, Chocolate and Lemon" — readable prose for page copy and metadata,
+// so the flavour names exist as sentences a search engine can read rather than
+// only as labels inside the picker widget.
+export function formatFlavourList(values: Array<Flavour | FlavourId>) {
+  const labels = values.map((value) => (typeof value === 'string' ? getFlavourLabel(value) : value.label));
+  if (labels.length === 0) return '';
+  if (labels.length === 1) return labels[0];
+
+  return `${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`;
+}
+
+export function productFlavourSentence(product: { flavours?: string[] | null } | null | undefined) {
+  const available = resolveProductFlavours(product);
+  if (!available.length) return '';
+
+  return `Available in ${available.length} flavour${available.length === 1 ? '' : 's'}: ${formatFlavourList(available)}.`;
+}

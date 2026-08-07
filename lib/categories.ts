@@ -16,9 +16,10 @@ export const giftCategories: GiftCategory[] = [
     label: 'Cakes and Cupcakes',
     slug: 'cakes-and-cupcakes',
     seoTitle: 'Cake and Cupcake Gifts in Uganda | Sendagift UG',
-    seoDescription: 'Sendagift UG helps you send cake and cupcake gifts in Uganda for birthdays, baby showers, congratulations, love, and everyday celebrations.',
+    seoDescription: 'Send cake and cupcake gifts in Uganda. Cupcake boxes come by the dozen in twelve flavours, from chocolate and red velvet to lemon and mint chocolate.',
     h1: 'Cakes and Cupcakes in Uganda',
-    intro: 'Shop cakes and cupcakes for thoughtful celebrations across Uganda. Find sweet gifts for birthdays, new babies, baby showers, romantic surprises and congratulations moments.',
+    intro:
+      'Shop cakes and cupcakes for thoughtful celebrations across Uganda. Cupcakes are sold as a box of twelve in a single flavour of your choice: vanilla, coconut, strawberry, lemon, chocolate, mocha, red velvet, blueberry, bubble gum, banana, orange or mint chocolate. Find sweet gifts for birthdays, new babies, baby showers, romantic surprises and congratulations moments.',
     relatedCategories: ['birthday', 'baby-shower', 'congratulations']
   },
   {
