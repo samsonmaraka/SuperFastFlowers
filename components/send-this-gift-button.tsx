@@ -13,14 +13,25 @@ type SendThisGiftButtonProps = {
   product: Product;
   flavour?: FlavourId | null;
   requiresFlavour?: boolean;
+  onBlocked?: () => void;
 };
 
-export function SendThisGiftButton({ product, flavour = null, requiresFlavour = false }: SendThisGiftButtonProps) {
+export function SendThisGiftButton({
+  product,
+  flavour = null,
+  requiresFlavour = false,
+  onBlocked
+}: SendThisGiftButtonProps) {
   const router = useRouter();
   const isBlockedOnFlavour = requiresFlavour && !flavour;
 
   const onSendGift = () => {
-    if (isBlockedOnFlavour) return;
+    // The button stays clickable while blocked so the click can explain itself
+    // instead of doing nothing.
+    if (isBlockedOnFlavour) {
+      onBlocked?.();
+      return;
+    }
 
     const lineId = buildCartLineId(product.id, flavour);
     const cart = readCart();
@@ -49,8 +60,11 @@ export function SendThisGiftButton({ product, flavour = null, requiresFlavour = 
   return (
     <button
       onClick={onSendGift}
-      disabled={isBlockedOnFlavour}
-      className="inline-flex items-center justify-center rounded-md bg-pink-700 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-pink-700/20 transition hover:-translate-y-0.5 hover:bg-ink hover:shadow-xl focus:outline-none focus:ring-2 focus:ring-pink-700/40 focus:ring-offset-2 disabled:cursor-not-allowed disabled:bg-gray-400 disabled:shadow-none disabled:hover:translate-y-0"
+      className={`inline-flex items-center justify-center rounded-md px-5 py-3 text-sm font-semibold text-white transition focus:outline-none focus:ring-2 focus:ring-pink-700/40 focus:ring-offset-2 ${
+        isBlockedOnFlavour
+          ? 'bg-gray-400 hover:bg-gray-500'
+          : 'bg-pink-700 shadow-lg shadow-pink-700/20 hover:-translate-y-0.5 hover:bg-ink hover:shadow-xl'
+      }`}
       type="button"
       aria-label={isBlockedOnFlavour ? `Choose a flavour before sending ${product.name}` : `Send ${product.name} now`}
       title={isBlockedOnFlavour ? 'Choose a flavour first' : undefined}
