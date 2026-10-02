@@ -1,22 +1,19 @@
 import Link from 'next/link';
 import { CheckoutClient } from '@/components/checkout-client';
 import { DeliveryPinMap } from '@/components/delivery-pin-map';
-import { getDateInputValue, getMinimumDeliveryDate } from '@/lib/preparation-days';
+import { getDateInputValue, getMaximumDeliveryDate, getMinimumDeliveryDate } from '@/lib/preparation-days';
+
+// Date limits depend on the current day and must not be frozen into a static build.
+export const dynamic = 'force-dynamic';
 
 export const metadata = {
   title: 'Checkout',
   robots: { index: false, follow: false }
 };
-function addDays(date: Date, days: number) {
-  const nextDate = new Date(date);
-  nextDate.setDate(nextDate.getDate() + days);
-  return nextDate;
-}
-
 export default function CheckoutPage() {
   const today = new Date();
   const minDeliveryDate = getDateInputValue(getMinimumDeliveryDate(0, today));
-  const maxDeliveryDate = getDateInputValue(addDays(today, 14));
+  const maxDeliveryDate = getDateInputValue(getMaximumDeliveryDate(today));
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10">

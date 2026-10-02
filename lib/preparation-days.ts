@@ -46,6 +46,12 @@ export function getMinimumDeliveryDate(preparationDays: number, now = new Date()
   return min;
 }
 
+export function getMaximumDeliveryDate(now = new Date()) {
+  const max = getGmtPlus3DateOnlyAtUtcMidnight(now);
+  max.setUTCDate(max.getUTCDate() + 14);
+  return max;
+}
+
 export function getDateInputValue(date: Date) {
   return date.toISOString().split('T')[0];
 }
