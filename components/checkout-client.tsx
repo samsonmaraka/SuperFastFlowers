@@ -7,7 +7,7 @@ import { createPortal } from 'react-dom';
 import { CartItem, readCart } from '@/lib/cart-storage';
 import { calculateVendorDeliveryFee } from '@/lib/delivery-fee';
 import { formatUgx } from '@/lib/format';
-import { DEFAULT_PREPARATION_DAYS, formatDeliveryDateLabel, getDateInputValue, getGmtPlus3DateOnlyAtUtcMidnight, getMinimumDeliveryDate, isBeforeSameDayDeliveryCutoff, isSameDayEligible } from '@/lib/preparation-days';
+import { DEFAULT_PREPARATION_DAYS, formatDeliveryDateLabel, getDateInputValue, getGmtPlus3DateOnlyAtUtcMidnight, getMaximumDeliveryDate, getMinimumDeliveryDate, isBeforeSameDayDeliveryCutoff, isSameDayEligible } from '@/lib/preparation-days';
 import { getFlavourLabel } from '@/lib/flavours';
 
 type CheckoutResponse = {
@@ -66,6 +66,7 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
     [isSameDayEligibleCart, isBeforeCutoff, maxPreparationDays, now]
   );
   const minDeliveryDateLabel = useMemo(() => formatDeliveryDateLabel(minDeliveryDate), [minDeliveryDate]);
+  const maxDeliveryDate = useMemo(() => getDateInputValue(getMaximumDeliveryDate(now)), [now]);
   const sameDayDeliveryWarning = isSameDayEligibleCart
     ? isBeforeCutoff
       ? 'Order before 9:00 am (GMT+3) to have your items delivered same day.'
@@ -91,10 +92,14 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
     if (!deliveryDateInput) return;
 
     deliveryDateInput.min = minDeliveryDate;
-    if (deliveryDateInput.value && deliveryDateInput.value < minDeliveryDate) {
+    deliveryDateInput.max = maxDeliveryDate;
+    if (
+      deliveryDateInput.value &&
+      (deliveryDateInput.value < minDeliveryDate || deliveryDateInput.value > maxDeliveryDate)
+    ) {
       deliveryDateInput.value = '';
     }
-  }, [minDeliveryDate]);
+  }, [maxDeliveryDate, minDeliveryDate]);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();

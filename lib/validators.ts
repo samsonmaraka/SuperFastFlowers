@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { isDataImageUrl, isProductImageStorageKey } from '@/lib/product-images';
 import { FLAVOUR_IDS, type FlavourId } from '@/lib/flavours';
+import { getMaximumDeliveryDate } from '@/lib/preparation-days';
 
 const productImageValue = z.string().refine((value) => {
   if (isDataImageUrl(value) || isProductImageStorageKey(value)) return true;
@@ -102,11 +103,7 @@ export const orderStatusSchema = z.enum([
 function isValidDeliveryDate(value: string) {
   const delivery = new Date(`${value}T00:00:00.000Z`);
   if (Number.isNaN(delivery.getTime())) return false;
-  const now = new Date();
-  const max = new Date(now);
-  max.setUTCDate(max.getUTCDate() + 14);
-  max.setUTCHours(23, 59, 59, 999);
-  return delivery <= max;
+  return delivery <= getMaximumDeliveryDate();
 }
 export const orderSchema = z.object({
   recipientName: z.string().min(2),
