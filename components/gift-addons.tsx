@@ -248,7 +248,9 @@ export function GiftAddons({ addons }: { addons: Addon[] }) {
                   <button
                     type="button"
                     onClick={() => updateQuantity(addon, quantity + 1)}
-                    className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-ink text-lg leading-none text-white transition hover:bg-pink-700"
+                    disabled={isCustomizableAddon(addon)}
+                    title={isCustomizableAddon(addon) ? 'Limit of one per order' : undefined}
+                    className="inline-flex h-8 w-8 items-center justify-center rounded-md bg-ink text-lg leading-none text-white transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-40"
                     aria-label={`Add one more ${addon.name}`}
                   >
                     +
@@ -292,7 +294,7 @@ export function GiftAddons({ addons }: { addons: Addon[] }) {
           initialMessage={messages[customizing.id] ?? ''}
           onClose={closeDialog}
           onSave={(message) => {
-            updateQuantity(customizing, Math.max(1, quantities[customizing.id] ?? 0), message);
+            updateQuantity(customizing, 1, message);
             setCustomizing(null);
           }}
         />

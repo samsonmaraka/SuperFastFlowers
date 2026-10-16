@@ -4,7 +4,7 @@ import { orderSchema } from '@/lib/validators';
 import { getProductByIdOrSlug, listProducts } from '@/lib/products-repo';
 import { calculateVendorDeliveryFee } from '@/lib/delivery-fee';
 import { getAddon } from '@/lib/addons-repo';
-import { isCustomizableAddon, normalizeAddonMessage } from '@/lib/addon-message';
+import { CUSTOMIZABLE_ADDON_MAX_QUANTITY, isCustomizableAddon, normalizeAddonMessage } from '@/lib/addon-message';
 import { OrderItem, OrderStatus } from '@/lib/types';
 import { getDateOnlyAtUtcMidnight, getGmtPlus3DateOnlyAtUtcMidnight, getMinimumDeliveryDate, getRequiredPreparationDays, isBeforeSameDayDeliveryCutoff, isSameDayEligible } from '@/lib/preparation-days';
 import { getFlavour, resolveProductFlavours } from '@/lib/flavours';
@@ -110,6 +110,10 @@ export async function POST(req: NextRequest) {
       const addon = await getAddon(item.productId);
       if (!addon || (addon.status ?? 'active') !== 'active') {
         return NextResponse.json({ error: `Add-on ${item.name || item.productId} is no longer available.` }, { status: 400 });
+      }
+
+      if (isCustomizableAddon(addon) && item.quantity > CUSTOMIZABLE_ADDON_MAX_QUANTITY) {
+        return NextResponse.json({ error: `Only ${CUSTOMIZABLE_ADDON_MAX_QUANTITY} ${addon.name} can be added per order.` }, { status: 400 });
       }
 
       orderItems.push({

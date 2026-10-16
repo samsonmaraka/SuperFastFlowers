@@ -12,3 +12,6 @@ export function normalizeAddonMessage(value: unknown): string | undefined {
   const trimmed = value.replace(/\s+/g, ' ').trim().slice(0, ADDON_MESSAGE_MAX_LENGTH);
   return trimmed || undefined;
 }
+
+// Only one balloon per order.
+export const CUSTOMIZABLE_ADDON_MAX_QUANTITY = 1;
