@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { readCart, writeCart } from '@/lib/cart-storage';
 import { formatUgx } from '@/lib/format';
 import type { Addon } from '@/lib/types';
+import { ADDON_MESSAGE_MAX_LENGTH, ADDON_MESSAGE_SAMPLE, isCustomizableAddon, normalizeAddonMessage } from '@/lib/addon-message';
 
 // Keep the list from dominating the product page: taller lists become a scroll
 // area sized to exactly this many rows.
@@ -19,8 +20,89 @@ function getAddonQuantities(addons: Addon[]) {
   return Object.fromEntries(addons.map((addon) => [addon.id, cart.find((item) => item.lineId === addon.id)?.quantity ?? 0]));
 }
 
+function getAddonMessages(addons: Addon[]) {
+  const cart = readCart();
+  return Object.fromEntries(addons.map((addon) => [addon.id, cart.find((item) => item.lineId === addon.id)?.message ?? '']));
+}
+
+// Floats over the product page instead of navigating, so the customer never
+// feels they have left the gift they were looking at.
+function MessageDialog({
+  addon,
+  initialMessage,
+  onSave,
+  onClose
+}: {
+  addon: Addon;
+  initialMessage: string;
+  onSave: (message: string) => void;
+  onClose: () => void;
+}) {
+  const [message, setMessage] = useState(initialMessage);
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [onClose]);
+
+  const remaining = ADDON_MESSAGE_MAX_LENGTH - message.length;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4" onClick={onClose}>
+      <form
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="addon-message-title"
+        className="w-full max-w-sm rounded-xl bg-white p-5 shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSave(message);
+        }}
+      >
+        <h3 id="addon-message-title" className="text-lg font-semibold text-ink">
+          Customize your {addon.name}
+        </h3>
+        <p className="mt-1 text-sm text-gray-600">Add a short message to print on it (optional).</p>
+        <label htmlFor="addon-message" className="mt-4 block text-sm font-medium text-ink">
+          Message
+        </label>
+        <input
+          ref={inputRef}
+          id="addon-message"
+          type="text"
+          value={message}
+          maxLength={ADDON_MESSAGE_MAX_LENGTH}
+          onChange={(event) => setMessage(event.target.value)}
+          placeholder={ADDON_MESSAGE_SAMPLE}
+          className="mt-1 w-full rounded-md border border-blush p-2 text-sm"
+        />
+        <p className={`mt-1 text-right text-xs ${remaining === 0 ? 'font-semibold text-pink-700' : 'text-gray-500'}`} aria-live="polite">
+          {remaining} characters left
+        </p>
+        <div className="mt-4 flex justify-end gap-2">
+          <button type="button" onClick={onClose} className="rounded-md border border-gray-300 px-3 py-1.5 text-sm text-gray-700 hover:bg-gray-100">
+            Cancel
+          </button>
+          <button type="submit" className="rounded-md bg-ink px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-pink-700">
+            Save
+          </button>
+        </div>
+      </form>
+    </div>
+  );
+}
+
 export function GiftAddons({ addons }: { addons: Addon[] }) {
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+  const [messages, setMessages] = useState<Record<string, string>>({});
+  const [customizing, setCustomizing] = useState<Addon | null>(null);
+  const closeDialog = useCallback(() => setCustomizing(null), []);
   const [maxHeight, setMaxHeight] = useState<number | null>(null);
   const [isAtEnd, setIsAtEnd] = useState(false);
   const listRef = useRef<HTMLUListElement | null>(null);
@@ -61,7 +143,10 @@ export function GiftAddons({ addons }: { addons: Addon[] }) {
   }, []);
 
   useEffect(() => {
-    const sync = () => setQuantities(getAddonQuantities(addons));
+    const sync = () => {
+      setQuantities(getAddonQuantities(addons));
+      setMessages(getAddonMessages(addons));
+    };
 
     sync();
     window.addEventListener('giftora-cart-updated', sync);
@@ -75,13 +160,15 @@ export function GiftAddons({ addons }: { addons: Addon[] }) {
 
   if (!addons.length) return null;
 
-  const updateQuantity = (addon: Addon, nextQuantity: number) => {
+  const updateQuantity = (addon: Addon, nextQuantity: number, message?: string) => {
     const cart = readCart();
     const existing = cart.find((item) => item.lineId === addon.id);
 
     const nextCart = existing
       ? nextQuantity > 0
-        ? cart.map((item) => (item.lineId === addon.id ? { ...item, quantity: nextQuantity } : item))
+        ? cart.map((item) =>
+            item.lineId === addon.id ? { ...item, quantity: nextQuantity, ...(message !== undefined ? { message: normalizeAddonMessage(message) } : {}) } : item
+          )
         : cart.filter((item) => item.lineId !== addon.id)
       : nextQuantity > 0
         ? [
@@ -94,13 +181,15 @@ export function GiftAddons({ addons }: { addons: Addon[] }) {
               price: addon.price,
               quantity: nextQuantity,
               preparationDays: 0,
-              isAddon: true
+              isAddon: true,
+              message: message !== undefined ? normalizeAddonMessage(message) : undefined
             }
           ]
         : cart;
 
     writeCart(nextCart);
     setQuantities((prev) => ({ ...prev, [addon.id]: nextQuantity }));
+    if (message !== undefined) setMessages((prev) => ({ ...prev, [addon.id]: normalizeAddonMessage(message) ?? '' }));
     dispatchCartUpdate();
   };
 
@@ -133,6 +222,11 @@ export function GiftAddons({ addons }: { addons: Addon[] }) {
                 <p className="font-medium text-ink">{addon.name}</p>
                 {addon.description ? <p className="text-xs text-gray-600">{addon.description}</p> : null}
                 <p className="mt-1 text-sm font-semibold text-ink">UGX {formatUgx(addon.price)}</p>
+                {isCustomizableAddon(addon) && quantity > 0 ? (
+                  <button type="button" onClick={() => setCustomizing(addon)} className="mt-1 text-left text-xs font-medium text-pink-700 underline">
+                    {messages[addon.id] ? `“${messages[addon.id]}” · Edit message` : 'Add a message'}
+                  </button>
+                ) : null}
               </div>
               {quantity > 0 ? (
                 <div
@@ -160,6 +254,15 @@ export function GiftAddons({ addons }: { addons: Addon[] }) {
                     +
                   </button>
                 </div>
+              ) : isCustomizableAddon(addon) ? (
+                <button
+                  type="button"
+                  onClick={() => setCustomizing(addon)}
+                  className="rounded-md border border-pink-700 px-3 py-1.5 text-sm font-semibold text-pink-700 transition hover:bg-pink-700 hover:text-white"
+                  aria-label={`Add and customize ${addon.name}`}
+                >
+                  Add &amp; customize
+                </button>
               ) : (
                 <button
                   type="button"
@@ -181,6 +284,18 @@ export function GiftAddons({ addons }: { addons: Addon[] }) {
             ? `Showing all ${addons.length} extras.`
             : `Showing ${VISIBLE_ADDONS} of ${addons.length} — scroll the list for more.`}
         </p>
+      ) : null}
+
+      {customizing ? (
+        <MessageDialog
+          addon={customizing}
+          initialMessage={messages[customizing.id] ?? ''}
+          onClose={closeDialog}
+          onSave={(message) => {
+            updateQuantity(customizing, Math.max(1, quantities[customizing.id] ?? 0), message);
+            setCustomizing(null);
+          }}
+        />
       ) : null}
     </section>
   );

@@ -76,6 +76,7 @@ export function CartClient() {
             {item.flavour ? (
               <p className="text-sm font-semibold text-pink-700">{getFlavourLabel(item.flavour)}</p>
             ) : null}
+            {item.message ? <p className="text-sm text-pink-700">Message: “{item.message}”</p> : null}
             <p className="text-sm text-gray-600">UGX {formatUgx(item.price)} each</p>
           </div>
           <div className="flex items-center gap-3">

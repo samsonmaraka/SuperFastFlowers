@@ -12,6 +12,7 @@ type OrderEmailLine = {
   quantity: number;
   name: string;
   flavourLabel?: string;
+  message?: string;
   unitPrice?: number;
   lineTotal?: number;
   imageUrl?: string;
@@ -38,6 +39,7 @@ async function buildOrderLines(order: OrderRequest, products: Awaited<ReturnType
       quantity: item.quantity,
       name: item.name || product?.name || item.productId,
       flavourLabel: item.flavourLabel || (item.flavourId ? getFlavourLabel(item.flavourId) : undefined),
+      message: item.message,
       unitPrice,
       lineTotal,
       imageUrl: product?.imageUrls?.[0],
@@ -55,7 +57,7 @@ function buildItemsTable(lines: OrderEmailLine[]) {
 
       return `<tr>
         <td style="padding:10px;border-bottom:1px solid #f3d5df;vertical-align:top;">${imageCell}</td>
-        <td style="padding:10px;border-bottom:1px solid #f3d5df;vertical-align:top;"><strong>${escapeHtml(line.name)}</strong>${line.flavourLabel ? `<br /><span style="color:#b3225a;font-weight:bold;">Flavour: ${escapeHtml(line.flavourLabel)}</span>` : ''}<br /><span style="color:#555;">ID: ${escapeHtml(line.productId)}</span></td>
+        <td style="padding:10px;border-bottom:1px solid #f3d5df;vertical-align:top;"><strong>${escapeHtml(line.name)}</strong>${line.flavourLabel ? `<br /><span style="color:#b3225a;font-weight:bold;">Flavour: ${escapeHtml(line.flavourLabel)}</span>` : ''}${line.message ? `<br /><span style="color:#b3225a;font-weight:bold;">Message: &ldquo;${escapeHtml(line.message)}&rdquo;</span>` : ''}<br /><span style="color:#555;">ID: ${escapeHtml(line.productId)}</span></td>
         <td style="padding:10px;border-bottom:1px solid #f3d5df;text-align:center;vertical-align:top;">${line.quantity}</td>
         <td style="padding:10px;border-bottom:1px solid #f3d5df;text-align:right;vertical-align:top;">${line.unitPrice !== undefined ? `UGX ${formatUgx(line.unitPrice)}` : 'N/A'}</td>
         <td style="padding:10px;border-bottom:1px solid #f3d5df;text-align:right;vertical-align:top;">${line.lineTotal !== undefined ? `UGX ${formatUgx(line.lineTotal)}` : 'N/A'}</td>
@@ -132,7 +134,7 @@ export async function sendOrderSuccessEmail(order: OrderRequest) {
   const totalWithDelivery = typeof order.totalWithDelivery === 'number' ? order.totalWithDelivery : hasPriceData ? computedTotal : undefined;
 
   const orderedItemsText = lines
-    .map((line) => `- ${line.name}${line.flavourLabel ? ` | Flavour: ${line.flavourLabel}` : ''} (ID: ${line.productId}) | Qty: ${line.quantity} | Unit price: ${line.unitPrice !== undefined ? `UGX ${formatUgx(line.unitPrice)}` : 'N/A'} | Line total: ${line.lineTotal !== undefined ? `UGX ${formatUgx(line.lineTotal)}` : 'N/A'}`)
+    .map((line) => `- ${line.name}${line.flavourLabel ? ` | Flavour: ${line.flavourLabel}` : ''}${line.message ? ` | Message: "${line.message}"` : ''} (ID: ${line.productId}) | Qty: ${line.quantity} | Unit price: ${line.unitPrice !== undefined ? `UGX ${formatUgx(line.unitPrice)}` : 'N/A'} | Line total: ${line.lineTotal !== undefined ? `UGX ${formatUgx(line.lineTotal)}` : 'N/A'}`)
     .join('\n');
   const orderedItemsHtml = buildItemsTable(lines);
 

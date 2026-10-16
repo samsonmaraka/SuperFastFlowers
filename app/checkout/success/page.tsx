@@ -75,6 +75,7 @@ export default async function CheckoutSuccessPage({ searchParams }: SuccessPageP
                   <div>
                     <p className="font-medium text-ink">{item.name}</p>
                     {item.flavourLabel ? <p className="font-semibold text-pink-700">{item.flavourLabel}</p> : null}
+                    {item.message ? <p className="text-pink-700">Message: “{item.message}”</p> : null}
                     <p className="text-gray-600">Qty: {item.quantity}</p>
                     <p className="text-gray-600">Unit price: UGX {formatUgx(item.unitPrice)}</p>
                   </div>

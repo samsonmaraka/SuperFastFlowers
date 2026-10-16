@@ -1,4 +1,5 @@
 import { isFlavourId, type FlavourId } from '@/lib/flavours';
+import { normalizeAddonMessage } from '@/lib/addon-message';
 
 // lineId, not productId, is what identifies a cart line. Two flavours of the same
 // product are two lines; without this they would collapse into one.
@@ -11,6 +12,8 @@ export type CartItem = {
   quantity: number;
   preparationDays?: number;
   isAddon?: boolean;
+  // Printed on a customizable add-on such as a balloon.
+  message?: string;
   vendorId?: string;
 };
 
@@ -69,6 +72,7 @@ function normalizeCartItem(value: unknown): CartItem | null {
     ...(candidate as CartItem),
     productId,
     flavour,
+    message: normalizeAddonMessage(candidate.message),
     lineId: typeof candidate.lineId === 'string' && candidate.lineId ? candidate.lineId : buildCartLineId(productId, flavour)
   };
 }
