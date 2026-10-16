@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { formatUgx } from '@/lib/format';
 import { CartItem, readCart, writeCart } from '@/lib/cart-storage';
 import { getFlavourLabel } from '@/lib/flavours';
+import { CUSTOMIZABLE_ADDON_MAX_QUANTITY, isCustomizableAddon } from '@/lib/addon-message';
 import { DEFAULT_PREPARATION_DAYS, formatDeliveryDateLabel, getMinimumDeliveryDate } from '@/lib/preparation-days';
 
 const TEMPLATE_PRODUCT_NAME = 'Celebration Bloom Vase';
@@ -47,7 +48,11 @@ export function CartClient() {
   );
 
   const updateQty = (lineId: string, quantity: number) => {
-    const next = items.map((i) => (i.lineId === lineId ? { ...i, quantity: Math.max(1, quantity) } : i));
+    const next = items.map((i) => {
+      if (i.lineId !== lineId) return i;
+      const cap = i.isAddon && isCustomizableAddon(i) ? CUSTOMIZABLE_ADDON_MAX_QUANTITY : Infinity;
+      return { ...i, quantity: Math.min(cap, Math.max(1, quantity)) };
+    });
     setItems(next);
     writeCart(next);
     window.dispatchEvent(new Event('giftora-cart-updated'));
@@ -76,6 +81,7 @@ export function CartClient() {
             {item.flavour ? (
               <p className="text-sm font-semibold text-pink-700">{getFlavourLabel(item.flavour)}</p>
             ) : null}
+            {item.message ? <p className="text-sm text-pink-700">Message: “{item.message}”</p> : null}
             <p className="text-sm text-gray-600">UGX {formatUgx(item.price)} each</p>
           </div>
           <div className="flex items-center gap-3">
@@ -83,6 +89,7 @@ export function CartClient() {
               type="number"
               value={item.quantity}
               min={1}
+              max={item.isAddon && isCustomizableAddon(item) ? CUSTOMIZABLE_ADDON_MAX_QUANTITY : undefined}
               onChange={(e) => updateQty(item.lineId, Number(e.target.value))}
               className="w-16 rounded border p-1"
             />

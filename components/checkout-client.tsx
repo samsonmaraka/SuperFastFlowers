@@ -82,6 +82,7 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
         unitPrice: item.price,
         lineTotal: item.price * item.quantity,
         isAddon: item.isAddon || undefined,
+        message: item.isAddon ? item.message || undefined : undefined,
         flavour: item.flavour || undefined
       })),
     [items]

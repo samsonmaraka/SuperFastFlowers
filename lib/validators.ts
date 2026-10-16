@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { isDataImageUrl, isProductImageStorageKey } from '@/lib/product-images';
+import { ADDON_MESSAGE_MAX_LENGTH } from '@/lib/addon-message';
 import { FLAVOUR_IDS, type FlavourId } from '@/lib/flavours';
 import { getMaximumDeliveryDate } from '@/lib/preparation-days';
 
@@ -120,7 +121,7 @@ export const orderSchema = z.object({
     z.string().regex(/^[0-9]{10}$/, 'Mobile number must be 10 digits, e.g. 0756924285.').optional()
   ),
   note: z.string().max(500).optional(),
-  items: z.array(z.object({ productId: z.string().min(1), quantity: z.number().int().min(1), name: z.string().optional(), unitPrice: z.number().min(0).optional(), lineTotal: z.number().min(0).optional(), isAddon: z.boolean().optional(), flavour: z.enum(FLAVOUR_IDS as [FlavourId, ...FlavourId[]]).optional() })).min(1),
+  items: z.array(z.object({ productId: z.string().min(1), quantity: z.number().int().min(1), name: z.string().optional(), unitPrice: z.number().min(0).optional(), lineTotal: z.number().min(0).optional(), isAddon: z.boolean().optional(), message: z.string().max(ADDON_MESSAGE_MAX_LENGTH).optional(), flavour: z.enum(FLAVOUR_IDS as [FlavourId, ...FlavourId[]]).optional() })).min(1),
   totalAmount: z.number().min(0).optional(),
   deliveryFee: z.number().min(0).optional(),
   totalWithDelivery: z.number().min(0).optional()

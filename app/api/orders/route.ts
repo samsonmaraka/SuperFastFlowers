@@ -4,6 +4,7 @@ import { orderSchema } from '@/lib/validators';
 import { getProductByIdOrSlug, listProducts } from '@/lib/products-repo';
 import { calculateVendorDeliveryFee } from '@/lib/delivery-fee';
 import { getAddon } from '@/lib/addons-repo';
+import { CUSTOMIZABLE_ADDON_MAX_QUANTITY, isCustomizableAddon, normalizeAddonMessage } from '@/lib/addon-message';
 import { OrderItem, OrderStatus } from '@/lib/types';
 import { getDateOnlyAtUtcMidnight, getGmtPlus3DateOnlyAtUtcMidnight, getMinimumDeliveryDate, getRequiredPreparationDays, isBeforeSameDayDeliveryCutoff, isSameDayEligible } from '@/lib/preparation-days';
 import { getFlavour, resolveProductFlavours } from '@/lib/flavours';
@@ -23,11 +24,11 @@ export async function POST(req: NextRequest) {
   } else {
     const form = await req.formData();
     const itemsJson = String(form.get('itemsJson') || '[]');
-    let parsedItems: Array<{ productId: string; quantity: number; name?: string; price?: number; unitPrice?: number; isAddon?: boolean; flavour?: string }> = [];
+    let parsedItems: Array<{ productId: string; quantity: number; name?: string; price?: number; unitPrice?: number; isAddon?: boolean; message?: string; flavour?: string }> = [];
     try {
       const maybeItems = JSON.parse(itemsJson) as unknown;
       if (Array.isArray(maybeItems)) {
-        parsedItems = maybeItems as Array<{ productId: string; quantity: number; name?: string; price?: number; unitPrice?: number; isAddon?: boolean; flavour?: string }>;
+        parsedItems = maybeItems as Array<{ productId: string; quantity: number; name?: string; price?: number; unitPrice?: number; isAddon?: boolean; message?: string; flavour?: string }>;
       }
     } catch {
       parsedItems = [];
@@ -43,6 +44,7 @@ export async function POST(req: NextRequest) {
         unitPrice,
         lineTotal: unitPrice * quantity,
         isAddon: item.isAddon === true ? true : undefined,
+        message: normalizeAddonMessage(item.message),
         flavour: item.flavour || undefined
       };
     });
@@ -110,6 +112,10 @@ export async function POST(req: NextRequest) {
         return NextResponse.json({ error: `Add-on ${item.name || item.productId} is no longer available.` }, { status: 400 });
       }
 
+      if (isCustomizableAddon(addon) && item.quantity > CUSTOMIZABLE_ADDON_MAX_QUANTITY) {
+        return NextResponse.json({ error: `Only ${CUSTOMIZABLE_ADDON_MAX_QUANTITY} ${addon.name} can be added per order.` }, { status: 400 });
+      }
+
       orderItems.push({
         productId: addon.id,
         quantity: item.quantity,
@@ -117,6 +123,7 @@ export async function POST(req: NextRequest) {
         unitPrice: addon.price,
         lineTotal: addon.price * item.quantity,
         isAddon: true,
+        ...(isCustomizableAddon(addon) && normalizeAddonMessage(item.message) ? { message: normalizeAddonMessage(item.message) } : {}),
         vendorFulfillmentStatus: 'pending'
       });
       continue;

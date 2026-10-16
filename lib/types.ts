@@ -102,6 +102,8 @@ export type OrderItem = {
   // stable even if the flavour registry is later renamed.
   flavourId?: string;
   flavourLabel?: string;
+  // Customer's printed message for a customizable add-on (e.g. a balloon).
+  message?: string;
   vendorFulfillmentStatus?: VendorFulfillmentStatus;
 };
 
