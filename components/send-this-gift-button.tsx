@@ -2,6 +2,7 @@
 
 import { useRouter } from 'next/navigation';
 import { buildCartLineId, readCart, writeCart } from '@/lib/cart-storage';
+import { trackEcommerce } from '@/lib/analytics';
 import type { FlavourId } from '@/lib/flavours';
 import { Product } from '@/lib/types';
 
@@ -53,6 +54,9 @@ export function SendThisGiftButton({
           vendorId: product.vendorId
         }
       ]);
+      trackEcommerce('add_to_cart', {
+        items: [{ item_id: product.id, item_name: product.name, price: product.price, quantity: 1, ...(flavour ? { item_variant: flavour } : {}) }]
+      });
       dispatchCartUpdate();
     }
 

@@ -2,13 +2,14 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
-import { FormEvent, ReactElement, ReactNode, cloneElement, isValidElement, useEffect, useMemo, useState } from 'react';
+import { FormEvent, ReactElement, ReactNode, cloneElement, isValidElement, useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { CartItem, readCart } from '@/lib/cart-storage';
 import { calculateVendorDeliveryFee } from '@/lib/delivery-fee';
 import { formatUgx } from '@/lib/format';
 import { DEFAULT_PREPARATION_DAYS, formatDeliveryDateLabel, getDateInputValue, getGmtPlus3DateOnlyAtUtcMidnight, getMaximumDeliveryDate, getMinimumDeliveryDate, isBeforeSameDayDeliveryCutoff, isSameDayEligible } from '@/lib/preparation-days';
 import { getFlavourLabel } from '@/lib/flavours';
+import { cartItemToGaItem, trackEcommerce } from '@/lib/analytics';
 
 type CheckoutResponse = {
   redirect_url?: string;
@@ -41,6 +42,14 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
     const timer = window.setInterval(() => setNow(new Date()), 60 * 1000);
     return () => window.clearInterval(timer);
   }, []);
+
+  // Fire once per checkout visit, as soon as the cart has been read from storage.
+  const hasTrackedBeginCheckout = useRef(false);
+  useEffect(() => {
+    if (hasTrackedBeginCheckout.current || items.length === 0) return;
+    hasTrackedBeginCheckout.current = true;
+    trackEcommerce('begin_checkout', { items: items.map(cartItemToGaItem) });
+  }, [items]);
 
   const subtotal = useMemo(() => items.reduce((sum, item) => sum + item.price * item.quantity, 0), [items]);
   const deliveryFee = useMemo(() => calculateVendorDeliveryFee(items), [items]);
