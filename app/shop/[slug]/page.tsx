@@ -12,6 +12,7 @@ import { formatUgx } from '@/lib/format';
 import { getPrimaryProductImage } from '@/lib/product-images';
 import { productFlavourSentence, resolveProductFlavours } from '@/lib/flavours';
 import { ProductImage } from '@/components/product-image';
+import { TrackViewItem } from '@/components/analytics/track-view-item';
 import { JsonLd, productBreadcrumbJsonLd, productJsonLd, productUrl, STORE_DELIVERY_AREAS } from '@/lib/seo';
 import type { Product } from '@/lib/types';
 
@@ -119,6 +120,7 @@ export default async function ProductPage({ params }: { params: { slug: string }
           <p className="text-gray-700">{product.description || 'No description available yet.'}</p>
           {flavourSentence ? <p className="text-gray-700">{flavourSentence}</p> : null}
           <p className="text-2xl font-semibold">UGX {formatUgx(product.price)}</p>
+          <TrackViewItem id={product.id} name={product.name} price={product.price} category={product.category} />
           <ProductBuyPanel product={product} />
 
           <GiftAddons addons={addons} />

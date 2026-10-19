@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { readCart, writeCart } from '@/lib/cart-storage';
+import { trackEcommerce } from '@/lib/analytics';
 import { formatUgx } from '@/lib/format';
 import type { Addon } from '@/lib/types';
 import { ADDON_MESSAGE_MAX_LENGTH, ADDON_MESSAGE_SAMPLE, isCustomizableAddon, normalizeAddonMessage } from '@/lib/addon-message';
@@ -188,6 +189,12 @@ export function GiftAddons({ addons }: { addons: Addon[] }) {
         : cart;
 
     writeCart(nextCart);
+    const previousQuantity = existing?.quantity ?? 0;
+    if (nextQuantity > previousQuantity) {
+      trackEcommerce('add_to_cart', {
+        items: [{ item_id: addon.id, item_name: addon.name, price: addon.price, quantity: nextQuantity - previousQuantity, item_category: 'Add-on' }]
+      });
+    }
     setQuantities((prev) => ({ ...prev, [addon.id]: nextQuantity }));
     if (message !== undefined) setMessages((prev) => ({ ...prev, [addon.id]: normalizeAddonMessage(message) ?? '' }));
     dispatchCartUpdate();

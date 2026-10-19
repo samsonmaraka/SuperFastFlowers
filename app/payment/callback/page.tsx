@@ -1,5 +1,7 @@
 import Link from 'next/link';
 import { ClearCartOnSuccess } from '@/components/clear-cart-on-success';
+import { TrackPurchase } from '@/components/analytics/track-purchase';
+import type { OrderRequest } from '@/lib/types';
 import { getOrderByPesapalMerchantReference, updateOrderPayment } from '@/lib/orders-repo';
 import { getPesapalTransactionStatus, mapPesapalTransactionToOrderStatus, pesapalStatusToPayment } from '@/lib/pesapal';
 import { sendOrderSuccessEmailOnPaymentConfirmation } from '@/lib/payment-confirmation-email';
@@ -52,6 +54,8 @@ export default async function PaymentCallbackPage({ searchParams }: PaymentCallb
   let displayStatus = 'Missing payment details';
   let paidOrderId = '';
   let shouldClearCart = false;
+  // Only real, Pesapal-confirmed payments are reported to Google Analytics.
+  let purchasedOrder: OrderRequest | null = null;
 
   if (orderTrackingId && merchantReference) {
     try {
@@ -93,6 +97,7 @@ export default async function PaymentCallbackPage({ searchParams }: PaymentCallb
         const copy = statusCopy[orderStatus as keyof typeof statusCopy] || statusCopy.PAYMENT_PENDING;
         if (orderStatus === 'PAID') {
           shouldClearCart = true;
+          purchasedOrder = order ? { ...order, status: orderStatus } : null;
         }
 
         title = copy.title;
@@ -110,6 +115,21 @@ export default async function PaymentCallbackPage({ searchParams }: PaymentCallb
   return (
     <main className="mx-auto max-w-2xl px-4 py-12">
       {shouldClearCart ? <ClearCartOnSuccess /> : null}
+      {purchasedOrder ? (
+        <TrackPurchase
+          transactionId={purchasedOrder.id}
+          items={(purchasedOrder.items || []).map((item) => ({
+            item_id: item.productId,
+            item_name: item.name || item.productId,
+            price: item.unitPrice || 0,
+            quantity: item.quantity,
+            ...(item.flavourLabel ? { item_variant: item.flavourLabel } : {}),
+            ...(item.isAddon ? { item_category: 'Add-on' } : {})
+          }))}
+          value={purchasedOrder.totalAmount ?? 0}
+          shipping={purchasedOrder.deliveryFee ?? 0}
+        />
+      ) : null}
       <section className="rounded-xl border border-blush bg-white p-6 shadow-sm">
         <p className="text-sm font-semibold uppercase tracking-wide text-pink-700">Pesapal payment</p>
         <h1 className="mt-2 text-3xl font-semibold text-ink">{title}</h1>

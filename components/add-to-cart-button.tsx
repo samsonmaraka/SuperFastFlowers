@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { buildCartLineId, readCart, writeCart } from '@/lib/cart-storage';
+import { trackEcommerce } from '@/lib/analytics';
 import type { FlavourId } from '@/lib/flavours';
 import { Product } from '@/lib/types';
 
@@ -74,6 +75,11 @@ export function AddToCartButton({
         : cart;
 
     writeCart(nextCart);
+    if (nextQuantity > quantityInCart) {
+      trackEcommerce('add_to_cart', {
+        items: [{ item_id: product.id, item_name: product.name, price: product.price, quantity: nextQuantity - quantityInCart, ...(flavour ? { item_variant: flavour } : {}) }]
+      });
+    }
     setQuantityInCart(nextQuantity);
     dispatchCartUpdate();
   };
