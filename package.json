@@ -14,6 +14,7 @@
     "diagnose:product-slug": "tsx scripts/diagnose-product-slug.ts",
     "test:categories": "tsx tests/categories-order.test.ts",
     "test:catalogue-csv": "tsx tests/catalogue-csv-schema.test.ts",
+    "test:customization": "tsx tests/customization.test.ts",
     "test:flavours": "tsx tests/flavours.test.ts",
     "test:preparation-days": "tsx tests/preparation-days.test.ts"
   },

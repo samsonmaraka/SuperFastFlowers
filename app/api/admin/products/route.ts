@@ -11,6 +11,7 @@ import {
 } from '@/lib/products-repo';
 import { uploadNewProductImagesToS3 } from '@/lib/product-image-storage';
 import { productSchema } from '@/lib/validators';
+import type { Product } from '@/lib/types';
 import { buildProductSlug } from '@/lib/slug';
 import { writeAuditLog } from '@/lib/audit-repo';
 import { canManageProduct, filterProductsForAdmin, isSuperAdminContext } from '@/lib/vendor-permissions';
@@ -138,7 +139,7 @@ export async function POST(req: NextRequest) {
 
     console.log('Validation passed');
 
-    let productToSave = { ...parsed.data, slug: finalSlug };
+    let productToSave: Product = { ...parsed.data, slug: finalSlug };
     try {
       productToSave = await uploadNewProductImagesToS3(productToSave);
     } catch (error) {

@@ -3,6 +3,7 @@ import { isDataImageUrl, isProductImageStorageKey } from '@/lib/product-images';
 import { ADDON_MESSAGE_MAX_LENGTH } from '@/lib/addon-message';
 import { FLAVOUR_IDS, type FlavourId } from '@/lib/flavours';
 import { getMaximumDeliveryDate } from '@/lib/preparation-days';
+import { containsEmoji, countGraphemes, CUSTOM_FIELDS_MAX, CUSTOM_FIELD_MAX_LENGTH, CUSTOM_FIELD_NAME_MAX_LENGTH } from '@/lib/customization';
 
 const productImageValue = z.string().refine((value) => {
   if (isDataImageUrl(value) || isProductImageStorageKey(value)) return true;
@@ -61,6 +62,23 @@ export const productSchema = z.object({
   vendorContact2: z.string().optional(),
   preparationDays: z.number().int().min(0).max(30).optional(),
   flavours: z.array(z.enum(FLAVOUR_IDS as [FlavourId, ...FlavourId[]])).optional(),
+  customFields: z
+    .array(
+      z
+        .object({
+          name: z.string().trim().min(1).max(CUSTOM_FIELD_NAME_MAX_LENGTH),
+          maxLength: z.number().int().min(1).max(CUSTOM_FIELD_MAX_LENGTH),
+          // Placeholder text shown to the customer, never submitted for them.
+          defaultMessage: z.string().optional(),
+          required: z.boolean().default(true),
+          type: z.enum(['text']).default('text')
+        })
+        .refine((field) => !field.defaultMessage || countGraphemes(field.defaultMessage) <= field.maxLength, 'Placeholder is longer than its cap.')
+        .refine((field) => !field.defaultMessage || !containsEmoji(field.defaultMessage), 'Placeholder cannot contain emoji.')
+    )
+    .max(CUSTOM_FIELDS_MAX)
+    .refine((fields) => new Set(fields.map((field) => field.name.toLowerCase())).size === fields.length, 'Customisation field names must be unique.')
+    .optional(),
   createdAt: z.string(),
   updatedAt: z.string()
 });
@@ -121,7 +139,7 @@ export const orderSchema = z.object({
     z.string().regex(/^[0-9]{10}$/, 'Mobile number must be 10 digits, e.g. 0756924285.').optional()
   ),
   note: z.string().max(500).optional(),
-  items: z.array(z.object({ productId: z.string().min(1), quantity: z.number().int().min(1), name: z.string().optional(), unitPrice: z.number().min(0).optional(), lineTotal: z.number().min(0).optional(), isAddon: z.boolean().optional(), message: z.string().max(ADDON_MESSAGE_MAX_LENGTH).optional(), flavour: z.enum(FLAVOUR_IDS as [FlavourId, ...FlavourId[]]).optional() })).min(1),
+  items: z.array(z.object({ productId: z.string().min(1), quantity: z.number().int().min(1), name: z.string().optional(), unitPrice: z.number().min(0).optional(), lineTotal: z.number().min(0).optional(), isAddon: z.boolean().optional(), message: z.string().max(ADDON_MESSAGE_MAX_LENGTH).optional(), customizations: z.array(z.object({ name: z.string().max(CUSTOM_FIELD_NAME_MAX_LENGTH), value: z.string().max(CUSTOM_FIELD_MAX_LENGTH * 8) })).max(CUSTOM_FIELDS_MAX).optional(), flavour: z.enum(FLAVOUR_IDS as [FlavourId, ...FlavourId[]]).optional() })).min(1),
   totalAmount: z.number().min(0).optional(),
   deliveryFee: z.number().min(0).optional(),
   totalWithDelivery: z.number().min(0).optional()

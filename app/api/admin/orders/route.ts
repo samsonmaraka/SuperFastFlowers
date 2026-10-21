@@ -5,6 +5,7 @@ import { getOrderById, listOrders, updateOrderItemVendorFulfillmentStatus, updat
 import { filterOrdersForAdmin, isSuperAdminContext } from '@/lib/vendor-permissions';
 import { orderStatusSchema } from '@/lib/validators';
 import type { VendorFulfillmentStatus } from '@/lib/types';
+import { orderLineCustomizationKey } from '@/lib/customization';
 
 const active = new Set(['new', 'reviewed', 'processing']);
 const vendorStatuses = new Set(['new', 'accepted', 'preparing', 'ready', 'out_for_delivery', 'fulfilled', 'cancelled']);
@@ -25,7 +26,7 @@ export async function PATCH(req: NextRequest) {
   let access; try { access = await requireDashboardAccess(req); } catch { return NextResponse.json({ error: 'Unauthorized' }, { status: 401 }); }
   try {
     if (access.mode === 'user-orders') return NextResponse.json({ error: 'Order updates are not available for customer accounts.' }, { status: 403 });
-    const body = await req.json() as { id?: string; status?: string; productId?: string; vendorId?: string; vendorFulfillmentStatus?: string; flavourId?: string };
+    const body = await req.json() as { id?: string; status?: string; productId?: string; vendorId?: string; vendorFulfillmentStatus?: string; flavourId?: string; customizationKey?: string };
     if (!body.id) return NextResponse.json({ error: 'Missing id' }, { status: 400 });
     if (isSuperAdminContext(access)) {
       const parsed = orderStatusSchema.safeParse(body.status);
@@ -38,8 +39,8 @@ export async function PATCH(req: NextRequest) {
     if (!vendorStatuses.has(body.vendorFulfillmentStatus)) return NextResponse.json({ error: 'Invalid vendor fulfillment status.' }, { status: 400 });
     if (!access.assignedVendorIds.includes(body.vendorId)) return NextResponse.json({ error: 'Forbidden for this vendor.' }, { status: 403 });
     const existing = await getOrderById(body.id);
-    if (!existing?.items?.some((item) => item.productId === body.productId && item.vendorId === body.vendorId && (item.flavourId || undefined) === (body.flavourId || undefined))) return NextResponse.json({ error: 'Order item not found for assigned vendor.' }, { status: 404 });
-    const order = await updateOrderItemVendorFulfillmentStatus(body.id, body.productId, body.vendorId, body.vendorFulfillmentStatus as VendorFulfillmentStatus, body.flavourId);
+    if (!existing?.items?.some((item) => item.productId === body.productId && item.vendorId === body.vendorId && (item.flavourId || undefined) === (body.flavourId || undefined) && orderLineCustomizationKey(item) === (body.customizationKey || ''))) return NextResponse.json({ error: 'Order item not found for assigned vendor.' }, { status: 404 });
+    const order = await updateOrderItemVendorFulfillmentStatus(body.id, body.productId, body.vendorId, body.vendorFulfillmentStatus as VendorFulfillmentStatus, body.flavourId, body.customizationKey || '');
     if (!order) return NextResponse.json({ error: 'Order item not found' }, { status: 404 });
     await auditFulfillment(access, body.id, body.vendorId, body.productId, body.vendorFulfillmentStatus);
     return NextResponse.json({ ok: true, order: filterOrdersForAdmin(access, [order])[0] });

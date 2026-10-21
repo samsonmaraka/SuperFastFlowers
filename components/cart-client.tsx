@@ -82,6 +82,11 @@ export function CartClient() {
               <p className="text-sm font-semibold text-pink-700">{getFlavourLabel(item.flavour)}</p>
             ) : null}
             {item.message ? <p className="text-sm text-pink-700">Message: “{item.message}”</p> : null}
+            {(item.customizations || []).map((entry) => (
+              <p key={entry.name} className="text-sm text-pink-700">
+                {entry.name}: “{entry.value}”
+              </p>
+            ))}
             <p className="text-sm text-gray-600">UGX {formatUgx(item.price)} each</p>
           </div>
           <div className="flex items-center gap-3">

@@ -1,8 +1,9 @@
 import type { AppUser, AuditLogEntry, UserRole, UserRoleAssignment, VendorAdminAssignment } from '@/lib/auth-types';
 import type { FlavourId } from '@/lib/flavours';
+import type { OrderItemCustomization, ProductCustomField } from '@/lib/customization';
 
 export type { AppUser, AuditLogEntry, UserRole, UserRoleAssignment, VendorAdminAssignment };
-export type { FlavourId };
+export type { FlavourId, OrderItemCustomization, ProductCustomField };
 
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
 
@@ -55,6 +56,9 @@ export type Product = {
   // The flavours this product offers. Absent or empty means it has no flavour
   // choice; a non-empty list makes exactly one flavour required per cart line.
   flavours?: FlavourId[];
+  // Personalised text the customer can add (e.g. one word per cake). Absent or
+  // empty means the product is not customisable.
+  customFields?: ProductCustomField[];
   createdAt: string;
   updatedAt: string;
 };
@@ -104,6 +108,8 @@ export type OrderItem = {
   flavourLabel?: string;
   // Customer's printed message for a customizable add-on (e.g. a balloon).
   message?: string;
+  // Customer's messages for a customisable product, label + value snapshotted.
+  customizations?: OrderItemCustomization[];
   vendorFulfillmentStatus?: VendorFulfillmentStatus;
 };
 
