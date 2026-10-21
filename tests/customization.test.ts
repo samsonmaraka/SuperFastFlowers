@@ -5,7 +5,6 @@ import {
   stripEmoji,
   countGraphemes,
   emptyCustomFieldRow,
-  findMissingRequiredField,
   isProductCustomizable,
   normalizeCustomizationValues,
   orderLineCustomizationKey,
@@ -41,19 +40,19 @@ assert.equal(containsEmoji('ðŸŽ‚'), true);
 
 // ---------------------------------------------------------------- admin rows
 const rows: CustomFieldRow[] = [
-  { name: 'Cake 1', maxLength: '11', placeholder: 'Happy', required: true },
-  { name: 'Cake 2', maxLength: '11', placeholder: 'Birthday', required: true },
-  { name: 'Cake 3', maxLength: '11', placeholder: '', required: false }
+  { name: 'Cake 1', maxLength: '11', placeholder: 'Happy' },
+  { name: 'Cake 2', maxLength: '11', placeholder: 'Birthday' },
+  { name: 'Cake 3', maxLength: '11', placeholder: '' }
 ];
 const parsed = parseCustomFieldRows(rows);
 assert.ok('fields' in parsed);
 assert.deepEqual(parsed.fields, [
-  { name: 'Cake 1', maxLength: 11, defaultMessage: 'Happy', required: true, type: 'text' },
-  { name: 'Cake 2', maxLength: 11, defaultMessage: 'Birthday', required: true, type: 'text' },
-  { name: 'Cake 3', maxLength: 11, required: false, type: 'text' }
+  { name: 'Cake 1', maxLength: 11, defaultMessage: 'Happy', type: 'text' },
+  { name: 'Cake 2', maxLength: 11, defaultMessage: 'Birthday', type: 'text' },
+  { name: 'Cake 3', maxLength: 11, type: 'text' }
 ]);
 assert.deepEqual(rowsFromCustomFields(parsed.fields), rows);
-assert.deepEqual(emptyCustomFieldRow(), { name: '', maxLength: '', placeholder: '', required: true });
+assert.deepEqual(emptyCustomFieldRow(), { name: '', maxLength: '', placeholder: '' });
 
 assert.ok('error' in parseCustomFieldRows([]));
 assert.ok('error' in parseCustomFieldRows([{ ...rows[0], name: ' ' }]));
@@ -66,18 +65,16 @@ assert.ok('error' in parseCustomFieldRows([{ ...rows[0], placeholder: 'Happy ðŸŽ
 assert.ok('error' in parseCustomFieldRows(Array.from({ length: 11 }, (_, i) => ({ ...rows[0], name: `F${i}` }))));
 
 // ---------------------------------------------------------------- legacy fields
-// Saved before required/type existed: both default, defaultMessage becomes the placeholder.
-const legacy = resolveProductCustomFields({ customFields: [{ name: 'Cake 1', maxLength: 11, defaultMessage: 'Happy' }] });
-assert.deepEqual(legacy, [{ name: 'Cake 1', maxLength: 11, placeholder: 'Happy', required: true, type: 'text' }]);
+// Saved before type existed: it defaults, defaultMessage becomes the placeholder,
+// and a legacy required flag is ignored.
+const legacy = resolveProductCustomFields({ customFields: [{ name: 'Cake 1', maxLength: 11, defaultMessage: 'Happy', required: true }] });
+assert.deepEqual(legacy, [{ name: 'Cake 1', maxLength: 11, placeholder: 'Happy', type: 'text' }]);
 assert.equal(isProductCustomizable({ customFields: parsed.fields }), true);
 assert.equal(isProductCustomizable({ customFields: [] }), false);
 assert.equal(isProductCustomizable({}), false);
 
 // ---------------------------------------------------------------- storefront
 const fields = resolveProductCustomFields({ customFields: parsed.fields });
-assert.equal(findMissingRequiredField(fields, {})?.name, 'Cake 1');
-assert.equal(findMissingRequiredField(fields, { 'Cake 1': 'Hi', 'Cake 2': '   ' })?.name, 'Cake 2');
-assert.equal(findMissingRequiredField(fields, { 'Cake 1': 'Hi', 'Cake 2': 'There' }), null);
 // Placeholders are never submitted; blank optional fields are left out.
 assert.deepEqual(buildCustomizationValues(fields, { 'Cake 1': ' Hi  you ', 'Cake 2': 'There', 'Cake 3': '' }), [
   { name: 'Cake 1', value: 'Hi you' },
@@ -107,8 +104,10 @@ assert.deepEqual(ok, {
     { label: 'Cake 2', value: 'Birthday' }
   ]
 });
-assert.ok('error' in resolveOrderCustomizations(product, [{ name: 'Cake 1', value: 'Happy' }])); // Cake 2 required
-assert.ok('error' in resolveOrderCustomizations(product, undefined));
+// Messages are optional, even on fields saved as required: blanks are skipped.
+assert.deepEqual(resolveOrderCustomizations(product, [{ name: 'Cake 1', value: 'Happy' }]), { customizations: [{ label: 'Cake 1', value: 'Happy' }] });
+assert.deepEqual(resolveOrderCustomizations(product, undefined), { customizations: [] });
+assert.deepEqual(resolveOrderCustomizations({ name: 'Old', customFields: [{ name: 'Cake 1', maxLength: 11, required: true }] }, undefined), { customizations: [] });
 assert.ok('error' in resolveOrderCustomizations(product, [{ name: 'Cake 1', value: 'Happy birthday!' }, { name: 'Cake 2', value: 'x' }])); // over cap
 assert.ok('error' in resolveOrderCustomizations(product, [{ name: 'Cake 1', value: 'a' }, { name: 'Cake 2', value: 'b' }, { name: 'Gone', value: 'c' }]));
 assert.ok('error' in resolveOrderCustomizations(product, [{ name: 'Cake 1', value: 'a' }, { name: 'Cake 1', value: 'b' }, { name: 'Cake 2', value: 'c' }]));
@@ -132,7 +131,7 @@ const base = {
 };
 const saved = productSchema.safeParse({ ...base, customFields: [{ name: 'Cake 1', maxLength: 11 }] });
 assert.ok(saved.success);
-assert.deepEqual(saved.data.customFields, [{ name: 'Cake 1', maxLength: 11, required: true, type: 'text' }]);
+assert.deepEqual(saved.data.customFields, [{ name: 'Cake 1', maxLength: 11, type: 'text' }]);
 assert.ok(!productSchema.safeParse({ ...base, customFields: [{ name: 'a', maxLength: 3, defaultMessage: 'toolong' }] }).success);
 assert.ok(!productSchema.safeParse({ ...base, customFields: [{ name: 'A', maxLength: 3 }, { name: 'a', maxLength: 3 }] }).success);
 assert.ok(!productSchema.safeParse({ ...base, customFields: [{ name: 'A', maxLength: 3, type: 'image' }] }).success);

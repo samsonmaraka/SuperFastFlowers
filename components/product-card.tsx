@@ -15,7 +15,7 @@ export function ProductCard({ product }: { product: Product }) {
   // the product page instead.
   const requiresFlavour = productRequiresFlavour(product);
   const isCustomizable = isProductCustomizable(product);
-  const choiceLabel = requiresFlavour ? (isCustomizable ? 'Choose options' : 'Choose flavour') : 'Personalise';
+  const choiceLabel = requiresFlavour ? (isCustomizable ? 'Choose flavour and message' : 'Choose flavour') : 'Personalise';
 
   return (
     <article className="relative overflow-hidden rounded-xl border border-blush bg-white shadow-sm transition-shadow hover:shadow-md">

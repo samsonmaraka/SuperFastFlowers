@@ -1,9 +1,12 @@
 export type CustomFieldType = 'text';
 
-// Stored on the product. `required` and `type` were added after the first
-// customisable products were saved, so readers must default them (see
-// resolveProductCustomFields). `defaultMessage` is shown to customers as
-// placeholder text only; it is never submitted on their behalf.
+// Stored on the product. `type` was added after the first customisable
+// products were saved, so readers must default it (see
+// resolveProductCustomFields). `required` is a legacy flag that is no longer
+// enforced: messages are always optional, because a missing one can be
+// clarified with the sender by phone rather than holding back the gift.
+// `defaultMessage` is shown to customers as placeholder text only; it is never
+// submitted on their behalf.
 export type ProductCustomField = {
   name: string;
   maxLength: number;
@@ -16,7 +19,6 @@ export type ResolvedCustomField = {
   name: string;
   maxLength: number;
   placeholder?: string;
-  required: boolean;
   type: CustomFieldType;
 };
 
@@ -88,7 +90,6 @@ export function resolveProductCustomFields(product: { customFields?: ProductCust
       name: field.name.trim(),
       maxLength: field.maxLength,
       ...(field.defaultMessage ? { placeholder: field.defaultMessage } : {}),
-      required: field.required ?? true,
       type: field.type ?? 'text'
     }));
 }
@@ -104,10 +105,6 @@ export function buildCustomizationValues(fields: ResolvedCustomField[], values: 
     .filter((entry) => entry.value);
 }
 
-export function findMissingRequiredField(fields: ResolvedCustomField[], values: Record<string, string>) {
-  return fields.find((field) => field.required && !normalizeCustomMessage(values[field.name])) || null;
-}
-
 export function normalizeCustomizationValues(value: unknown): CustomizationValue[] | undefined {
   if (!Array.isArray(value)) return undefined;
   const entries = value
@@ -119,7 +116,7 @@ export function normalizeCustomizationValues(value: unknown): CustomizationValue
 
 // The server decides what is orderable, as it does for price and flavour: values
 // are matched to the product's current fields by name, checked against each
-// cap and required flag, and snapshotted with their label.
+// cap, and snapshotted with their label. Blank fields are skipped.
 export function resolveOrderCustomizations(
   product: { name: string; customFields?: ProductCustomField[] | null },
   requested: CustomizationValue[] | undefined
@@ -142,10 +139,7 @@ export function resolveOrderCustomizations(
   const customizations: OrderItemCustomization[] = [];
   for (const field of fields) {
     const value = byName.get(field.name) || '';
-    if (!value) {
-      if (field.required) return { error: `Please fill in "${field.name}" for ${product.name}.` };
-      continue;
-    }
+    if (!value) continue;
     if (containsEmoji(value)) {
       return { error: `"${field.name}" for ${product.name} cannot contain emoji.` };
     }
@@ -168,19 +162,17 @@ export type CustomFieldRow = {
   name: string;
   maxLength: string;
   placeholder: string;
-  required: boolean;
 };
 
 export function emptyCustomFieldRow(): CustomFieldRow {
-  return { name: '', maxLength: '', placeholder: '', required: true };
+  return { name: '', maxLength: '', placeholder: '' };
 }
 
 export function rowsFromCustomFields(fields: ProductCustomField[] | undefined | null): CustomFieldRow[] {
   return resolveProductCustomFields({ customFields: fields }).map((field) => ({
     name: field.name,
     maxLength: String(field.maxLength),
-    placeholder: field.placeholder || '',
-    required: field.required
+    placeholder: field.placeholder || ''
   }));
 }
 
@@ -211,7 +203,7 @@ export function parseCustomFieldRows(rows: CustomFieldRow[]): { fields: ProductC
       return { error: `${label}: placeholder "${placeholder}" is longer than the ${maxLength}-character cap.` };
     }
 
-    fields.push({ name, maxLength, ...(placeholder ? { defaultMessage: placeholder } : {}), required: row.required, type: 'text' });
+    fields.push({ name, maxLength, ...(placeholder ? { defaultMessage: placeholder } : {}), type: 'text' });
   }
 
   return { fields };

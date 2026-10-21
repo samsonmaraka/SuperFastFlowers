@@ -70,7 +70,8 @@ export const productSchema = z.object({
           maxLength: z.number().int().min(1).max(CUSTOM_FIELD_MAX_LENGTH),
           // Placeholder text shown to the customer, never submitted for them.
           defaultMessage: z.string().optional(),
-          required: z.boolean().default(true),
+          // Legacy flag kept so older saved products still parse; not enforced.
+          required: z.boolean().optional(),
           type: z.enum(['text']).default('text')
         })
         .refine((field) => !field.defaultMessage || countGraphemes(field.defaultMessage) <= field.maxLength, 'Placeholder is longer than its cap.')
