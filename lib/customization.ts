@@ -59,6 +59,22 @@ export function truncateGraphemes(value: string, max: number) {
   return parts.length > max ? parts.slice(0, max).join('') : value;
 }
 
+// Emoji cannot be printed or piped onto the products, so messages and
+// placeholders reject them. Extended_Pictographic covers the emoji themselves;
+// the rest are the pieces that build them up (skin tones, flags, keycaps, the
+// zero-width joiner and the emoji variation selector). Plain digits, # and *
+// are left alone even though Unicode also lists them as emoji.
+const EMOJI_PATTERN = /[\p{Extended_Pictographic}\p{Emoji_Modifier}\p{Regional_Indicator}\u200D\uFE0F\u20E3]/gu;
+
+export function containsEmoji(value: string) {
+  EMOJI_PATTERN.lastIndex = 0;
+  return EMOJI_PATTERN.test(value);
+}
+
+export function stripEmoji(value: string) {
+  return value.replace(EMOJI_PATTERN, '');
+}
+
 export function normalizeCustomMessage(value: unknown): string {
   if (typeof value !== 'string') return '';
   // eslint-disable-next-line no-control-regex
@@ -130,6 +146,9 @@ export function resolveOrderCustomizations(
       if (field.required) return { error: `Please fill in "${field.name}" for ${product.name}.` };
       continue;
     }
+    if (containsEmoji(value)) {
+      return { error: `"${field.name}" for ${product.name} cannot contain emoji.` };
+    }
     if (countGraphemes(value) > field.maxLength) {
       return { error: `"${field.name}" for ${product.name} must be at most ${field.maxLength} characters.` };
     }
@@ -187,6 +206,7 @@ export function parseCustomFieldRows(rows: CustomFieldRow[]): { fields: ProductC
     }
 
     const placeholder = row.placeholder.trim();
+    if (containsEmoji(placeholder)) return { error: `${label}: placeholder cannot contain emoji.` };
     if (countGraphemes(placeholder) > maxLength) {
       return { error: `${label}: placeholder "${placeholder}" is longer than the ${maxLength}-character cap.` };
     }

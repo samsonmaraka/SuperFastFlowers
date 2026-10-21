@@ -3,7 +3,7 @@ import { isDataImageUrl, isProductImageStorageKey } from '@/lib/product-images';
 import { ADDON_MESSAGE_MAX_LENGTH } from '@/lib/addon-message';
 import { FLAVOUR_IDS, type FlavourId } from '@/lib/flavours';
 import { getMaximumDeliveryDate } from '@/lib/preparation-days';
-import { countGraphemes, CUSTOM_FIELDS_MAX, CUSTOM_FIELD_MAX_LENGTH, CUSTOM_FIELD_NAME_MAX_LENGTH } from '@/lib/customization';
+import { containsEmoji, countGraphemes, CUSTOM_FIELDS_MAX, CUSTOM_FIELD_MAX_LENGTH, CUSTOM_FIELD_NAME_MAX_LENGTH } from '@/lib/customization';
 
 const productImageValue = z.string().refine((value) => {
   if (isDataImageUrl(value) || isProductImageStorageKey(value)) return true;
@@ -74,6 +74,7 @@ export const productSchema = z.object({
           type: z.enum(['text']).default('text')
         })
         .refine((field) => !field.defaultMessage || countGraphemes(field.defaultMessage) <= field.maxLength, 'Placeholder is longer than its cap.')
+        .refine((field) => !field.defaultMessage || !containsEmoji(field.defaultMessage), 'Placeholder cannot contain emoji.')
     )
     .max(CUSTOM_FIELDS_MAX)
     .refine((fields) => new Set(fields.map((field) => field.name.toLowerCase())).size === fields.length, 'Customisation field names must be unique.')

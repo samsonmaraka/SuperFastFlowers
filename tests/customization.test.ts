@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict';
 import {
   buildCustomizationValues,
+  containsEmoji,
+  stripEmoji,
   countGraphemes,
   emptyCustomFieldRow,
   findMissingRequiredField,
@@ -25,6 +27,18 @@ assert.equal(countGraphemes('👨‍👩‍👧'), 1); // ZWJ family
 assert.equal(truncateGraphemes('ab👍🏽cd', 3), 'ab👍🏽');
 assert.equal(truncateGraphemes('abc', 5), 'abc');
 
+// ---------------------------------------------------------------- emoji
+for (const emoji of ['😀', '👍🏽', '👨‍👩‍👧', '🇺🇬', '❤️', '1️⃣', '🎂', '❤']) assert.equal(containsEmoji(`a${emoji}b`), true, emoji);
+for (const plain of ['Happy 70th Birthday!', '#1 Mum *', 'Crème brûlé', 'Nakato & Ssali', "It's 5 o'clock", '£€$%']) {
+  assert.equal(containsEmoji(plain), false, plain);
+  assert.equal(stripEmoji(plain), plain);
+}
+assert.equal(stripEmoji('Happy 🎂 Birthday 👍🏽!'), 'Happy  Birthday !');
+assert.equal(stripEmoji('Love ❤️ 👨‍👩‍👧 🇺🇬 1️⃣'), 'Love    1');
+// Stateful /g regex must not leak between calls.
+assert.equal(containsEmoji('🎂'), true);
+assert.equal(containsEmoji('🎂'), true);
+
 // ---------------------------------------------------------------- admin rows
 const rows: CustomFieldRow[] = [
   { name: 'Cake 1', maxLength: '11', placeholder: 'Happy', required: true },
@@ -48,6 +62,7 @@ assert.ok('error' in parseCustomFieldRows([{ ...rows[0], maxLength: '' }]));
 assert.ok('error' in parseCustomFieldRows([{ ...rows[0], maxLength: '0' }]));
 assert.ok('error' in parseCustomFieldRows([{ ...rows[0], maxLength: '2.5' }]));
 assert.ok('error' in parseCustomFieldRows([{ ...rows[0], maxLength: '5', placeholder: 'Birthday' }]));
+assert.ok('error' in parseCustomFieldRows([{ ...rows[0], placeholder: 'Happy 🎂' }]));
 assert.ok('error' in parseCustomFieldRows(Array.from({ length: 11 }, (_, i) => ({ ...rows[0], name: `F${i}` }))));
 
 // ---------------------------------------------------------------- legacy fields
@@ -97,9 +112,9 @@ assert.ok('error' in resolveOrderCustomizations(product, undefined));
 assert.ok('error' in resolveOrderCustomizations(product, [{ name: 'Cake 1', value: 'Happy birthday!' }, { name: 'Cake 2', value: 'x' }])); // over cap
 assert.ok('error' in resolveOrderCustomizations(product, [{ name: 'Cake 1', value: 'a' }, { name: 'Cake 2', value: 'b' }, { name: 'Gone', value: 'c' }]));
 assert.ok('error' in resolveOrderCustomizations(product, [{ name: 'Cake 1', value: 'a' }, { name: 'Cake 1', value: 'b' }, { name: 'Cake 2', value: 'c' }]));
-// 11 emoji fit an 11-character cap even though they are 44 UTF-16 units.
-const emoji = '👍🏽'.repeat(11);
-assert.ok('customizations' in resolveOrderCustomizations(product, [{ name: 'Cake 1', value: emoji }, { name: 'Cake 2', value: 'x' }]));
+// Emoji are refused; accented letters count as one character each.
+assert.ok('error' in resolveOrderCustomizations(product, [{ name: 'Cake 1', value: 'Hi 👍🏽' }, { name: 'Cake 2', value: 'x' }]));
+assert.ok('customizations' in resolveOrderCustomizations(product, [{ name: 'Cake 1', value: 'Crème brûlé' }, { name: 'Cake 2', value: 'x' }]));
 assert.deepEqual(resolveOrderCustomizations({ name: 'Plain' }, undefined), { customizations: [] });
 assert.ok('error' in resolveOrderCustomizations({ name: 'Plain' }, [{ name: 'Cake 1', value: 'x' }]));
 
@@ -121,6 +136,7 @@ assert.deepEqual(saved.data.customFields, [{ name: 'Cake 1', maxLength: 11, requ
 assert.ok(!productSchema.safeParse({ ...base, customFields: [{ name: 'a', maxLength: 3, defaultMessage: 'toolong' }] }).success);
 assert.ok(!productSchema.safeParse({ ...base, customFields: [{ name: 'A', maxLength: 3 }, { name: 'a', maxLength: 3 }] }).success);
 assert.ok(!productSchema.safeParse({ ...base, customFields: [{ name: 'A', maxLength: 3, type: 'image' }] }).success);
+assert.ok(!productSchema.safeParse({ ...base, customFields: [{ name: 'A', maxLength: 5, defaultMessage: 'Hi 🎂' }] }).success);
 
 const order = {
   recipientName: 'Jo Bloggs', recipientPhone: '0700000000', deliveryDate: new Date().toISOString().slice(0, 10),
