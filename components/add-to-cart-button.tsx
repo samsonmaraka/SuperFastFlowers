@@ -5,6 +5,7 @@ import { useEffect, useState } from 'react';
 import { buildCartLineId, readCart, writeCart } from '@/lib/cart-storage';
 import { trackEcommerce } from '@/lib/analytics';
 import type { FlavourId } from '@/lib/flavours';
+import type { CustomizationValue } from '@/lib/customization';
 import { Product } from '@/lib/types';
 
 function getLineQuantity(lineId: string) {
@@ -20,7 +21,10 @@ type AddToCartButtonProps = {
   showCheckoutShortcut?: boolean;
   checkoutShortcutLabel?: string;
   flavour?: FlavourId | null;
-  requiresFlavour?: boolean;
+  customizations?: CustomizationValue[];
+  // Set while a choice is still missing (a flavour, a required message); the
+  // button is disabled and this is its explanation.
+  blockedReason?: string | null;
 };
 
 export function AddToCartButton({
@@ -28,11 +32,12 @@ export function AddToCartButton({
   showCheckoutShortcut = false,
   checkoutShortcutLabel = 'Send gift now',
   flavour = null,
-  requiresFlavour = false
+  customizations,
+  blockedReason = null
 }: AddToCartButtonProps) {
   const [quantityInCart, setQuantityInCart] = useState(0);
-  const isBlockedOnFlavour = requiresFlavour && !flavour;
-  const lineId = buildCartLineId(product.id, flavour);
+  const isBlocked = Boolean(blockedReason);
+  const lineId = buildCartLineId(product.id, flavour, customizations);
   const lineLabel = flavour ? `${product.name} (${flavour})` : product.name;
 
   useEffect(() => {
@@ -49,7 +54,7 @@ export function AddToCartButton({
   }, [lineId]);
 
   const updateQuantity = (nextQuantity: number) => {
-    if (isBlockedOnFlavour) return;
+    if (isBlocked) return;
 
     const cart = readCart();
     const existingItem = cart.find((item) => item.lineId === lineId);
@@ -65,6 +70,7 @@ export function AddToCartButton({
               lineId,
               productId: product.id,
               ...(flavour ? { flavour } : {}),
+              ...(customizations?.length ? { customizations } : {}),
               name: product.name,
               price: product.price,
               quantity: nextQuantity,
@@ -131,11 +137,11 @@ export function AddToCartButton({
   return (
     <button
       onClick={onAdd}
-      disabled={isBlockedOnFlavour}
+      disabled={isBlocked}
       className="rounded-md bg-ink px-4 py-2 text-sm font-medium text-white transition hover:bg-black disabled:cursor-not-allowed disabled:bg-gray-400"
       type="button"
-      aria-label={isBlockedOnFlavour ? `Choose a flavour before adding ${product.name} to cart` : `Add ${lineLabel} to cart`}
-      title={isBlockedOnFlavour ? 'Choose a flavour first' : undefined}
+      aria-label={isBlocked ? `${blockedReason} before adding ${product.name} to cart` : `Add ${lineLabel} to cart`}
+      title={blockedReason ? `${blockedReason} first` : undefined}
     >
       Add to cart
     </button>

@@ -8,6 +8,7 @@ import { CUSTOMIZABLE_ADDON_MAX_QUANTITY, isCustomizableAddon, normalizeAddonMes
 import { OrderItem, OrderStatus } from '@/lib/types';
 import { getDateOnlyAtUtcMidnight, getGmtPlus3DateOnlyAtUtcMidnight, getMinimumDeliveryDate, getRequiredPreparationDays, isBeforeSameDayDeliveryCutoff, isSameDayEligible } from '@/lib/preparation-days';
 import { getFlavour, resolveProductFlavours } from '@/lib/flavours';
+import { normalizeCustomizationValues, resolveOrderCustomizations } from '@/lib/customization';
 
 export async function POST(req: NextRequest) {
   console.info('[ORDER_API_START] POST /api/orders reached', {
@@ -24,11 +25,11 @@ export async function POST(req: NextRequest) {
   } else {
     const form = await req.formData();
     const itemsJson = String(form.get('itemsJson') || '[]');
-    let parsedItems: Array<{ productId: string; quantity: number; name?: string; price?: number; unitPrice?: number; isAddon?: boolean; message?: string; flavour?: string }> = [];
+    let parsedItems: Array<{ productId: string; quantity: number; name?: string; price?: number; unitPrice?: number; isAddon?: boolean; message?: string; flavour?: string; customizations?: unknown }> = [];
     try {
       const maybeItems = JSON.parse(itemsJson) as unknown;
       if (Array.isArray(maybeItems)) {
-        parsedItems = maybeItems as Array<{ productId: string; quantity: number; name?: string; price?: number; unitPrice?: number; isAddon?: boolean; message?: string; flavour?: string }>;
+        parsedItems = maybeItems as Array<{ productId: string; quantity: number; name?: string; price?: number; unitPrice?: number; isAddon?: boolean; message?: string; flavour?: string; customizations?: unknown }>;
       }
     } catch {
       parsedItems = [];
@@ -45,6 +46,7 @@ export async function POST(req: NextRequest) {
         lineTotal: unitPrice * quantity,
         isAddon: item.isAddon === true ? true : undefined,
         message: normalizeAddonMessage(item.message),
+        customizations: normalizeCustomizationValues(item.customizations),
         flavour: item.flavour || undefined
       };
     });
@@ -152,6 +154,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: `${label} is not available for ${product.name}. Please choose another flavour.` }, { status: 400 });
     }
 
+    const resolvedCustomizations = resolveOrderCustomizations(product, normalizeCustomizationValues(item.customizations));
+    if ('error' in resolvedCustomizations) {
+      return NextResponse.json({ error: resolvedCustomizations.error }, { status: 400 });
+    }
+
     const quantity = item.quantity;
     orderItems.push({
       productId: product.id,
@@ -164,6 +171,7 @@ export async function POST(req: NextRequest) {
       ...(requestedFlavour
         ? { flavourId: requestedFlavour, flavourLabel: getFlavour(requestedFlavour)?.label || requestedFlavour }
         : {}),
+      ...(resolvedCustomizations.customizations.length ? { customizations: resolvedCustomizations.customizations } : {}),
       vendorFulfillmentStatus: 'pending'
     });
   }

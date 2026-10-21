@@ -4,6 +4,7 @@ import { useRouter } from 'next/navigation';
 import { buildCartLineId, readCart, writeCart } from '@/lib/cart-storage';
 import { trackEcommerce } from '@/lib/analytics';
 import type { FlavourId } from '@/lib/flavours';
+import type { CustomizationValue } from '@/lib/customization';
 import { Product } from '@/lib/types';
 
 function dispatchCartUpdate() {
@@ -13,7 +14,8 @@ function dispatchCartUpdate() {
 type SendThisGiftButtonProps = {
   product: Product;
   flavour?: FlavourId | null;
-  requiresFlavour?: boolean;
+  customizations?: CustomizationValue[];
+  blockedReason?: string | null;
   onBlocked?: () => void;
   describedBy?: string;
 };
@@ -21,22 +23,23 @@ type SendThisGiftButtonProps = {
 export function SendThisGiftButton({
   product,
   flavour = null,
-  requiresFlavour = false,
+  customizations,
+  blockedReason = null,
   onBlocked,
   describedBy
 }: SendThisGiftButtonProps) {
   const router = useRouter();
-  const isBlockedOnFlavour = requiresFlavour && !flavour;
+  const isBlocked = Boolean(blockedReason);
 
   const onSendGift = () => {
     // The button stays clickable while blocked so the click can explain itself
     // instead of doing nothing.
-    if (isBlockedOnFlavour) {
+    if (isBlocked) {
       onBlocked?.();
       return;
     }
 
-    const lineId = buildCartLineId(product.id, flavour);
+    const lineId = buildCartLineId(product.id, flavour, customizations);
     const cart = readCart();
     const existingItem = cart.find((item) => item.lineId === lineId);
 
@@ -47,6 +50,7 @@ export function SendThisGiftButton({
           lineId,
           productId: product.id,
           ...(flavour ? { flavour } : {}),
+          ...(customizations?.length ? { customizations } : {}),
           name: product.name,
           price: product.price,
           quantity: 1,
@@ -68,13 +72,13 @@ export function SendThisGiftButton({
       onClick={onSendGift}
       aria-describedby={describedBy}
       className={`inline-flex items-center justify-center rounded-md px-5 py-3 text-sm font-semibold text-white transition focus:outline-none focus:ring-2 focus:ring-pink-700/40 focus:ring-offset-2 ${
-        isBlockedOnFlavour
+        isBlocked
           ? 'bg-gray-400 hover:bg-gray-500'
           : 'bg-pink-700 shadow-lg shadow-pink-700/20 hover:-translate-y-0.5 hover:bg-ink hover:shadow-xl'
       }`}
       type="button"
-      aria-label={isBlockedOnFlavour ? `Choose a flavour before sending ${product.name}` : `Send ${product.name} now`}
-      title={isBlockedOnFlavour ? 'Choose a flavour first' : undefined}
+      aria-label={isBlocked ? `${blockedReason} before sending ${product.name}` : `Send ${product.name} now`}
+      title={blockedReason ? `${blockedReason} first` : undefined}
     >
       Send this gift
     </button>

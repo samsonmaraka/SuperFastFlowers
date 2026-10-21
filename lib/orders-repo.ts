@@ -3,6 +3,7 @@ import { db } from '@/lib/dynamodb';
 import { getEnv } from '@/lib/env';
 import { orderIdFromPesapalMerchantReference } from '@/lib/pesapal';
 import { OrderRequest, OrderStatus, PesapalOrderPayment, VendorFulfillmentStatus } from '@/lib/types';
+import { orderLineCustomizationKey } from '@/lib/customization';
 
 const memoryOrders: OrderRequest[] = [];
 
@@ -114,16 +115,17 @@ export async function updateOrderPayment(orderId: string, payment: PesapalOrderP
 }
 
 
-export async function updateOrderItemVendorFulfillmentStatus(orderId: string, productId: string, vendorId: string, vendorFulfillmentStatus: VendorFulfillmentStatus, flavourId?: string) {
+export async function updateOrderItemVendorFulfillmentStatus(orderId: string, productId: string, vendorId: string, vendorFulfillmentStatus: VendorFulfillmentStatus, flavourId?: string, customizationKey = '') {
   const existing = await getOrderById(orderId);
   if (!existing) return null;
   let changed = false;
   const updatedOrder = {
     ...existing,
     items: (existing.items || []).map((item) => {
-      // Flavour is part of the line's identity: two flavours of one product from one
-      // vendor are two lines, and marking one fulfilled must not mark the other.
-      if (item.productId === productId && item.vendorId === vendorId && (item.flavourId || undefined) === (flavourId || undefined)) {
+      // Flavour and personalised messages are part of the line's identity: two
+      // flavours (or messages) of one product from one vendor are two lines, and
+      // marking one fulfilled must not mark the other.
+      if (item.productId === productId && item.vendorId === vendorId && (item.flavourId || undefined) === (flavourId || undefined) && orderLineCustomizationKey(item) === customizationKey) {
         changed = true;
         return { ...item, vendorFulfillmentStatus };
       }

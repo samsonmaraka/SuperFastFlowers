@@ -1,9 +1,9 @@
 import type { AppUser, AuditLogEntry, UserRole, UserRoleAssignment, VendorAdminAssignment } from '@/lib/auth-types';
 import type { FlavourId } from '@/lib/flavours';
-import type { ProductCustomField } from '@/lib/customization';
+import type { OrderItemCustomization, ProductCustomField } from '@/lib/customization';
 
 export type { AppUser, AuditLogEntry, UserRole, UserRoleAssignment, VendorAdminAssignment };
-export type { FlavourId, ProductCustomField };
+export type { FlavourId, OrderItemCustomization, ProductCustomField };
 
 export type StockStatus = 'in_stock' | 'low_stock' | 'out_of_stock';
 
@@ -108,6 +108,8 @@ export type OrderItem = {
   flavourLabel?: string;
   // Customer's printed message for a customizable add-on (e.g. a balloon).
   message?: string;
+  // Customer's messages for a customisable product, label + value snapshotted.
+  customizations?: OrderItemCustomization[];
   vendorFulfillmentStatus?: VendorFulfillmentStatus;
 };
 

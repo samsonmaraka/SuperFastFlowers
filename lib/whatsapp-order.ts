@@ -2,6 +2,7 @@ import { STORE_PHONE } from '@/lib/seo';
 import { deliveryAreas } from '@/lib/delivery-areas';
 import { formatUgx } from '@/lib/format';
 import { getFlavourLabel } from '@/lib/flavours';
+import { formatCustomization } from '@/lib/customization';
 import type { CartItem } from '@/lib/cart-storage';
 
 type WhatsAppOrderDetails = {
@@ -31,7 +32,8 @@ export function buildWhatsAppOrderUrl({ orderId, items, subtotal, deliveryFee, f
     const extras = [
       item.flavour ? getFlavourLabel(item.flavour) : '',
       item.isAddon ? 'Add-on' : '',
-      item.message ? `Message: "${item.message}"` : ''
+      item.message ? `Message: "${item.message}"` : '',
+      ...(item.customizations || []).map(formatCustomization)
     ].filter(Boolean);
     return `• ${item.quantity} x ${item.name}${extras.length ? ` (${extras.join(', ')})` : ''} - UGX ${formatUgx(item.price * item.quantity)}`;
   });

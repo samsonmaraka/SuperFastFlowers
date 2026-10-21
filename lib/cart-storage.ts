@@ -1,8 +1,10 @@
 import { isFlavourId, type FlavourId } from '@/lib/flavours';
 import { normalizeAddonMessage } from '@/lib/addon-message';
+import { normalizeCustomizationValues, type CustomizationValue } from '@/lib/customization';
 
 // lineId, not productId, is what identifies a cart line. Two flavours of the same
-// product are two lines; without this they would collapse into one.
+// product are two lines, as are two different sets of personalised messages;
+// without this they would collapse into one.
 export type CartItem = {
   lineId: string;
   productId: string;
@@ -14,11 +16,14 @@ export type CartItem = {
   isAddon?: boolean;
   // Printed on a customizable add-on such as a balloon.
   message?: string;
+  // Personalised messages for a customisable product, in field order.
+  customizations?: CustomizationValue[];
   vendorId?: string;
 };
 
-export function buildCartLineId(productId: string, flavour?: string | null) {
-  return flavour ? `${productId}#${flavour}` : productId;
+export function buildCartLineId(productId: string, flavour?: string | null, customizations?: CustomizationValue[] | null) {
+  const base = flavour ? `${productId}#${flavour}` : productId;
+  return customizations?.length ? `${base}|${JSON.stringify(customizations.map((entry) => [entry.name, entry.value]))}` : base;
 }
 
 type CartMeta = { lastUpdated: string };
@@ -67,13 +72,15 @@ function normalizeCartItem(value: unknown): CartItem | null {
   // instead of the line silently changing under the customer.
   const flavour = isFlavourId(candidate.flavour) ? candidate.flavour : undefined;
   const productId = candidate.productId as string;
+  const customizations = normalizeCustomizationValues(candidate.customizations);
 
   return {
     ...(candidate as CartItem),
     productId,
     flavour,
     message: normalizeAddonMessage(candidate.message),
-    lineId: typeof candidate.lineId === 'string' && candidate.lineId ? candidate.lineId : buildCartLineId(productId, flavour)
+    customizations,
+    lineId: typeof candidate.lineId === 'string' && candidate.lineId ? candidate.lineId : buildCartLineId(productId, flavour, customizations)
   };
 }
 

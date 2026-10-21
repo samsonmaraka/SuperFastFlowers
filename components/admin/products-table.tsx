@@ -5,7 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import type { Product, ProductStatus, Vendor } from '@/lib/types';
 import { buildProductSlug } from '@/lib/slug';
 import { flavours as flavourRegistry, FLAVOUR_IDS, normalizeFlavourIds, type FlavourId } from '@/lib/flavours';
-import { formatCustomFieldsInput, parseCustomFieldsInput, type ProductCustomField } from '@/lib/customization';
+import { CUSTOM_FIELDS_MAX, CUSTOM_FIELD_MAX_LENGTH, emptyCustomFieldRow, parseCustomFieldRows, rowsFromCustomFields, type CustomFieldRow, type ProductCustomField } from '@/lib/customization';
 import { ProductStatusBadge } from './status-badges';
 import { ProductImagePreview } from './product-image-preview';
 
@@ -31,7 +31,7 @@ function buildFormFromProduct(product: Product) {
     featured: product.featured,
     flavours: normalizeFlavourIds(product.flavours),
     customizable: Boolean(product.customFields?.length),
-    customFields: formatCustomFieldsInput(product.customFields)
+    customFieldRows: rowsFromCustomFields(product.customFields)
   };
 }
 
@@ -62,7 +62,7 @@ export function ProductsTable({
     featured: false,
     flavours: [] as FlavourId[],
     customizable: false,
-    customFields: formatCustomFieldsInput([])
+    customFieldRows: [] as CustomFieldRow[]
   };
   const [form, setForm] = useState(empty);
   const [editing, setEditing] = useState<string | null>(null);
@@ -86,6 +86,10 @@ export function ProductsTable({
     setEditing(product.id);
     setForm(buildFormFromProduct(product));
     requestAnimationFrame(() => document.getElementById('product-editor')?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+
+  function updateCustomFieldRow(index: number, patch: Partial<CustomFieldRow>) {
+    setForm((x) => ({ ...x, customFieldRows: x.customFieldRows.map((row, i) => (i === index ? { ...row, ...patch } : row)) }));
   }
 
   useEffect(() => {
@@ -148,7 +152,7 @@ export function ProductsTable({
     if (!form.imageUrl.trim()) return setMessage('Add an image URL or upload an image.');
     let customFields: ProductCustomField[] | undefined;
     if (form.customizable) {
-      const parsedFields = parseCustomFieldsInput(form.customFields);
+      const parsedFields = parseCustomFieldRows(form.customFieldRows);
       if ('error' in parsedFields) return setMessage(parsedFields.error);
       customFields = parsedFields.fields;
     }
@@ -245,31 +249,60 @@ export function ProductsTable({
           <fieldset className="rounded border p-3 md:col-span-2">
             <legend className="px-1 text-sm font-medium">Customisation</legend>
             <label className="flex items-center gap-2 text-sm">
-              <input type="checkbox" checked={form.customizable} onChange={(e) => setForm({ ...form, customizable: e.target.checked })} />
+              <input
+                type="checkbox"
+                checked={form.customizable}
+                onChange={(e) =>
+                  setForm({
+                    ...form,
+                    customizable: e.target.checked,
+                    customFieldRows: e.target.checked && !form.customFieldRows.length ? [emptyCustomFieldRow()] : form.customFieldRows
+                  })
+                }
+              />
               Customisable - customers can add their own message
             </label>
             {form.customizable && (
               <>
                 <p className="mt-2 text-xs text-gray-600">
-                  Separate each entry with a comma, one per field and in the same order in every box. Example: 3 fields, caps 11, 11, 11, names Cake 1, Cake 2, Cake 3, defaults Happy, Birthday, Love.
+                  One row per message box the customer fills in, e.g. Cake 1 / 11 / Happy. The placeholder is example text shown in the empty box; it is not
+                  sent if the customer leaves the box blank. Field names must be unique.
                 </p>
-                <div className="mt-2 grid gap-2 md:grid-cols-2">
-                  <label className="text-sm">
-                    Number of fields
-                    <input className="mt-1 w-full rounded border p-2" type="number" min="1" max="10" placeholder="3" value={form.customFields.count} onChange={(e) => setForm({ ...form, customFields: { ...form.customFields, count: e.target.value } })} />
-                  </label>
-                  <label className="text-sm">
-                    Message cap per field (characters)
-                    <input className="mt-1 w-full rounded border p-2" placeholder="11, 11, 11" value={form.customFields.maxLengths} onChange={(e) => setForm({ ...form, customFields: { ...form.customFields, maxLengths: e.target.value } })} />
-                  </label>
-                  <label className="text-sm">
-                    Field names
-                    <input className="mt-1 w-full rounded border p-2" placeholder="Cake 1, Cake 2, Cake 3" value={form.customFields.names} onChange={(e) => setForm({ ...form, customFields: { ...form.customFields, names: e.target.value } })} />
-                  </label>
-                  <label className="text-sm">
-                    Default messages (optional)
-                    <input className="mt-1 w-full rounded border p-2" placeholder="Happy, Birthday, Love" value={form.customFields.defaultMessages} onChange={(e) => setForm({ ...form, customFields: { ...form.customFields, defaultMessages: e.target.value } })} />
-                  </label>
+                <div className="mt-2 space-y-2">
+                  <div className="hidden grid-cols-[1fr_7rem_1fr_6rem_5rem] gap-2 text-xs font-medium text-gray-600 md:grid">
+                    <span>Field name</span>
+                    <span>Character cap</span>
+                    <span>Placeholder text</span>
+                    <span>Required</span>
+                    <span />
+                  </div>
+                  {form.customFieldRows.map((row, index) => (
+                    <div key={index} className="grid gap-2 rounded border p-2 md:grid-cols-[1fr_7rem_1fr_6rem_5rem] md:items-center md:border-0 md:p-0">
+                      <input className="rounded border p-2" aria-label={`Field ${index + 1} name`} placeholder="Cake 1" value={row.name} onChange={(e) => updateCustomFieldRow(index, { name: e.target.value })} />
+                      <input className="rounded border p-2" aria-label={`Field ${index + 1} character cap`} type="number" min="1" max={CUSTOM_FIELD_MAX_LENGTH} placeholder="11" value={row.maxLength} onChange={(e) => updateCustomFieldRow(index, { maxLength: e.target.value })} />
+                      <input className="rounded border p-2" aria-label={`Field ${index + 1} placeholder text`} placeholder="Happy" value={row.placeholder} onChange={(e) => updateCustomFieldRow(index, { placeholder: e.target.value })} />
+                      <label className="flex items-center gap-2 text-sm">
+                        <input type="checkbox" checked={row.required} onChange={(e) => updateCustomFieldRow(index, { required: e.target.checked })} />
+                        Required
+                      </label>
+                      <button type="button" className="rounded border px-2 py-1 text-xs text-red-700" aria-label={`Remove field ${index + 1}`} onClick={() => setForm((x) => ({ ...x, customFieldRows: x.customFieldRows.filter((_, i) => i !== index) }))}>
+                        Remove
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-2 flex items-center gap-3">
+                  <button
+                    type="button"
+                    className="rounded border px-2 py-1 text-xs disabled:opacity-50"
+                    disabled={form.customFieldRows.length >= CUSTOM_FIELDS_MAX}
+                    onClick={() => setForm((x) => ({ ...x, customFieldRows: [...x.customFieldRows, emptyCustomFieldRow()] }))}
+                  >
+                    Add field
+                  </button>
+                  <span className="text-xs text-gray-600">
+                    {form.customFieldRows.length} field{form.customFieldRows.length === 1 ? '' : 's'} (max {CUSTOM_FIELDS_MAX})
+                  </span>
                 </div>
               </>
             )}

@@ -5,13 +5,17 @@ import { getPrimaryProductImage } from '@/lib/product-images';
 import { ProductImage } from '@/components/product-image';
 import { getExpectedProductSlug } from '@/lib/slug';
 import { productRequiresFlavour } from '@/lib/flavours';
+import { isProductCustomizable } from '@/lib/customization';
 import { Product } from '@/lib/types';
 
 export function ProductCard({ product }: { product: Product }) {
   const expectedSlug = getExpectedProductSlug(product);
-  // A flavoured product cannot be added from the grid, because the grid has no
-  // room to ask which flavour. Send the customer to the picker instead.
+  // A flavoured or personalised product cannot be added from the grid, because
+  // the grid has no room to ask which flavour or message. Send the customer to
+  // the product page instead.
   const requiresFlavour = productRequiresFlavour(product);
+  const isCustomizable = isProductCustomizable(product);
+  const choiceLabel = requiresFlavour ? (isCustomizable ? 'Choose options' : 'Choose flavour') : 'Personalise';
 
   return (
     <article className="relative overflow-hidden rounded-xl border border-blush bg-white shadow-sm transition-shadow hover:shadow-md">
@@ -29,13 +33,13 @@ export function ProductCard({ product }: { product: Product }) {
         <div className="flex items-start justify-between gap-3">
           <span className="font-semibold">UGX {formatUgx(product.price)}</span>
           <div className="relative z-20 shrink-0">
-            {requiresFlavour ? (
+            {requiresFlavour || isCustomizable ? (
               <Link
                 href={`/shop/${expectedSlug}`}
                 className="inline-flex items-center gap-1 rounded-md border border-pink-700 px-3 py-2 text-sm font-semibold text-pink-700 transition hover:bg-pink-700 hover:text-white"
-                aria-label={`Choose a flavour for ${product.name}`}
+                aria-label={`${choiceLabel} for ${product.name}`}
               >
-                Choose flavour ›
+                {choiceLabel} ›
               </Link>
             ) : (
               <AddToCartButton product={product} showCheckoutShortcut checkoutShortcutLabel="Send gift now" />

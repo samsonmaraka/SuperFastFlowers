@@ -93,6 +93,7 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
         lineTotal: item.price * item.quantity,
         isAddon: item.isAddon || undefined,
         message: item.isAddon ? item.message || undefined : undefined,
+        customizations: item.isAddon ? undefined : item.customizations,
         flavour: item.flavour || undefined
       })),
     [items]
@@ -286,6 +287,11 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
                     ) : null}
                   </p>
                   {item.flavour ? <p className="font-semibold text-pink-700">{getFlavourLabel(item.flavour)}</p> : null}
+                  {(item.customizations || []).map((entry) => (
+                    <p key={entry.name} className="text-pink-700">
+                      {entry.name}: “{entry.value}”
+                    </p>
+                  ))}
                   <p className="text-gray-600">Qty: {item.quantity}</p>
                   <p className="text-gray-600">Unit price: UGX {formatUgx(item.price)}</p>
                 </div>
