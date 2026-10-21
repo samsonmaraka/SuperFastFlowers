@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import type { Product, ProductStatus, Vendor } from '@/lib/types';
 import { buildProductSlug } from '@/lib/slug';
 import { flavours as flavourRegistry, FLAVOUR_IDS, normalizeFlavourIds, type FlavourId } from '@/lib/flavours';
+import { formatCustomFieldsInput, parseCustomFieldsInput, type ProductCustomField } from '@/lib/customization';
 import { ProductStatusBadge } from './status-badges';
 import { ProductImagePreview } from './product-image-preview';
 
@@ -28,7 +29,9 @@ function buildFormFromProduct(product: Product) {
     tagsInput: (product.tags || []).join(', '),
     status: product.status ?? 'active',
     featured: product.featured,
-    flavours: normalizeFlavourIds(product.flavours)
+    flavours: normalizeFlavourIds(product.flavours),
+    customizable: Boolean(product.customFields?.length),
+    customFields: formatCustomFieldsInput(product.customFields)
   };
 }
 
@@ -57,7 +60,9 @@ export function ProductsTable({
     tagsInput: '',
     status: 'active' as ProductStatus,
     featured: false,
-    flavours: [] as FlavourId[]
+    flavours: [] as FlavourId[],
+    customizable: false,
+    customFields: formatCustomFieldsInput([])
   };
   const [form, setForm] = useState(empty);
   const [editing, setEditing] = useState<string | null>(null);
@@ -141,6 +146,12 @@ export function ProductsTable({
     const prep = Number(form.preparationDays);
     if (!Number.isInteger(prep) || prep < 0 || prep > 30) return setMessage('Preparation days must be 0-30.');
     if (!form.imageUrl.trim()) return setMessage('Add an image URL or upload an image.');
+    let customFields: ProductCustomField[] | undefined;
+    if (form.customizable) {
+      const parsedFields = parseCustomFieldsInput(form.customFields);
+      if ('error' in parsedFields) return setMessage(parsedFields.error);
+      customFields = parsedFields.fields;
+    }
     const now = new Date().toISOString();
     const existing = products.find((p) => p.id === editing);
     const payload: Product = {
@@ -156,6 +167,7 @@ export function ProductsTable({
       // Must be sent on every save: this payload replaces the stored product, so
       // omitting flavours here would silently wipe them on any unrelated edit.
       flavours: form.flavours.length ? form.flavours : undefined,
+      customFields,
       imageUrls: [form.imageUrl],
       stockStatus: 'in_stock',
       featured: !isVendor && form.featured,
@@ -230,6 +242,38 @@ export function ProductsTable({
               ))}
             </div>
           </fieldset>
+          <fieldset className="rounded border p-3 md:col-span-2">
+            <legend className="px-1 text-sm font-medium">Customisation</legend>
+            <label className="flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={form.customizable} onChange={(e) => setForm({ ...form, customizable: e.target.checked })} />
+              Customisable - customers can add their own message
+            </label>
+            {form.customizable && (
+              <>
+                <p className="mt-2 text-xs text-gray-600">
+                  Separate each entry with a comma, one per field and in the same order in every box. Example: 3 fields, caps 11, 11, 11, names Cake 1, Cake 2, Cake 3, defaults Happy, Birthday, Love.
+                </p>
+                <div className="mt-2 grid gap-2 md:grid-cols-2">
+                  <label className="text-sm">
+                    Number of fields
+                    <input className="mt-1 w-full rounded border p-2" type="number" min="1" max="10" placeholder="3" value={form.customFields.count} onChange={(e) => setForm({ ...form, customFields: { ...form.customFields, count: e.target.value } })} />
+                  </label>
+                  <label className="text-sm">
+                    Message cap per field (characters)
+                    <input className="mt-1 w-full rounded border p-2" placeholder="11, 11, 11" value={form.customFields.maxLengths} onChange={(e) => setForm({ ...form, customFields: { ...form.customFields, maxLengths: e.target.value } })} />
+                  </label>
+                  <label className="text-sm">
+                    Field names
+                    <input className="mt-1 w-full rounded border p-2" placeholder="Cake 1, Cake 2, Cake 3" value={form.customFields.names} onChange={(e) => setForm({ ...form, customFields: { ...form.customFields, names: e.target.value } })} />
+                  </label>
+                  <label className="text-sm">
+                    Default messages (optional)
+                    <input className="mt-1 w-full rounded border p-2" placeholder="Happy, Birthday, Love" value={form.customFields.defaultMessages} onChange={(e) => setForm({ ...form, customFields: { ...form.customFields, defaultMessages: e.target.value } })} />
+                  </label>
+                </div>
+              </>
+            )}
+          </fieldset>
           <input className="rounded border p-2 md:col-span-2" placeholder="Hosted HTTPS image URL *" value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} />
           <input className="rounded border p-2" type="file" accept="image/*" onChange={image} />
           <ProductImagePreview src={form.imageUrl} />
@@ -268,7 +312,7 @@ export function ProductsTable({
               <tbody>
                 {rows.map((p) => (
                   <tr key={p.id} className="border-t">
-                    <td className="py-3 font-semibold">{p.name}<p className="text-xs font-normal text-gray-500">{p.vendorName || vendors.find((v) => v.id === p.vendorId)?.name || 'No vendor'}</p>{(p.flavours || []).length ? <p className="text-xs font-normal text-pink-700">{(p.flavours || []).length} flavours</p> : null}</td>
+                    <td className="py-3 font-semibold">{p.name}<p className="text-xs font-normal text-gray-500">{p.vendorName || vendors.find((v) => v.id === p.vendorId)?.name || 'No vendor'}</p>{(p.flavours || []).length ? <p className="text-xs font-normal text-pink-700">{(p.flavours || []).length} flavours</p> : null}{p.customFields?.length ? <p className="text-xs font-normal text-pink-700">Customisable ({p.customFields.length} fields)</p> : null}</td>
                     <td>UGX {p.price.toLocaleString()}</td>
                     <td><ProductStatusBadge status={p.status} /></td>
                     <td className="text-right">

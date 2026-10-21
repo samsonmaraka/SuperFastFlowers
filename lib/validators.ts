@@ -3,6 +3,7 @@ import { isDataImageUrl, isProductImageStorageKey } from '@/lib/product-images';
 import { ADDON_MESSAGE_MAX_LENGTH } from '@/lib/addon-message';
 import { FLAVOUR_IDS, type FlavourId } from '@/lib/flavours';
 import { getMaximumDeliveryDate } from '@/lib/preparation-days';
+import { CUSTOM_FIELDS_MAX, CUSTOM_FIELD_MAX_LENGTH } from '@/lib/customization';
 
 const productImageValue = z.string().refine((value) => {
   if (isDataImageUrl(value) || isProductImageStorageKey(value)) return true;
@@ -61,6 +62,18 @@ export const productSchema = z.object({
   vendorContact2: z.string().optional(),
   preparationDays: z.number().int().min(0).max(30).optional(),
   flavours: z.array(z.enum(FLAVOUR_IDS as [FlavourId, ...FlavourId[]])).optional(),
+  customFields: z
+    .array(
+      z
+        .object({
+          name: z.string().trim().min(1),
+          maxLength: z.number().int().min(1).max(CUSTOM_FIELD_MAX_LENGTH),
+          defaultMessage: z.string().optional()
+        })
+        .refine((field) => !field.defaultMessage || field.defaultMessage.length <= field.maxLength, 'Default message is longer than its cap.')
+    )
+    .max(CUSTOM_FIELDS_MAX)
+    .optional(),
   createdAt: z.string(),
   updatedAt: z.string()
 });
