@@ -269,22 +269,17 @@ export function ProductsTable({
                   sent if the customer leaves the box blank. Field names must be unique.
                 </p>
                 <div className="mt-2 space-y-2">
-                  <div className="hidden grid-cols-[1fr_7rem_1fr_6rem_5rem] gap-2 text-xs font-medium text-gray-600 md:grid">
+                  <div className="hidden grid-cols-[1fr_7rem_1fr_5rem] gap-2 text-xs font-medium text-gray-600 md:grid">
                     <span>Field name</span>
                     <span>Character cap</span>
                     <span>Placeholder text</span>
-                    <span>Required</span>
                     <span />
                   </div>
                   {form.customFieldRows.map((row, index) => (
-                    <div key={index} className="grid gap-2 rounded border p-2 md:grid-cols-[1fr_7rem_1fr_6rem_5rem] md:items-center md:border-0 md:p-0">
+                    <div key={index} className="grid gap-2 rounded border p-2 md:grid-cols-[1fr_7rem_1fr_5rem] md:items-center md:border-0 md:p-0">
                       <input className="rounded border p-2" aria-label={`Field ${index + 1} name`} placeholder="Cake 1" value={row.name} onChange={(e) => updateCustomFieldRow(index, { name: e.target.value })} />
                       <input className="rounded border p-2" aria-label={`Field ${index + 1} character cap`} type="number" min="1" max={CUSTOM_FIELD_MAX_LENGTH} placeholder="11" value={row.maxLength} onChange={(e) => updateCustomFieldRow(index, { maxLength: e.target.value })} />
                       <input className="rounded border p-2" aria-label={`Field ${index + 1} placeholder text`} placeholder="Happy" value={row.placeholder} onChange={(e) => updateCustomFieldRow(index, { placeholder: e.target.value })} />
-                      <label className="flex items-center gap-2 text-sm">
-                        <input type="checkbox" checked={row.required} onChange={(e) => updateCustomFieldRow(index, { required: e.target.checked })} />
-                        Required
-                      </label>
                       <button type="button" className="rounded border px-2 py-1 text-xs text-red-700" aria-label={`Remove field ${index + 1}`} onClick={() => setForm((x) => ({ ...x, customFieldRows: x.customFieldRows.filter((_, i) => i !== index) }))}>
                         Remove
                       </button>

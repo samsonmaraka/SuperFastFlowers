@@ -55,14 +55,7 @@ export function CustomFieldsForm({ fields, values, onChange }: CustomFieldsFormP
               <label htmlFor={id} className="flex items-baseline justify-between gap-3 text-sm font-medium text-ink">
                 <span>
                   {field.name}
-                  {field.required ? (
-                    <span className="text-pink-700" aria-hidden="true">
-                      {' '}
-                      *
-                    </span>
-                  ) : (
-                    <span className="font-normal text-gray-500"> (optional)</span>
-                  )}
+                  <span className="font-normal text-gray-500"> (optional)</span>
                 </span>
                 <span id={`${id}-count`} className={`text-xs tabular-nums ${isFull ? 'font-semibold text-pink-700' : 'text-gray-500'}`}>
                   {used}/{field.maxLength}
@@ -73,8 +66,6 @@ export function CustomFieldsForm({ fields, values, onChange }: CustomFieldsFormP
                 type="text"
                 value={value}
                 placeholder={field.placeholder}
-                required={field.required}
-                aria-required={field.required}
                 aria-describedby={`${id}-count${emojiNotice === field.name ? ` ${id}-emoji` : ''}`}
                 autoComplete="off"
                 onChange={(e) => onInput(field, e.target.value)}
