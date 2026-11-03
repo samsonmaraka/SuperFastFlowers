@@ -249,7 +249,7 @@ is stable even if the registry changes later.
 
 **Delivery fee does not change.** `countOrderVendors` (`lib/delivery-fee.ts:10`) counts a `Set` of
 vendor ids, not lines. A vanilla box and a chocolate box from the same bakery are two lines with one
-vendor id, so the customer is still charged one UGX 5,000 fee. Worth a regression test, because
+vendor id, so the customer is still charged one UGX 10,000 fee. Worth a regression test, because
 "ordering a second flavour doubled my delivery fee" is the obvious way to get this wrong.
 
 **Preparation days do not change.** `getRequiredPreparationDays` (`lib/preparation-days.ts:11`)

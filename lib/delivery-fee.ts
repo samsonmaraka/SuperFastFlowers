@@ -3,7 +3,7 @@ import type { OrderRequest, Product } from '@/lib/types';
 export const DELIVERY_RATE_PER_KM = 1000;
 export const ROAD_DISTANCE_MULTIPLIER = 1.5;
 export const DELIVERY_FEE_ROUNDING_INCREMENT = 500;
-export const DELIVERY_FEE_PER_VENDOR = 5000;
+export const DELIVERY_FEE_PER_VENDOR = 10000;
 
 // Delivery is charged per distinct vendor fulfilling the order. Add-ons ride along
 // with the main gift and never carry their own vendor, so they are ignored here.

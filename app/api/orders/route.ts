@@ -176,7 +176,7 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  // Delivery is charged per distinct vendor fulfilling the order (UGX 5,000 each).
+  // Delivery is charged per distinct vendor fulfilling the order (UGX 10,000 each).
   const subtotal = orderItems.reduce((sum, item) => sum + (item.lineTotal || 0), 0);
   const deliveryFee = calculateVendorDeliveryFee(orderItems);
   const totalWithDelivery = subtotal + deliveryFee;
