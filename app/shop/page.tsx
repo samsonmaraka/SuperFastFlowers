@@ -6,7 +6,7 @@ import { permanentRedirect } from 'next/navigation';
 import { listProducts } from '@/lib/products-repo';
 import { itemListJsonLd, JsonLd } from '@/lib/seo';
 
-const shopTitle = 'Sendagift UG | Shop Gifts in Uganda';
+const shopTitle = 'Shop Gifts in Uganda from UGX 65,000 | Sendagift UG';
 const shopDescription = 'Sendagift UG helps you send gifts in Uganda, including cakes, flowers, cupcakes, hampers, and thoughtful gifts for birthdays, baby showers, congratulations, and special occasions.';
 const shopCanonicalUrl = '/shop';
 

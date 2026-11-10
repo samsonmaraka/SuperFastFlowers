@@ -21,7 +21,8 @@ export async function generateMetadata({ params }: CategoryPageProps): Promise<M
     return {};
   }
 
-  const title = category.seoTitle || `${category.label} Gifts in Uganda | Sendagift UG`;
+  const fallbackTitle = `${category.label} Gifts in Uganda from ${category.slug === 'flowers' ? 'UGX 120,000' : 'UGX 65,000'} | Sendagift UG`;
+  const title = category.seoTitle || (fallbackTitle.length > 60 ? fallbackTitle.slice(0, -3) : fallbackTitle);
   const description =
     category.seoDescription ||
     category.description ||

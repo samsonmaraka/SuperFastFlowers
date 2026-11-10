@@ -6,10 +6,24 @@ import { listProducts } from '@/lib/products-repo';
 import { buildSiteUrl } from '@/lib/site-url';
 import { itemListJsonLd, JsonLd, STORE_DESCRIPTION, STORE_NAME, storeJsonLd } from '@/lib/seo';
 
+const homeTitle = 'Send Gifts in Uganda from UGX 65,000 | Sendagift UG';
+
 export const metadata: Metadata = {
-  title: 'Sendagift UG | Send Gifts in Uganda',
+  title: { absolute: homeTitle },
   description: STORE_DESCRIPTION,
-  alternates: { canonical: 'https://www.sendagift.ug' }
+  alternates: { canonical: 'https://www.sendagift.ug' },
+  openGraph: {
+    title: homeTitle,
+    description: STORE_DESCRIPTION,
+    url: '/',
+    siteName: 'Sendagift UG',
+    type: 'website'
+  },
+  twitter: {
+    card: 'summary',
+    title: homeTitle,
+    description: STORE_DESCRIPTION
+  }
 };
 
 export default async function HomePage({
