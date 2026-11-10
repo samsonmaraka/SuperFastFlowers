@@ -6,10 +6,24 @@ import { listProducts } from '@/lib/products-repo';
 import { buildSiteUrl } from '@/lib/site-url';
 import { itemListJsonLd, JsonLd, STORE_DESCRIPTION, STORE_NAME, storeJsonLd } from '@/lib/seo';
 
+const homeTitle = 'Send Gifts in Uganda from UGX 65,000 | Sendagift UG';
+
 export const metadata: Metadata = {
-  title: 'Sendagift UG | Send Gifts in Uganda',
+  title: { absolute: homeTitle },
   description: STORE_DESCRIPTION,
-  alternates: { canonical: 'https://www.sendagift.ug' }
+  alternates: { canonical: 'https://www.sendagift.ug' },
+  openGraph: {
+    title: homeTitle,
+    description: STORE_DESCRIPTION,
+    url: '/',
+    siteName: 'Sendagift UG',
+    type: 'website'
+  },
+  twitter: {
+    card: 'summary',
+    title: homeTitle,
+    description: STORE_DESCRIPTION
+  }
 };
 
 export default async function HomePage({
@@ -43,7 +57,7 @@ export default async function HomePage({
           Send Gifts in Uganda — Cakes, Flowers, Cupcakes and Hampers Delivered
         </h1>
         <p className="mt-2 text-gray-700">
-          Order cakes, fresh flowers, cupcakes and gift hampers — delivered anywhere in Uganda.
+          Order cakes, fresh flowers, cupcakes and gift hampers.
         </p>
       </header>
 
@@ -89,9 +103,9 @@ export default async function HomePage({
       </section>
 
       <section className="mt-12 max-w-3xl border-t border-blush/80 pt-6">
-        <h2 className="text-xl font-semibold text-ink">Gift delivery anywhere in Uganda</h2>
+        <h2 className="text-xl font-semibold text-ink">Gift delivery</h2>
         <p className="mt-3 text-gray-700">
-          Sendagift UG makes it easy to send a gift anywhere in Uganda. Order online and surprise someone with cakes,
+          Sendagift UG makes it easy to send a gift. Order online and surprise someone with cakes,
           fresh flowers, cupcakes and gift hampers for birthdays, anniversaries, baby showers, congratulations and every
           special occasion.
         </p>
