@@ -73,7 +73,7 @@ export async function GET(req: NextRequest) {
       return errorResponse('Unauthorized', 'UNAUTHORIZED', 401);
     }
 
-    const products = filterProductsForAdmin(access, await listProducts({ includeInactive: true }));
+    const products = filterProductsForAdmin(access, await listProducts({ includeInactive: true, includeInternal: true }));
 
     return NextResponse.json(
       { products },
@@ -160,7 +160,7 @@ export async function POST(req: NextRequest) {
     }
 
     await auditProduct(access, existingProduct ? 'VENDOR_ADMIN_PRODUCT_UPDATED' : 'VENDOR_ADMIN_PRODUCT_CREATED', productToSave.id, productToSave.vendorId);
-    const products = filterProductsForAdmin(access, await listProducts({ includeInactive: true }));
+    const products = filterProductsForAdmin(access, await listProducts({ includeInactive: true, includeInternal: true }));
     console.log('listProducts succeeded');
 
     return NextResponse.json({ ok: true, products });

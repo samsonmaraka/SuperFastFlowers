@@ -6,7 +6,7 @@ import { filterProductsForAdmin } from '@/lib/vendor-permissions';
 
 export default async function VisualProductsPage() {
   const access = await requireAnyAdminAccess();
-  const products = filterProductsForAdmin(access, await listProducts({ includeInactive: true }));
+  const products = filterProductsForAdmin(access, await listProducts({ includeInactive: true, includeInternal: true }));
 
   return (
     <div className="space-y-5">

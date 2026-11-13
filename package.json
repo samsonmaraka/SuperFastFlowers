@@ -16,7 +16,8 @@
     "test:catalogue-csv": "tsx tests/catalogue-csv-schema.test.ts",
     "test:customization": "tsx tests/customization.test.ts",
     "test:flavours": "tsx tests/flavours.test.ts",
-    "test:preparation-days": "tsx tests/preparation-days.test.ts"
+    "test:preparation-days": "tsx tests/preparation-days.test.ts",
+    "test:reference-images": "tsx tests/reference-images.test.ts"
   },
   "dependencies": {
     "@aws-crypto/sha256-js": "^5.2.0",

@@ -69,11 +69,12 @@ function contentTypeToExtension(contentType: string) {
   }
 }
 
-function buildObjectKey(productId: string, extension: string) {
+function buildObjectKey(productId: string, extension: string, folder?: string) {
   const { prefix } = getProductImageStorageConfig();
   const safeProductId = productId.replace(/[^a-zA-Z0-9._-]/g, '-');
   const randomPart = crypto.randomUUID();
-  return `${prefix}/${safeProductId}/${Date.now()}-${randomPart}.${extension}`;
+  const base = folder ? `${prefix}/${folder}` : prefix;
+  return `${base}/${safeProductId}/${Date.now()}-${randomPart}.${extension}`;
 }
 
 function isS3CompatibleStoredValue(value: string) {
@@ -184,11 +185,11 @@ export async function uploadNewAddonImageToS3(addon: Addon): Promise<Addon> {
   return { ...addon, imageUrl: finalImageUrl };
 }
 
-export async function uploadNewProductImagesToS3(product: Product): Promise<Product> {
+async function uploadProductImageValues(product: Product, values: string[], kind: 'product' | 'reference'): Promise<string[]> {
   const { bucket, region, publicBaseUrl } = getProductImageStorageConfig();
   const uploadedImageUrls: string[] = [];
 
-  for (const imageValue of product.imageUrls) {
+  for (const imageValue of values) {
     if (!isDataImageUrl(imageValue)) {
       uploadedImageUrls.push(imageValue);
       continue;
@@ -196,10 +197,11 @@ export async function uploadNewProductImagesToS3(product: Product): Promise<Prod
 
     const dataImage = parseDataImageUrl(imageValue);
     if (!dataImage) {
-      throw new Error('Uploaded product image could not be decoded. Please choose a valid image and try again.');
+      throw new Error(`Uploaded ${kind} image could not be decoded. Please choose a valid image and try again.`);
     }
 
-    const objectKey = buildObjectKey(product.id, dataImage.extension);
+    // Reference images live in their own folder so they are easy to find in S3.
+    const objectKey = buildObjectKey(product.id, dataImage.extension, kind === 'reference' ? 'references' : undefined);
     const finalImageUrl = buildProductImagePublicUrl(objectKey);
 
     logImageDiagnostic('imageUploadStarted', {
@@ -207,6 +209,7 @@ export async function uploadNewProductImagesToS3(product: Product): Promise<Prod
       region,
       objectKey,
       productId: product.id,
+      kind,
       contentType: dataImage.contentType,
       byteLength: dataImage.buffer.length,
       publicBaseUrl,
@@ -221,6 +224,7 @@ export async function uploadNewProductImagesToS3(product: Product): Promise<Prod
         region,
         objectKey,
         productId: product.id,
+        kind,
         finalImageUrl
       });
     } catch (error) {
@@ -229,22 +233,34 @@ export async function uploadNewProductImagesToS3(product: Product): Promise<Prod
         region,
         objectKey,
         productId: product.id,
+        kind,
         error: error instanceof Error ? error.message : String(error)
       });
       throw error;
     }
   }
 
+  return uploadedImageUrls;
+}
+
+export async function uploadNewProductImagesToS3(product: Product): Promise<Product> {
+  const uploadedImageUrls = await uploadProductImageValues(product, product.imageUrls, 'product');
+  const referenceImageUrls = product.referenceImageUrls?.length
+    ? await uploadProductImageValues(product, product.referenceImageUrls, 'reference')
+    : undefined;
+
   const savedImageValuesContainBase64 = uploadedImageUrls.some((value) => imageFieldContainsBase64(value) && !isS3CompatibleStoredValue(value));
   console.log('[product-images] dynamoImageFieldPrepared', {
     productId: product.id,
     imageCount: uploadedImageUrls.length,
+    referenceImageCount: referenceImageUrls?.length ?? 0,
     storesUrlOrKeyRatherThanBase64: !savedImageValuesContainBase64,
     firstImageValueKind: uploadedImageUrls[0]?.startsWith('http') ? 'url' : uploadedImageUrls[0]?.startsWith(`${getProductImageStorageConfig().prefix}/`) ? 's3-key' : 'other'
   });
 
   return {
     ...product,
-    imageUrls: uploadedImageUrls
+    imageUrls: uploadedImageUrls,
+    referenceImageUrls
   };
 }

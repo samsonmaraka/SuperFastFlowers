@@ -37,6 +37,9 @@ export type Product = {
   categories?: string[];
   tags: string[];
   imageUrls: string[];
+  // Admin-only: the source/reference photo(s) the product image was created
+  // from. Stripped from every customer-facing read in products-repo.
+  referenceImageUrls?: string[];
   stockStatus: StockStatus;
   featured: boolean;
   status: ProductStatus;
