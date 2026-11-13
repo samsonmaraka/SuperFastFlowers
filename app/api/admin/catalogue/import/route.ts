@@ -52,7 +52,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: parsed.errors.join(' ') }, { status: 400 });
     }
 
-    const existingProducts = await listProducts({ includeInactive: true });
+    const existingProducts = await listProducts({ includeInactive: true, includeInternal: true });
     const productsById = new Map(existingProducts.map((product) => [product.id, product]));
     const slugOwners = new Map(existingProducts.map((product) => [product.slug, product.id]));
 
@@ -157,7 +157,7 @@ export async function POST(req: NextRequest) {
       await auditImport(access, isUpdate ? 'VENDOR_ADMIN_PRODUCT_UPDATED' : 'VENDOR_ADMIN_PRODUCT_CREATED', id, vendorId);
     }
 
-    const products = filterProductsForAdmin(access, await listProducts({ includeInactive: true }));
+    const products = filterProductsForAdmin(access, await listProducts({ includeInactive: true, includeInternal: true }));
 
     return NextResponse.json({
       ok: errors.length === 0,

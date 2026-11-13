@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { isDataImageUrl, isProductImageStorageKey } from '@/lib/product-images';
+import { isDataImageUrl, isProductImageStorageKey, REFERENCE_IMAGES_MAX } from '@/lib/product-images';
 import { ADDON_MESSAGE_MAX_LENGTH } from '@/lib/addon-message';
 import { FLAVOUR_IDS, type FlavourId } from '@/lib/flavours';
 import { getMaximumDeliveryDate } from '@/lib/preparation-days';
@@ -45,6 +45,7 @@ export const productSchema = z.object({
   tags: z.array(z.string().trim().min(1)).default([]),
   categories: z.array(z.string().trim().min(1)).optional(),
   imageUrls: z.array(productImageValue).min(1),
+  referenceImageUrls: z.array(productImageValue).max(REFERENCE_IMAGES_MAX).optional(),
   stockStatus: z.enum(['in_stock', 'low_stock', 'out_of_stock']),
   featured: z.boolean(),
   status: z.enum(['active', 'inactive']).default('active'),

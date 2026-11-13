@@ -32,6 +32,18 @@ export function VisualProductsGrid({ products }: { products: Product[] }) {
             <div className="absolute left-3 top-3">
               <ProductStatusBadge status={product.status} />
             </div>
+            {product.referenceImageUrls?.[0] ? (
+              <a
+                href={product.referenceImageUrls[0]}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="Open reference image (internal only)"
+                className="absolute bottom-3 right-3 block overflow-hidden rounded-lg border-2 border-white bg-white shadow-md"
+              >
+                <Image src={product.referenceImageUrls[0]} alt={`Reference image for ${product.name}`} width={96} height={96} unoptimized className="h-20 w-20 object-cover" />
+                <span className="block bg-amber-200 px-1 text-center text-[10px] font-semibold uppercase tracking-wide text-amber-900">Reference</span>
+              </a>
+            ) : null}
           </div>
           <div className="space-y-3 p-4">
             <div className="space-y-1">
@@ -48,9 +60,20 @@ export function VisualProductsGrid({ products }: { products: Product[] }) {
                 Edit
               </Link>
             </div>
-            <Link href={`/shop/${product.slug}`} className="inline-flex text-sm font-semibold text-blue-700 hover:text-blue-900">
-              View public page
-            </Link>
+            <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm font-semibold">
+              <Link href={`/shop/${product.slug}`} className="text-blue-700 hover:text-blue-900">
+                View public page
+              </Link>
+              {product.referenceImageUrls?.length ? (
+                product.referenceImageUrls.map((src, index) => (
+                  <a key={src} href={src} target="_blank" rel="noopener noreferrer" className="text-amber-700 hover:text-amber-900">
+                    Reference image{product.referenceImageUrls!.length > 1 ? ` ${index + 1}` : ''}
+                  </a>
+                ))
+              ) : (
+                <span className="font-normal text-gray-400">No reference image</span>
+              )}
+            </div>
           </div>
         </article>
       ))}

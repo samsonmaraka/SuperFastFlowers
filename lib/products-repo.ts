@@ -9,7 +9,7 @@ import {
 } from '@aws-sdk/lib-dynamodb';
 import { Product, Vendor } from '@/lib/types';
 import { buildProductSlug, getExpectedProductSlug } from '@/lib/slug';
-import { normalizeProductForDisplay } from '@/lib/product-images';
+import { normalizeProductForDisplay, stripInternalProductFields } from '@/lib/product-images';
 import { db } from '@/lib/dynamodb';
 import { getEnv, isDynamoConfigured } from '@/lib/env';
 import { seedProducts } from '@/data/seed-products';
@@ -32,6 +32,17 @@ export class ProductSaveError extends Error {
     this.status = status;
     this.details = details;
   }
+}
+
+type InternalFieldsOption = {
+  // Admin screens only. Without it, admin-only fields such as reference images
+  // are stripped so customer pages and public APIs can never expose them.
+  includeInternal?: boolean;
+};
+
+function prepareProduct(product: Product, includeInternal: boolean) {
+  const normalized = normalizeProductForDisplay(product);
+  return includeInternal ? normalized : stripInternalProductFields(normalized);
 }
 
 async function loadLocalProducts() {
@@ -135,8 +146,9 @@ export async function getActiveVendorForProduct(product: Product) {
   return vendor;
 }
 
-export async function listProducts(options?: { category?: string; q?: string; featured?: boolean; includeInactive?: boolean; categoryMatch?: 'all' | 'assigned' }) {
-  const { category, q, featured, includeInactive = false, categoryMatch = 'all' } = options || {};
+export async function listProducts(options?: { category?: string; q?: string; featured?: boolean; includeInactive?: boolean; categoryMatch?: 'all' | 'assigned' } & InternalFieldsOption) {
+  const { category, q, featured, includeInactive = false, categoryMatch = 'all', includeInternal = false } = options || {};
+  const prepare = (product: Product) => prepareProduct(product, includeInternal);
   ensureProductsStorageConfigured();
 
   if (!isDynamoConfigured()) {
@@ -145,7 +157,7 @@ export async function listProducts(options?: { category?: string; q?: string; fe
       tableName: getEnv().tableName || '(empty)'
     });
     const localProducts = await loadLocalProducts();
-    return filterProducts(localProducts.map(normalizeProductForDisplay), category, q, featured, includeInactive, categoryMatch);
+    return filterProducts(localProducts.map(prepare), category, q, featured, includeInactive, categoryMatch);
   }
 
   const res = await db.send(
@@ -157,7 +169,7 @@ export async function listProducts(options?: { category?: string; q?: string; fe
     })
   );
 
-  return filterProducts(((res.Items || []) as Product[]).map(normalizeProductForDisplay), category, q, featured, includeInactive, categoryMatch);
+  return filterProducts(((res.Items || []) as Product[]).map(prepare), category, q, featured, includeInactive, categoryMatch);
 }
 
 function getAssignedProductCategoryValues(product: Product) {
@@ -185,8 +197,8 @@ function filterProducts(products: Product[], category?: string, q?: string, feat
   });
 }
 
-export async function getProductBySlug(slug: string, options?: { includeInactive?: boolean }) {
-  const { includeInactive = false } = options || {};
+export async function getProductBySlug(slug: string, options?: { includeInactive?: boolean } & InternalFieldsOption) {
+  const { includeInactive = false, includeInternal = false } = options || {};
   ensureProductsStorageConfigured();
   if (!isDynamoConfigured()) {
     console.warn('[products-repo] DynamoDB disabled in getProductBySlug.', {
@@ -196,7 +208,7 @@ export async function getProductBySlug(slug: string, options?: { includeInactive
     const localProducts = await loadLocalProducts();
     const product = localProducts.find((p) => p.slug === slug || getExpectedProductSlug(p) === slug || (p.legacySlugs ?? []).includes(slug)) || null;
     if (product && !includeInactive && (product.status ?? 'active') !== 'active') return null;
-    return product ? normalizeProductForDisplay(product) : null;
+    return product ? prepareProduct(product, includeInternal) : null;
   }
 
   const bySlug = await db.send(
@@ -224,11 +236,11 @@ export async function getProductBySlug(slug: string, options?: { includeInactive
   }
 
   if (product && !includeInactive && (product.status ?? 'active') !== 'active') return null;
-  return product ? normalizeProductForDisplay(product) : null;
+  return product ? prepareProduct(product, includeInternal) : null;
 }
 
-export async function getProductByIdOrSlug(idOrSlug: string, options?: { includeInactive?: boolean }) {
-  const { includeInactive = false } = options || {};
+export async function getProductByIdOrSlug(idOrSlug: string, options?: { includeInactive?: boolean } & InternalFieldsOption) {
+  const { includeInactive = false, includeInternal = false } = options || {};
   ensureProductsStorageConfigured();
   if (!isDynamoConfigured()) {
     console.warn('[products-repo] DynamoDB disabled in getProductByIdOrSlug.', {
@@ -238,7 +250,7 @@ export async function getProductByIdOrSlug(idOrSlug: string, options?: { include
     const localProducts = await loadLocalProducts();
     const product = localProducts.find((p) => p.id === idOrSlug || p.slug === idOrSlug || getExpectedProductSlug(p) === idOrSlug || (p.legacySlugs ?? []).includes(idOrSlug)) || null;
     if (product && !includeInactive && (product.status ?? 'active') !== 'active') return null;
-    return product ? normalizeProductForDisplay(product) : null;
+    return product ? prepareProduct(product, includeInternal) : null;
   }
 
   const byId = await db.send(
@@ -251,10 +263,10 @@ export async function getProductByIdOrSlug(idOrSlug: string, options?: { include
   if (byId.Item) {
     const product = byId.Item as Product;
     if (!includeInactive && (product.status ?? 'active') !== 'active') return null;
-    return normalizeProductForDisplay(product);
+    return prepareProduct(product, includeInternal);
   }
 
-  return getProductBySlug(idOrSlug, { includeInactive });
+  return getProductBySlug(idOrSlug, { includeInactive, includeInternal });
 }
 
 export async function upsertProduct(product: Product) {

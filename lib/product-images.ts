@@ -5,6 +5,9 @@ const DEFAULT_PRODUCT_IMAGES_PUBLIC_BASE_URL = 'https://giftora-product-images-p
 
 const IMAGE_PLACEHOLDER = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="1200" height="900"%3E%3Crect width="100%25" height="100%25" fill="%23f9e8ef"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" fill="%239f1239" font-size="40" font-family="Arial"%3EProduct image coming soon%3C/text%3E%3C/svg%3E';
 
+// Admin-only reference photos kept per product (never shown to customers).
+export const REFERENCE_IMAGES_MAX = 5;
+
 export function isDataImageUrl(value: string) {
   return /^data:image\/[a-zA-Z0-9.+-]+;base64,/i.test(value);
 }
@@ -87,10 +90,19 @@ export function normalizeProductImageUrls(product: Product): string[] {
 }
 
 export function normalizeProductForDisplay(product: Product): Product {
+  const referenceImageUrls = collectImageValues(product.referenceImageUrls);
   return {
     ...product,
-    imageUrls: normalizeProductImageUrls(product)
+    imageUrls: normalizeProductImageUrls(product),
+    referenceImageUrls: referenceImageUrls.length ? referenceImageUrls : undefined
   };
+}
+
+// Removes admin-only fields so they never reach shoppers (pages, API, HTML payload).
+export function stripInternalProductFields(product: Product): Product {
+  const publicProduct = { ...product };
+  delete publicProduct.referenceImageUrls;
+  return publicProduct;
 }
 
 export function getPrimaryProductImage(product: Product) {

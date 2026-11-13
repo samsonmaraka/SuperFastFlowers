@@ -8,6 +8,7 @@ import { flavours as flavourRegistry, FLAVOUR_IDS, normalizeFlavourIds, type Fla
 import { CUSTOM_FIELDS_MAX, CUSTOM_FIELD_MAX_LENGTH, emptyCustomFieldRow, parseCustomFieldRows, rowsFromCustomFields, type CustomFieldRow, type ProductCustomField } from '@/lib/customization';
 import { ProductStatusBadge } from './status-badges';
 import { ProductImagePreview } from './product-image-preview';
+import { ReferenceImagesField } from './reference-images-field';
 
 function err(e: unknown) {
   return Array.isArray(e)
@@ -24,6 +25,7 @@ function buildFormFromProduct(product: Product) {
     price: String(product.price),
     preparationDays: String(product.preparationDays ?? 2),
     imageUrl: product.imageUrls?.[0] || '',
+    referenceImageUrls: product.referenceImageUrls || [],
     vendorId: product.vendorId || '',
     categories: (product.categories || []).join(', '),
     tagsInput: (product.tags || []).join(', '),
@@ -55,6 +57,7 @@ export function ProductsTable({
     price: '',
     preparationDays: '2',
     imageUrl: '',
+    referenceImageUrls: [] as string[],
     vendorId: vendors.length === 1 ? vendors[0].id : '',
     categories: '',
     tagsInput: '',
@@ -173,6 +176,8 @@ export function ProductsTable({
       flavours: form.flavours.length ? form.flavours : undefined,
       customFields,
       imageUrls: [form.imageUrl],
+      // Admin-only; sent on every save so an unrelated edit never drops it.
+      referenceImageUrls: form.referenceImageUrls.length ? form.referenceImageUrls : undefined,
       stockStatus: 'in_stock',
       featured: !isVendor && form.featured,
       status: form.status,
@@ -305,6 +310,7 @@ export function ProductsTable({
           <input className="rounded border p-2 md:col-span-2" placeholder="Hosted HTTPS image URL *" value={form.imageUrl} onChange={(e) => setForm({ ...form, imageUrl: e.target.value })} />
           <input className="rounded border p-2" type="file" accept="image/*" onChange={image} />
           <ProductImagePreview src={form.imageUrl} />
+          <ReferenceImagesField value={form.referenceImageUrls} onChange={(referenceImageUrls) => setForm((x) => ({ ...x, referenceImageUrls }))} />
           <div className="flex gap-2 md:col-span-2">
             <button className="rounded bg-ink px-4 py-2 font-semibold text-white">Save product</button>
             {editing && <button type="button" className="rounded border px-4 py-2" onClick={() => { setEditing(null); setForm(empty); }}>Cancel</button>}
@@ -340,7 +346,7 @@ export function ProductsTable({
               <tbody>
                 {rows.map((p) => (
                   <tr key={p.id} className="border-t">
-                    <td className="py-3 font-semibold">{p.name}<p className="text-xs font-normal text-gray-500">{p.vendorName || vendors.find((v) => v.id === p.vendorId)?.name || 'No vendor'}</p>{(p.flavours || []).length ? <p className="text-xs font-normal text-pink-700">{(p.flavours || []).length} flavours</p> : null}{p.customFields?.length ? <p className="text-xs font-normal text-pink-700">Customisable ({p.customFields.length} fields)</p> : null}</td>
+                    <td className="py-3 font-semibold">{p.name}<p className="text-xs font-normal text-gray-500">{p.vendorName || vendors.find((v) => v.id === p.vendorId)?.name || 'No vendor'}</p>{(p.flavours || []).length ? <p className="text-xs font-normal text-pink-700">{(p.flavours || []).length} flavours</p> : null}{p.customFields?.length ? <p className="text-xs font-normal text-pink-700">Customisable ({p.customFields.length} fields)</p> : null}{p.referenceImageUrls?.length ? <p className="text-xs font-normal">{p.referenceImageUrls.map((src, i) => <a key={src} href={src} target="_blank" rel="noopener noreferrer" className="mr-2 text-amber-700 hover:underline">Reference image{p.referenceImageUrls!.length > 1 ? ` ${i + 1}` : ''}</a>)}</p> : null}</td>
                     <td>UGX {p.price.toLocaleString()}</td>
                     <td><ProductStatusBadge status={p.status} /></td>
                     <td className="text-right">
