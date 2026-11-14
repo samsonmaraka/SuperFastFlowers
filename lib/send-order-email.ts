@@ -216,3 +216,63 @@ Total: ${totalWithDeliveryText}\n\nDelivery/contact details:\nRecipient name: ${
     orderId: order.id
   });
 }
+
+// Unfinished-payment alerts go to the owner only, never to the customer or vendors.
+export const ABANDONED_CHECKOUT_ALERT_EMAIL_DEFAULT = 'maramson@gmail.com';
+
+export async function sendAbandonedCheckoutEmail(args: {
+  order: OrderRequest;
+  reasonLabel: string;
+  lastActivityAt: string;
+}) {
+  const { order, reasonLabel, lastActivityAt } = args;
+  const fromEmail = process.env.SES_FROM_EMAIL;
+  const toEmail = process.env.ABANDONED_CHECKOUT_ALERT_EMAIL || ABANDONED_CHECKOUT_ALERT_EMAIL_DEFAULT;
+  if (!fromEmail) throw new Error('SES_FROM_EMAIL is missing; cannot send unfinished payment alert.');
+
+  const sesClient = new SESClient({ region: process.env.AWS_REGION || getEnv().awsRegion });
+  const siteUrl = getPublicSiteUrl();
+  const products = await listProducts();
+  const lines = await buildOrderLines(order, products);
+  const total = order.totalWithDelivery ?? order.totalAmount ?? lines.reduce((sum, line) => sum + (line.lineTotal || 0), 0);
+  const totalText = `UGX ${formatUgx(total)}`;
+  const kampalaTime = (iso: string) => {
+    const date = new Date(iso);
+    return Number.isNaN(date.getTime())
+      ? iso
+      : `${date.toLocaleString('en-GB', { timeZone: 'Africa/Kampala', dateStyle: 'medium', timeStyle: 'short' })} (Kampala time)`;
+  };
+
+  const details: Array<[string, string]> = [
+    ['What happened', reasonLabel],
+    ['Order reference', order.id],
+    ['Order total', totalText],
+    ['Order status', order.status],
+    ['Pesapal status', order.pesapal?.status || 'N/A'],
+    ['Checkout started', kampalaTime(order.createdAt)],
+    ['Last payment activity', kampalaTime(lastActivityAt)],
+    ['Customer email', order.email || 'N/A'],
+    ['Customer phone', order.customerPhone || 'N/A'],
+    ['Recipient name', order.recipientName],
+    ['Recipient phone', order.recipientPhone],
+    ['Delivery date', order.deliveryDate],
+    ['Note', order.note || 'N/A']
+  ];
+
+  const itemsText = lines
+    .map((line) => `- ${line.name}${line.flavourLabel ? ` | Flavour: ${line.flavourLabel}` : ''}${line.message ? ` | Message: "${line.message}"` : ''}${(line.customizations || []).map((entry) => ` | ${formatCustomization(entry)}`).join('')} | Qty: ${line.quantity} | Line total: ${line.lineTotal !== undefined ? `UGX ${formatUgx(line.lineTotal)}` : 'N/A'}`)
+    .join('\n');
+
+  const textBody = `Unfinished payment\n\nHello Platform Owner,\n\nA customer reached the payment step but did not complete the purchase.\n\n${details.map(([label, value]) => `${label}: ${value}`).join('\n')}\n\nItems:\n${itemsText}\n\nYou may want to contact the customer to help them finish the order.\n\nThis alert is sent only to you. The customer has not been emailed.\n${siteUrl}`;
+  const htmlBody = `<div style="font-family:Arial,sans-serif;color:#231f20;"><h2>Unfinished payment</h2><p>Hello Platform Owner,</p><p>A customer reached the payment step but did not complete the purchase.</p><ul>${details.map(([label, value]) => `<li><strong>${escapeHtml(label)}:</strong> ${escapeHtml(value)}</li>`).join('')}</ul><h3>Items</h3>${buildItemsTable(lines)}<p>You may want to contact the customer to help them finish the order.</p><p style="color:#777;">This alert is sent only to you. The customer has not been emailed.</p></div>`;
+
+  await sendSingleOrderEmail({
+    sesClient,
+    fromEmail,
+    toEmail,
+    subject: `Unfinished payment: order ${order.id} (${totalText})`,
+    textBody,
+    htmlBody,
+    orderId: order.id
+  });
+}

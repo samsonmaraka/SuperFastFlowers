@@ -137,6 +137,8 @@ export type OrderRequest = {
   createdAt: string;
   updatedAt?: string;
   pesapal?: PesapalOrderPayment;
+  // Set once the owner has been emailed that this order's payment was not completed.
+  abandonedCheckoutNotifiedAt?: string;
 };
 
 
