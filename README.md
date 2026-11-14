@@ -185,6 +185,8 @@ See `docs/auth-admin-phase-2.md` for the full Phase 2 setup and troubleshooting 
    - `PESAPAL_CONSUMER_SECRET`
    - `PESAPAL_IPN_ID` (set after registering the production IPN URL)
    - `SES_FROM_EMAIL`
+   - `CRON_SECRET` (long random string; also add it as a GitHub repository secret for unfinished payment alerts)
+   - `ABANDONED_CHECKOUT_ALERT_EMAIL` (optional; who receives unfinished payment alerts)
 4. Ensure Amplify execution role has IAM permissions:
    - `dynamodb:GetItem`
    - `dynamodb:Query`
@@ -193,6 +195,17 @@ See `docs/auth-admin-phase-2.md` for the full Phase 2 setup and troubleshooting 
    - `dynamodb:DeleteItem`
 5. Deploy.
 
+
+### Unfinished payment alerts
+
+When a customer clicks **Pay**, the order is saved as `PENDING_PAYMENT` and they are sent to the Pesapal payment page. If Pesapal has not confirmed payment **30 minutes** later, the owner is emailed (the customer is not). This is checked by `POST /api/cron/abandoned-checkouts`, which the GitHub Actions workflow `.github/workflows/abandoned-checkouts.yml` calls every 15 minutes.
+
+Before alerting, the job asks Pesapal for the latest status, so a payment whose IPN was missed is recorded as paid (and the normal success emails sent) instead of being reported. A customer who abandons one attempt but pays on a later retry with the same email is not reported. Each order is reported at most once.
+
+Setup:
+1. Generate a secret, e.g. `openssl rand -hex 32`.
+2. Add it as `CRON_SECRET` in Amplify environment variables and redeploy.
+3. Add the same value as a GitHub repository secret named `CRON_SECRET` (Settings → Secrets and variables → Actions).
 
 ### Production domain checklist
 

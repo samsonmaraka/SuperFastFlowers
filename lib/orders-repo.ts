@@ -53,6 +53,68 @@ export async function listOrders() {
   return ((res.Items || []) as OrderRequest[]).sort((a,b)=> (b.createdAt||'').localeCompare(a.createdAt||''));
 }
 
+/** Every order created at or after `sinceIso`, following DynamoDB scan pagination. */
+export async function listOrdersCreatedSince(sinceIso: string) {
+  if (!getEnv().orderTableName) return memoryOrders.filter((order) => (order.createdAt || '') >= sinceIso);
+  const items: OrderRequest[] = [];
+  let exclusiveStartKey: Record<string, unknown> | undefined;
+  do {
+    const res = await db.send(new ScanCommand({
+      TableName: getEnv().orderTableName,
+      FilterExpression: '#createdAt >= :since',
+      ExpressionAttributeNames: { '#createdAt': 'createdAt' },
+      ExpressionAttributeValues: { ':since': sinceIso },
+      ExclusiveStartKey: exclusiveStartKey
+    }));
+    items.push(...((res.Items || []) as OrderRequest[]));
+    exclusiveStartKey = res.LastEvaluatedKey as Record<string, unknown> | undefined;
+  } while (exclusiveStartKey);
+  return items;
+}
+
+/**
+ * Atomically records that the owner was told about an unfinished payment.
+ * Returns false if another run already claimed this order, so overlapping
+ * scheduler runs never send the same alert twice.
+ */
+export async function claimAbandonedCheckoutNotification(order: OrderRequest, notifiedAt: string) {
+  if (!getEnv().orderTableName) {
+    const idx = memoryOrders.findIndex((o) => o.id === order.id);
+    if (idx < 0 || memoryOrders[idx].abandonedCheckoutNotifiedAt) return false;
+    memoryOrders[idx] = { ...memoryOrders[idx], abandonedCheckoutNotifiedAt: notifiedAt };
+    return true;
+  }
+  try {
+    await db.send(new UpdateCommand({
+      TableName: getEnv().orderTableName,
+      Key: { pk: `ORDER#${order.id}`, sk: order.createdAt },
+      UpdateExpression: 'SET #notifiedAt = :notifiedAt',
+      ConditionExpression: 'attribute_exists(pk) AND attribute_not_exists(#notifiedAt) AND #status <> :paid',
+      ExpressionAttributeNames: { '#notifiedAt': 'abandonedCheckoutNotifiedAt', '#status': 'status' },
+      ExpressionAttributeValues: { ':notifiedAt': notifiedAt, ':paid': 'PAID' }
+    }));
+    return true;
+  } catch (error) {
+    if ((error as { name?: string })?.name === 'ConditionalCheckFailedException') return false;
+    throw error;
+  }
+}
+
+/** Undoes a claim when the alert email could not be sent, so the next run retries it. */
+export async function releaseAbandonedCheckoutNotification(order: OrderRequest) {
+  if (!getEnv().orderTableName) {
+    const idx = memoryOrders.findIndex((o) => o.id === order.id);
+    if (idx >= 0) memoryOrders[idx] = { ...memoryOrders[idx], abandonedCheckoutNotifiedAt: undefined };
+    return;
+  }
+  await db.send(new UpdateCommand({
+    TableName: getEnv().orderTableName,
+    Key: { pk: `ORDER#${order.id}`, sk: order.createdAt },
+    UpdateExpression: 'REMOVE #notifiedAt',
+    ExpressionAttributeNames: { '#notifiedAt': 'abandonedCheckoutNotifiedAt' }
+  }));
+}
+
 export async function updateOrderStatus(orderId: string, status: OrderStatus) {
   const existing = await getOrderById(orderId);
   if (!existing) return null;

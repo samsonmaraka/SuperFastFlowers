@@ -1,0 +1,26 @@
+name: Unfinished payment alerts
+
+# Every 15 minutes, ask the site to email the owner about customers who opened
+# the Pesapal payment page but did not complete payment within 30 minutes.
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Run abandoned checkout check
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+          SITE_URL: ${{ vars.SITE_URL || 'https://www.sendagift.ug' }}
+        run: |
+          if [ -z "$CRON_SECRET" ]; then
+            echo "CRON_SECRET repository secret is not set; skipping." >&2
+            exit 0
+          fi
+          curl --fail-with-body -sS -X POST \
+            -H "Authorization: Bearer $CRON_SECRET" \
+            "$SITE_URL/api/cron/abandoned-checkouts"

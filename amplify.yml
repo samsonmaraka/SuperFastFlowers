@@ -25,6 +25,10 @@ frontend:
             'PESAPAL_CONSUMER_SECRET',
             'PESAPAL_IPN_ID',
 
+            // Unfinished payment alerts
+            'CRON_SECRET',
+            'ABANDONED_CHECKOUT_ALERT_EMAIL',
+
             // Auth.js / Google sign-in
             'AUTH_SECRET',
             'AUTH_GOOGLE_ID',
