@@ -198,7 +198,7 @@ See `docs/auth-admin-phase-2.md` for the full Phase 2 setup and troubleshooting 
 
 ### Unfinished payment alerts
 
-When a customer clicks **Pay**, the order is saved as `PENDING_PAYMENT` and they are sent to the Pesapal payment page. If Pesapal has not confirmed payment **30 minutes** later, the owner is emailed (the customer is not). This is checked by `POST /api/cron/abandoned-checkouts`, which the GitHub Actions workflow `.github/workflows/abandoned-checkouts.yml` calls every 15 minutes.
+When a customer clicks **Pay**, the order is saved as `PENDING_PAYMENT` and they are sent to the Pesapal payment page. If Pesapal has not confirmed payment **30 minutes** later, the owner is emailed (the customer is not). This is checked by `POST /api/cron/abandoned-checkouts`, which the GitHub Actions workflow `.github/workflows/abandoned-checkouts.yml` calls every 1.5 hours, so an alert arrives roughly 30 minutes to 2 hours after the customer leaves.
 
 Before alerting, the job asks Pesapal for the latest status, so a payment whose IPN was missed is recorded as paid (and the normal success emails sent) instead of being reported. A customer who abandons one attempt but pays on a later retry with the same email is not reported. Each order is reported at most once.
 
