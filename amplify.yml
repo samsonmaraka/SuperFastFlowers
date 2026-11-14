@@ -29,6 +29,10 @@ frontend:
             'CRON_SECRET',
             'ABANDONED_CHECKOUT_ALERT_EMAIL',
 
+            // DriveCar "Need help importing a car?" form emails
+            'IMPORT_LEAD_ALERT_EMAIL',
+            'IMPORT_LEAD_ALLOWED_ORIGINS',
+
             // Auth.js / Google sign-in
             'AUTH_SECRET',
             'AUTH_GOOGLE_ID',
