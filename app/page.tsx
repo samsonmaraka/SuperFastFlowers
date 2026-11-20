@@ -2,7 +2,11 @@ import Link from 'next/link';
 import { ProductCard } from '@/components/product-card';
 import { categoryPath, getSortedGiftCategories, normalizeCategorySlug } from '@/lib/categories';
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { listProducts } from '@/lib/products-repo';
+import { rankProductsForVisitor } from '@/lib/product-stats-repo';
+import { newRankingSeed, parseRankingSeed, RANKING_SEED_COOKIE } from '@/lib/product-ranking';
+import { ProductImpressionTracker } from '@/components/analytics/product-impression-tracker';
 import { buildSiteUrl } from '@/lib/site-url';
 import { itemListJsonLd, JsonLd, STORE_DESCRIPTION, STORE_NAME, storeJsonLd } from '@/lib/seo';
 
@@ -34,7 +38,11 @@ export default async function HomePage({
   const categories = getSortedGiftCategories();
   const activeCategory = searchParams.category ? normalizeCategorySlug(searchParams.category) : '';
   const q = searchParams.q || '';
-  const products = await listProducts({ q: searchParams.q, category: searchParams.category });
+  const rankingSeed = parseRankingSeed(cookies().get(RANKING_SEED_COOKIE)?.value) ?? newRankingSeed();
+  const products = await rankProductsForVisitor(
+    await listProducts({ q: searchParams.q, category: searchParams.category }),
+    rankingSeed
+  );
 
   const websiteJsonLd = {
     '@context': 'https://schema.org',
@@ -51,6 +59,7 @@ export default async function HomePage({
   return (
     <div className="mx-auto max-w-6xl px-4 py-5">
       <JsonLd data={[storeJsonLd(), websiteJsonLd, itemListJsonLd(products)]} />
+      <ProductImpressionTracker seed={rankingSeed} pageKey={`home:${q}:${activeCategory}`} />
 
       <header className="mb-4 max-w-3xl">
         <h1 className="text-2xl font-semibold leading-tight text-ink md:text-3xl">
