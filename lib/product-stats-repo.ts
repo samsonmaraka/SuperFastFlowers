@@ -39,6 +39,16 @@ function statsPk(month: string) {
   return `PRODUCT_STATS#${month}`;
 }
 
+// Ranking reads the current month and the two before it, so a month's rows are
+// no longer needed once four months have started after it. Rows carry an
+// `expiresAt` (Unix seconds) so DynamoDB's Time to Live can delete them for
+// free, keeping the main table tidy. TTL must be switched on for the table with
+// attribute name `expiresAt`; until it is, the field is simply ignored. Only
+// PRODUCT_STATS rows set this field, so no other row type is affected.
+export function statsExpiresAt(date: Date) {
+  return Math.floor(Date.UTC(date.getUTCFullYear(), date.getUTCMonth() + 4, 1) / 1000);
+}
+
 export async function recordProductEvents(counts: ProductEventCounts, now = new Date()) {
   const month = statsMonthKey(now);
   const entries = Object.entries(counts).filter(
@@ -66,7 +76,7 @@ export async function recordProductEvents(counts: ProductEventCounts, now = new 
           TableName: getEnv().tableName,
           Key: { pk: statsPk(month), sk: `PRODUCT#${productId}` },
           UpdateExpression:
-            'ADD impressions :impressions, #views :views, addsToCart :adds SET entityType = :entity, productId = :productId, #month = :month, updatedAt = :now',
+            'ADD impressions :impressions, #views :views, addsToCart :adds SET entityType = :entity, productId = :productId, #month = :month, updatedAt = :now, expiresAt = :expiresAt',
           ExpressionAttributeNames: { '#views': 'views', '#month': 'month' },
           ExpressionAttributeValues: {
             ':impressions': c.impressions,
@@ -75,7 +85,8 @@ export async function recordProductEvents(counts: ProductEventCounts, now = new 
             ':entity': 'PRODUCT_STATS',
             ':productId': productId,
             ':month': month,
-            ':now': now.toISOString()
+            ':now': now.toISOString(),
+            ':expiresAt': statsExpiresAt(now)
           }
         })
       )
