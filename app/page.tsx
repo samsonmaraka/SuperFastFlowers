@@ -51,7 +51,7 @@ export default async function HomePage({
     url: buildSiteUrl('/'),
     potentialAction: {
       '@type': 'SearchAction',
-      target: 'https://www.sendagift.ug/shop?q={search_term_string}',
+      target: 'https://www.sendagift.ug/?q={search_term_string}',
       'query-input': 'required name=search_term_string'
     }
   };

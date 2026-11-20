@@ -6,7 +6,7 @@ import { readCart } from '@/lib/cart-storage';
 import { AccountMenu } from '@/components/account-menu';
 
 const customerLinks = [
-  ['Shop', '/shop'],
+  ['Shop', '/'],
   ['About', '/about'],
   ['Contact', '/contact']
 ] as const;
@@ -23,7 +23,7 @@ function CartBadge({ count }: { count: number }) {
 
 function HeaderSearch() {
   return (
-    <form action="/shop" className="w-full" role="search">
+    <form action="/" className="w-full" role="search">
       <label htmlFor="site-search" className="sr-only">
         Search gifts
       </label>

@@ -56,7 +56,7 @@ export default function ContactPage() {
         <h2 className="text-xl font-semibold">Ready to send a gift?</h2>
         <p className="text-gray-700">
           Browse cakes, flowers, cupcakes and hampers for every occasion in our{' '}
-          <Link href="/shop" className="text-pink-700 hover:underline">
+          <Link href="/" className="text-pink-700 hover:underline">
             gift shop
           </Link>
           .

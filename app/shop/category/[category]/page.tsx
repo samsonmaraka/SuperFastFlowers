@@ -82,7 +82,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
 
       <nav className="mb-5" aria-label="Gift categories">
         <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
-          <Link href="/shop" className="whitespace-nowrap rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-ink transition hover:border-ink/40">
+          <Link href="/" className="whitespace-nowrap rounded-full border border-gray-300 bg-white px-4 py-2 text-sm text-ink transition hover:border-ink/40">
             All gifts
           </Link>
           {categories.map((giftCategory) => {
@@ -114,7 +114,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
         <div className="rounded-xl border border-dashed bg-white p-8 text-center text-gray-600">
           <p className="text-lg font-semibold text-ink">No products are listed in {category.label} yet.</p>
           <p className="mt-2">Please check back soon or browse all gifts while we update this category.</p>
-          <Link href="/shop" className="mt-4 inline-flex rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white transition hover:bg-pink-700">
+          <Link href="/" className="mt-4 inline-flex rounded-full bg-ink px-5 py-2 text-sm font-semibold text-white transition hover:bg-pink-700">
             Browse all gifts
           </Link>
         </div>

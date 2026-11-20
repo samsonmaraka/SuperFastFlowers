@@ -158,7 +158,7 @@ export default async function PaymentCallbackPage({ searchParams }: PaymentCallb
               View order success details
             </Link>
           ) : (
-            <Link href="/shop" className="rounded bg-ink px-4 py-2 text-white">Continue shopping</Link>
+            <Link href="/" className="rounded bg-ink px-4 py-2 text-white">Continue shopping</Link>
           )}
           <Link href="/contact" className="rounded border border-ink px-4 py-2 text-ink">Contact Sendagift UG</Link>
         </div>
