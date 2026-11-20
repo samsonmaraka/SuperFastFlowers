@@ -86,7 +86,6 @@ export default async function ProductPage({ params }: { params: { slug: string }
 
   const breadcrumbs = [
     { label: 'Home', href: '/' },
-    { label: 'Shop', href: '/shop' },
     ...(category ? [{ label: category.label, href: categoryPath(category) }] : [])
   ];
 

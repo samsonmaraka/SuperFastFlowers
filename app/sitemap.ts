@@ -16,12 +16,6 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       changeFrequency: 'daily',
       priority: 1
     },
-    {
-      url: buildSiteUrl('/shop'),
-      lastModified: now,
-      changeFrequency: 'daily',
-      priority: 0.9
-    },
     ...categories.map((category) => ({
       url: buildSiteUrl(categoryPath(category)),
       lastModified: now,

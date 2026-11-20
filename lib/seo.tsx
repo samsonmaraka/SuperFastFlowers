@@ -148,8 +148,7 @@ export function categoryBreadcrumbJsonLd(category: Pick<GiftCategory, 'label' | 
     '@type': 'BreadcrumbList',
     itemListElement: [
       { '@type': 'ListItem', position: 1, name: 'Home', item: buildSiteUrl('/') },
-      { '@type': 'ListItem', position: 2, name: 'Shop', item: buildSiteUrl('/shop') },
-      { '@type': 'ListItem', position: 3, name: category.label, item: categoryUrl(category) }
+      { '@type': 'ListItem', position: 2, name: category.label, item: categoryUrl(category) }
     ]
   };
 }
@@ -157,7 +156,6 @@ export function categoryBreadcrumbJsonLd(category: Pick<GiftCategory, 'label' | 
 export function productBreadcrumbJsonLd(product: Product, category?: Pick<GiftCategory, 'label' | 'slug'> | null) {
   const crumbs = [
     { name: 'Home', item: buildSiteUrl('/') },
-    { name: 'Shop', item: buildSiteUrl('/shop') },
     ...(category ? [{ name: category.label, item: categoryUrl(category) }] : []),
     { name: product.name, item: productUrl(product) }
   ];

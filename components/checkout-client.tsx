@@ -263,7 +263,7 @@ export function CheckoutClient({ children }: { children: ReactNode }) {
       <section className="mb-6 rounded-xl border border-blush bg-white p-5">
         <h2 className="text-xl font-semibold text-ink">Your cart is empty</h2>
         <p className="mt-2 text-sm text-gray-600">Add a few gifts to your cart before submitting an order request.</p>
-        <Link href="/shop" className="mt-4 inline-block rounded bg-ink px-4 py-2 text-white">
+        <Link href="/" className="mt-4 inline-block rounded bg-ink px-4 py-2 text-white">
           Continue shopping
         </Link>
       </section>

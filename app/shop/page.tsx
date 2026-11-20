@@ -1,104 +1,39 @@
-import Link from 'next/link';
-import { ProductCard } from '@/components/product-card';
-import { categoryPath, getGiftCategoryBySlug, getSortedGiftCategories, normalizeCategorySlug } from '@/lib/categories';
-import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
 import { permanentRedirect } from 'next/navigation';
-import { listProducts } from '@/lib/products-repo';
-import { rankProductsForVisitor } from '@/lib/product-stats-repo';
-import { newRankingSeed, parseRankingSeed, RANKING_SEED_COOKIE } from '@/lib/product-ranking';
-import { ProductImpressionTracker } from '@/components/analytics/product-impression-tracker';
-import { itemListJsonLd, JsonLd } from '@/lib/seo';
+import { categoryPath, getGiftCategoryBySlug } from '@/lib/categories';
 
-const shopTitle = 'Shop Gifts in Uganda from UGX 65,000 | Sendagift UG';
-const shopDescription = 'Sendagift UG helps you send gifts in Uganda, including cakes, flowers, cupcakes, hampers, and thoughtful gifts for birthdays, baby showers, congratulations, and special occasions.';
-const shopCanonicalUrl = '/shop';
+// /shop used to show the same product grid as the homepage, so the two pages
+// competed in search and split analytics. It now permanently redirects to the
+// homepage. Only this exact path is affected: product pages (/shop/<slug>) and
+// category pages (/shop/category/<slug>) are separate routes and keep working.
+//
+// Query strings are kept, so old search links (/shop?q=roses) still show
+// results and campaign tags (utm_*) still reach analytics. An old
+// /shop?category=<slug> link goes straight to that category's page, as before.
 
 export const dynamic = 'force-dynamic';
-export const revalidate = 0;
 
-export function generateMetadata({ searchParams }: { searchParams: { q?: string; category?: string } }): Metadata {
-  const hasSearchQuery = Boolean(searchParams.q);
+type SearchParams = Record<string, string | string[] | undefined>;
 
-  return {
-    title: { absolute: shopTitle },
-    description: shopDescription,
-    alternates: { canonical: shopCanonicalUrl },
-    robots: hasSearchQuery ? { index: false, follow: true } : undefined,
-    openGraph: {
-      title: shopTitle,
-      description: shopDescription,
-      url: shopCanonicalUrl,
-      siteName: 'Sendagift UG',
-      type: 'website'
-    },
-    twitter: {
-      card: 'summary',
-      title: shopTitle,
-      description: shopDescription
-    }
-  };
+function firstValue(value: string | string[] | undefined) {
+  return Array.isArray(value) ? value[0] : value;
 }
 
-export default async function ShopPage({
-  searchParams
-}: {
-  searchParams: { q?: string; category?: string };
-}) {
-  const requestedCategory = searchParams.category ? getGiftCategoryBySlug(searchParams.category) : null;
+export default function ShopPage({ searchParams }: { searchParams: SearchParams }) {
+  const q = firstValue(searchParams.q);
+  const category = firstValue(searchParams.category);
+  const requestedCategory = category ? getGiftCategoryBySlug(category) : null;
 
-  if (requestedCategory && !searchParams.q) {
+  if (requestedCategory && !q) {
     permanentRedirect(categoryPath(requestedCategory));
   }
 
-  const rankingSeed = parseRankingSeed(cookies().get(RANKING_SEED_COOKIE)?.value) ?? newRankingSeed();
-  const products = await rankProductsForVisitor(
-    await listProducts({ q: searchParams.q, category: searchParams.category }),
-    rankingSeed
-  );
-  const categories = getSortedGiftCategories();
-  const activeCategory = searchParams.category ? normalizeCategorySlug(searchParams.category) : '';
-  const q = searchParams.q || '';
+  const query = new URLSearchParams();
+  for (const [key, value] of Object.entries(searchParams)) {
+    for (const item of Array.isArray(value) ? value : [value]) {
+      if (item !== undefined) query.append(key, item);
+    }
+  }
 
-  return (
-    <div className="mx-auto max-w-6xl px-4 py-10">
-      <JsonLd data={itemListJsonLd(products)} />
-      <ProductImpressionTracker seed={rankingSeed} pageKey={`shop:${searchParams.q || ''}`} />
-      <nav className="mb-5">
-        <div className="-mx-1 flex gap-2 overflow-x-auto px-1 pb-2">
-          <Link
-            href={q ? `/shop?q=${encodeURIComponent(q)}` : '/shop'}
-            className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm transition ${
-              activeCategory === '' ? 'border-ink bg-ink text-white' : 'border-gray-300 bg-white text-ink hover:border-ink/40'
-            }`}
-          >
-            All gifts
-          </Link>
-          {categories.map((category) => {
-            const href = categoryPath(category);
-            const isActive = activeCategory === normalizeCategorySlug(category.slug);
-
-            return (
-              <Link
-                key={category.slug}
-                href={href}
-                className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm transition ${
-                  isActive ? 'border-ink bg-ink text-white' : 'border-gray-300 bg-white text-ink hover:border-ink/40'
-                }`}
-                aria-current={isActive ? 'page' : undefined}
-              >
-                {category.label}
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
-
-      <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-        {products.map((product) => (
-          <ProductCard key={product.id} product={product} />
-        ))}
-      </div>
-    </div>
-  );
+  const queryString = query.toString();
+  permanentRedirect(queryString ? `/?${queryString}` : '/');
 }
