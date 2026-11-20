@@ -1,6 +1,8 @@
 // Thin wrapper over the gtag.js snippet in app/layout.tsx. Every call is a no-op
 // when gtag is missing (ad blockers, server render), so tracking never breaks a page.
 
+import { queueProductEvent } from '@/lib/product-events';
+
 export type GaItem = {
   item_id: string;
   item_name: string;
@@ -21,7 +23,18 @@ declare global {
 export const GA_CURRENCY = 'UGX';
 
 export function trackEcommerce(event: GaEvent, params: { items: GaItem[]; value?: number; [key: string]: unknown }) {
-  if (typeof window === 'undefined' || typeof window.gtag !== 'function') return;
+  if (typeof window === 'undefined') return;
+
+  // Product views and add-to-carts also feed the shop's own product ranking.
+  // This runs before the gtag check so it still works when GA is blocked.
+  if (event === 'view_item' || event === 'add_to_cart') {
+    for (const item of params.items) {
+      if (item.item_category === 'Add-on') continue;
+      queueProductEvent(event === 'view_item' ? 'view' : 'add_to_cart', item.item_id);
+    }
+  }
+
+  if (typeof window.gtag !== 'function') return;
 
   const value = params.value ?? params.items.reduce((sum, item) => sum + item.price * item.quantity, 0);
   window.gtag('event', event, { currency: GA_CURRENCY, ...params, value });

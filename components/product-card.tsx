@@ -18,7 +18,7 @@ export function ProductCard({ product }: { product: Product }) {
   const choiceLabel = requiresFlavour ? (isCustomizable ? 'Choose flavour and message' : 'Choose flavour') : 'Personalise';
 
   return (
-    <article className="relative overflow-hidden rounded-xl border border-blush bg-white shadow-sm transition-shadow hover:shadow-md">
+    <article data-product-id={product.id} className="relative overflow-hidden rounded-xl border border-blush bg-white shadow-sm transition-shadow hover:shadow-md">
       <div className="relative h-48 w-full">
         <ProductImage
           src={getPrimaryProductImage(product)}

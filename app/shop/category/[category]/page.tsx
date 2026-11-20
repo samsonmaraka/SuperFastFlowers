@@ -1,9 +1,13 @@
 import Link from 'next/link';
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { ProductCard } from '@/components/product-card';
 import { categoryPath, getGiftCategoryBySlug, getSortedGiftCategories, normalizeCategorySlug } from '@/lib/categories';
 import { listProducts } from '@/lib/products-repo';
+import { rankProductsForVisitor } from '@/lib/product-stats-repo';
+import { newRankingSeed, parseRankingSeed, RANKING_SEED_COOKIE } from '@/lib/product-ranking';
+import { ProductImpressionTracker } from '@/components/analytics/product-impression-tracker';
 import { buildSiteUrl } from '@/lib/site-url';
 import { categoryBreadcrumbJsonLd, itemListJsonLd, JsonLd } from '@/lib/seo';
 
@@ -55,7 +59,11 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
     notFound();
   }
 
-  const products = await listProducts({ category: category.slug, categoryMatch: 'assigned' });
+  const rankingSeed = parseRankingSeed(cookies().get(RANKING_SEED_COOKIE)?.value) ?? newRankingSeed();
+  const products = await rankProductsForVisitor(
+    await listProducts({ category: category.slug, categoryMatch: 'assigned' }),
+    rankingSeed
+  );
   const categories = getSortedGiftCategories();
   const activeCategory = normalizeCategorySlug(category.slug);
   const relatedCategories = (category.relatedCategories || [])
@@ -65,6 +73,7 @@ export default async function CategoryPage({ params }: CategoryPageProps) {
   return (
     <div className="mx-auto max-w-6xl px-4 py-10">
       <JsonLd data={[categoryBreadcrumbJsonLd(category), itemListJsonLd(products)]} />
+      <ProductImpressionTracker seed={rankingSeed} pageKey={`category:${category.slug}`} />
 
       <header className="mb-6 max-w-3xl">
         <h1 className="text-3xl font-semibold text-ink">{category.h1 || `${category.label} Gifts in Uganda`}</h1>
